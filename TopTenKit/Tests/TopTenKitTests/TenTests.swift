@@ -33,6 +33,6 @@ struct TenTests {
         #expect(points == [10, 9, 8, 7, 6, 5, 4, 3, 2, 1])
         // One complete Ten contributes a fixed 55 points to a topic, whatever
         // its picks are — the property consensus scoring depends on.
-        #expect(points.reduce(0, +) == 55)
+        #expect(points.reduce(0, +) == 56)
     }
 }
