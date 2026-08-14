@@ -96,6 +96,14 @@ code. Date and attribute every decision.
   with one fixture. Screenshots judge layout and copy; tests judge behaviour.
 - **Never print secret values** — presence and length only, in every report
   and every command's output.
+- **Pushing to `main` (decided 2026-08-14, Mischa).** Claude may push straight
+  to `main` without a PR, on two standing conditions: **say what is going to
+  `main` before pushing it, and confirm what actually landed after.** Reasoning:
+  the web surface deploys from `main`, so routing every prototype iteration
+  through review would stall exactly the feedback loop M1.5 exists to create;
+  the announce/confirm protocol keeps Mischa's visibility without the round
+  trip. Work is still developed on a branch and merged in — `main` is never the
+  working surface.
 - Update `specs/` as scope evolves — it's a living record, not a one-time doc.
 - When Mischa gives a vague visual direction ("bigger", "warmer"), pick a
   value, apply it, and report the value chosen — don't iterate to discover
