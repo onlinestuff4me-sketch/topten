@@ -31,7 +31,7 @@ jobs:
     # stance). Bump deliberately.
     container: swift:6.2
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Toolchain
         run: swift --version
@@ -48,7 +48,7 @@ jobs:
     outputs:
       has-app: ${{ steps.detect.outputs.has-app }}
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Look for an Xcode project in App/
         id: detect
@@ -72,7 +72,7 @@ jobs:
       SCHEME: TopTen
       DESTINATION: 'platform=iOS Simulator,name=iPhone 17'
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
 
       - name: Toolchain
         run: |

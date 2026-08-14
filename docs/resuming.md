@@ -38,8 +38,16 @@ milestones that haven't run, not drift.
 ## What is verified, and where
 
 - **CI (GitHub Actions, `kit-linux` job):** `swift build` + `swift test` on
-  `TopTenKit` in a pinned `swift:6.2` container. This is the only green light
-  M0 claims.
+  `TopTenKit` in a pinned `swift:6.2` container — 4 tests in 1 suite, green
+  (Swift Testing 6.2.4, `x86_64-unknown-linux-gnu`). This is the only green
+  light M0 claims.
+- **The gate was falsified, not assumed.** A throwaway branch with one
+  assertion flipped (55 → 56) turned the run red at `TenTests.swift:36` with
+  exit code 1, so CI provably fails on a failing test rather than only ever
+  reporting green. Leftover to clean up: the branch `claude/ci-gate-check`
+  still exists on the remote — this session's git proxy refuses branch
+  deletion (403), so delete it from the GitHub UI or with
+  `git push origin --delete claude/ci-gate-check`.
 - **Nothing is verified on a Mac or a device.** No app target exists yet.
 - The `app-macos` job is written but **skipped** — a Linux probe job looks for
   `App/*.xcodeproj` and gates it, so it burns nothing until M2. M2 owns
