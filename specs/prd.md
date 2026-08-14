@@ -126,10 +126,27 @@ drag-to-reorder always available for adjustments. Placing #1 is a
 distinguished moment with its own weight (see design.md). Re-ranking a
 published Ten is allowed and versions the Ten (badge may regenerate —
 see badges.md).
-- Acceptance: a full rank from an unordered tray takes ≤ ~15 comparisons;
-  drag reorder works with VoiceOver alternatives; #1 placement has a distinct
-  design treatment; edits to a published Ten update `updatedAt` and re-run
-  badge eligibility rules.
+- Acceptance: a full rank from an unordered tray takes ≤ ~25 comparisons
+  (amended 2026-08-14, see below); drag reorder works with VoiceOver
+  alternatives; #1 placement has a distinct design treatment; edits to a
+  published Ten update `updatedAt` and re-run badge eligibility rules.
+
+**Amendment 2026-08-14 (M1.5 prototype, Claude) — the ≤15 target was
+impossible.** The original acceptance criterion asked for a full ranking of
+ten items in ≤ ~15 binary comparisons. No algorithm can do that: ordering ten
+items requires distinguishing 10! arrangements, and each yes/no answer yields
+one bit, so the floor is ⌈log₂(10!)⌉ = **22 comparisons**. The built
+prototype uses binary insertion and measured **21–23 questions** per run
+across repeated end-to-end runs — at the floor, not wasteful.
+
+The criterion is therefore relaxed to ≤ ~25, and the real problem is restated
+honestly: 22 taps is a lot of taps. If ranking feels long on device, the fix
+is not a cleverer algorithm — it is **changing what one interaction carries**.
+Tapping a position on a visible spine ("where does this go?") conveys several
+bits per gesture instead of one, which is the only way under ~22. That is a
+design question for the device feel gate at M2, and it is deliberately left
+open here rather than pre-decided. The pairwise flow stays the accessible
+path either way (PRD Req 13).
 
 **4. Completion & badge reveal.** Completing rank on a Ten triggers badge
 generation and the reveal ritual: the badge is never previewable during

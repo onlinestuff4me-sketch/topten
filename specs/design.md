@@ -214,6 +214,36 @@ made Stack's design work is the process here, made explicit:
   "slower"), pick a value, ship it to the next build, and report the value
   chosen — convergence by build rounds, not by guessing his number in chat.
 
+## Amendments from the M1.5 prototype (2026-08-14, Claude)
+
+Built and driven end to end in a browser at iPhone size. These are structure
+conclusions only — glass, haptics, and motion feel remain native-only
+questions for the M2/M3 device gates. Mischa has not yet used it; anything
+below marked *proposed* is awaiting his rounds.
+
+- **Gather anatomy (proposed).** One scrolling scene, in this order: the
+  source (search field, then the suggestion rail), then the ten slots as the
+  canvas, then a separate "Beyond ten" section when the tray overflows, with
+  the dock pinned at the bottom carrying the count and the single action.
+  Reasoning: the slots and the tray were two representations of the same
+  thing on a phone-sized screen, so the tray's job collapsed into the dock —
+  it now carries only the count and the verb, not a second row of artwork.
+- **Overflow is shown, not hidden.** Items 11+ appear in their own section
+  rather than being refused or silently queued, so "gather 14 then cut" is
+  visible as a supported path rather than an error state.
+- **Row artwork confirmed at 56 × 84**, with the row's minimum height set
+  from the artwork (104pt; 118pt for the #1 row) rather than the reverse.
+- **The reveal makes the rest of the app inert.** The ceremony sets
+  `inert` + `aria-hidden` on everything behind it. Found because the
+  prototype left the ranking buttons reachable behind the vault — invisible
+  to a sighted user, fully available to VoiceOver and to a swipe. The badge
+  is never previewable during creation, and neither is the flow that made it.
+- **Inscription timing is budgeted, not per-character.** Writing the
+  inscription letter by letter at a fixed 45ms/char ran a long line to ~3.9s
+  and blew the ~2.8s ceremony budget. The letter cadence is now derived from
+  the line length against a fixed ~700ms budget: length changes the rhythm,
+  never the duration. `Motion.revealSequence` stays the timing authority.
+
 ## Web parity (share pages)
 
 The web page is Laurel translated, not approximated: same tokens exported to

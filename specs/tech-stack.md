@@ -155,6 +155,28 @@ this amendment.
   waiting for review to discover a syntax error wastes a session.
 - The web/Playwright job joins at M1.5, when `web/` exists.
 
+### Prototype verification (added 2026-08-14, M1.5)
+
+The flow prototype in `docs/prototype/` is driven end to end by Playwright
+against a real Chromium at iPhone viewport: gather → cut → rank → reveal →
+rabbit hole, asserting behaviour at each step (the cut is required past ten,
+an eleventh keep is refused, the reveal only becomes skippable after 0.8s,
+the inscription obeys its word cap, every provocation is true of the actual
+picks, the draft survives a reload). Screenshots come from the same run.
+Tests judge behaviour, screenshots judge layout — never swapped.
+
+Two environment facts worth keeping:
+
+- **Chromium here cannot reach `image.tmdb.org`.** The container only reaches
+  it through the agent proxy, whose certificate the bundled browser does not
+  trust. Rather than weaken TLS, the harness mirrors posters locally with
+  `curl` and fulfils image requests from disk. Real phones fetch them
+  directly, so this is a harness detail, not a product one.
+- **The prototype ships no API key.** Its catalog is generated at build time
+  (`docs/prototype/build_catalog.py`) and committed as `catalog.js`, so the page
+  needs no secrets and works offline. Poster dominant colours are computed at
+  build time too, which is why badge palettes genuinely derive from artwork.
+
 ## Distribution
 
 - **TestFlight** via GitHub Actions (fastlane or Xcode Cloud — decide and

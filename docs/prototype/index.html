@@ -9,174 +9,795 @@
 <meta name="apple-mobile-web-app-title" content="Top Ten">
 <meta name="theme-color" content="#FAF8F4" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#121110" media="(prefers-color-scheme: dark)">
-<meta name="description" content="Top Ten — flow prototype.">
+<meta name="description" content="Top Ten — flow prototype: gather, cut, rank, reveal.">
+<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23121110'/%3E%3Ctext x='50' y='72' font-family='Georgia,serif' font-size='62' font-weight='700' fill='%23C9A227' text-anchor='middle'%3E10%3C/text%3E%3C/svg%3E">
 <title>Top Ten</title>
 <style>
-  /* Laurel tokens — specs/design.md. Web parity: New York substituted by a
-     Georgia-stack serif, per the "Web parity" section. */
+/* ───────────────────────────────────────────────────────────────────────────
+   Laurel — specs/design.md. This prototype approximates the design system:
+   tokens, type scale, layout, and slot anatomy are real. Liquid Glass,
+   haptics, and final motion are deliberately NOT attempted — those are
+   native-only judgements (design.md, "How Laurel evolves").
+   ─────────────────────────────────────────────────────────────────────────── */
+:root {
+  --bg-base: #FAF8F4;
+  --bg-surface: #FFFFFF;
+  --bg-recessed: #F1EDE6;
+  --border-subtle: #E4DED3;
+  --text-primary: #1C1A17;
+  --text-secondary: #6E675D;
+  --text-disabled: #A8A196;
+  --accent: #8A6D1F;
+  --accent-bright: #C9A227;
+  --accent-muted: #EFE6CC;
+  --locked: #8B8578;
+  --error: #B3402E;
+
+  --vault-bg: #121110;
+  --vault-text: #F4F1EA;
+
+  --serif: "New York", ui-serif, Georgia, "Times New Roman", serif;
+  --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+
+  --margin: 20px;
+  --r-card: 10px;
+  --r-sheet: 16px;
+  --r-art: 6px;
+
+  --dock-h: 76px;
+}
+@media (prefers-color-scheme: dark) {
   :root {
-    --bg-base: #FAF8F4;
-    --bg-surface: #FFFFFF;
-    --bg-recessed: #F1EDE6;
-    --border-subtle: #E4DED3;
-    --text-primary: #1C1A17;
-    --text-secondary: #6E675D;
-    --text-disabled: #A8A196;
-    --accent-laurel: #8A6D1F;
-    --accent-laurel-bright: #C9A227;
-    --accent-laurel-muted: #EFE6CC;
-
-    --serif: "New York", ui-serif, Georgia, "Times New Roman", serif;
-    --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
-
-    --margin: 20px;
-    --radius-card: 10px;
+    --bg-base: #121110;
+    --bg-surface: #1C1A18;
+    --bg-recessed: #0C0B0A;
+    --border-subtle: #2E2B27;
+    --text-primary: #F4F1EA;
+    --text-secondary: #A79F92;
+    --text-disabled: #6E675D;
+    --accent: #D9B23A;
+    --accent-bright: #D9B23A;
+    --accent-muted: #3A311A;
   }
+}
 
-  @media (prefers-color-scheme: dark) {
-    :root {
-      --bg-base: #121110;
-      --bg-surface: #1C1A18;
-      --bg-recessed: #0C0B0A;
-      --border-subtle: #2E2B27;
-      --text-primary: #F4F1EA;
-      --text-secondary: #A79F92;
-      --text-disabled: #6E675D;
-      --accent-laurel: #D9B23A;
-      --accent-laurel-bright: #D9B23A;
-      --accent-laurel-muted: #3A311A;
-    }
-  }
+* { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+html { -webkit-text-size-adjust: 100%; }
+body {
+  margin: 0;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  font: 15px/1.35 var(--sans);
+  -webkit-font-smoothing: antialiased;
+  overscroll-behavior-y: none;
+}
+button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
+input { font: inherit; }
+ol, ul { list-style: none; margin: 0; padding: 0; }
 
-  * { box-sizing: border-box; }
+.wrap {
+  max-width: 560px;
+  margin-inline: auto;
+  padding:
+    calc(env(safe-area-inset-top) + 16px)
+    calc(env(safe-area-inset-right) + var(--margin))
+    calc(env(safe-area-inset-bottom) + var(--dock-h) + 28px)
+    calc(env(safe-area-inset-left) + var(--margin));
+}
 
-  html { -webkit-text-size-adjust: 100%; }
+/* Type scale — design.md "Typography" */
+.display-lg { font-family: var(--serif); font-weight: 600; font-size: 2rem; line-height: 1.18; letter-spacing: -0.015em; margin: 0; }
+.display-md { font-family: var(--serif); font-weight: 600; font-size: 1.375rem; line-height: 1.27; margin: 0; }
+.label-sm { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; color: var(--text-secondary); margin: 0; }
+.provocation { font-style: italic; font-weight: 500; font-size: 0.875rem; line-height: 1.36; color: var(--text-secondary); }
+.body-sec { color: var(--text-secondary); }
 
-  body {
-    margin: 0;
-    padding:
-      calc(env(safe-area-inset-top) + 32px)
-      calc(env(safe-area-inset-right) + var(--margin))
-      calc(env(safe-area-inset-bottom) + 32px)
-      calc(env(safe-area-inset-left) + var(--margin));
-    background: var(--bg-base);
-    color: var(--text-primary);
-    font-family: var(--sans);
-    font-size: 15px;
-    line-height: 1.35;
-    max-width: 560px;
-    margin-inline: auto;
-    -webkit-font-smoothing: antialiased;
-  }
+/* ── Scene chrome ─────────────────────────────────────────────────────────── */
+.topbar { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 4px; }
+.topbar .link { color: var(--accent); font-size: 0.8125rem; font-weight: 600; padding: 8px 0 8px 12px; min-height: 44px; display: inline-flex; align-items: center; }
+.prompt { color: var(--text-secondary); margin: 6px 0 22px; }
 
-  header { margin-bottom: 28px; }
+/* ── Suggestion rail — design.md "Suggestion Card" ────────────────────────── */
+.rail { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 6px; margin: 0 calc(var(--margin) * -1); padding-inline: var(--margin); -webkit-overflow-scrolling: touch; }
+.rail::-webkit-scrollbar { display: none; }
+.sugg { flex: 0 0 120px; scroll-snap-align: start; text-align: left; }
+.sugg img, .sugg .noart { width: 120px; height: 180px; border-radius: var(--r-art); display: block; object-fit: cover; background: var(--bg-recessed); }
+.sugg .t { font-weight: 600; font-size: 0.8125rem; margin-top: 8px; line-height: 1.25; }
+.sugg .why { font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px; line-height: 1.25; }
+.sugg[data-in="1"] { opacity: 0.4; }
 
-  .wordmark {
-    font-family: var(--serif);
-    font-weight: 600;
-    font-size: clamp(2rem, 11vw, 2.75rem);
-    line-height: 1.05;
-    letter-spacing: -0.015em;
-    margin: 0;
-  }
+/* ── Search ───────────────────────────────────────────────────────────────── */
+.search { display: flex; align-items: center; gap: 8px; background: var(--bg-recessed); border: 1px solid var(--border-subtle); border-radius: var(--r-card); padding: 0 12px; margin: 20px 0 8px; }
+.search input { flex: 1; background: none; border: 0; outline: none; padding: 13px 0; font-size: 16px; color: var(--text-primary); }
+.search input::placeholder { color: var(--text-disabled); }
+.search .clear { color: var(--text-secondary); font-size: 0.8125rem; padding: 10px 0 10px 8px; min-height: 44px; }
 
-  .standfirst {
-    color: var(--text-secondary);
-    margin: 12px 0 0;
-    max-width: 34em;
-  }
+/* ── Rows: the Ten list row is [numeral][artwork][title/meta] ─────────────── */
+.slot { display: flex; align-items: center; gap: 14px; background: var(--bg-recessed); border: 1px solid var(--border-subtle); border-radius: var(--r-card); padding: 10px 12px; margin-bottom: 8px; min-height: 104px; width: 100%; text-align: left; }
+.slot.filled { background: var(--bg-surface); }
+.slot .numeral { font-family: var(--serif); font-weight: 700; font-size: 1.75rem; line-height: 1; color: var(--text-disabled); min-width: 1.5em; text-align: right; font-variant-numeric: lining-nums tabular-nums; }
+.slot.filled .numeral { color: var(--text-primary); }
+/* Fixed artwork sizes, per design.md: the Ten list row is 56 × 84. No fluid
+   poster maths — that is an inherited Stack lesson. */
+.slot img, .slot .noart { width: 56px; height: 84px; border-radius: var(--r-art); object-fit: cover; background: var(--bg-recessed); flex: 0 0 56px; }
+.slot .meta { min-width: 0; flex: 1; }
+.slot .meta .t { display: block; font-weight: 600; font-size: 1.0625rem; line-height: 1.2; }
+.slot .meta .s { display: block; color: var(--text-secondary); font-size: 0.8125rem; margin-top: 3px; }
+.slot .remove { color: var(--text-disabled); font-size: 1.25rem; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; flex: 0 0 44px; }
+.slot .invitation { color: var(--text-disabled); }
 
-  .label {
-    font-size: 12px;
-    font-weight: 600;
-    letter-spacing: 0.02em;
-    text-transform: uppercase;
-    color: var(--text-secondary);
-    margin: 0 0 12px;
-  }
+/* Position 1 treated as a title, not an index (design.md principle 2) */
+.slot.one { min-height: 118px; border-color: var(--accent-muted); }
+.slot.one .numeral { font-size: 2.75rem; color: var(--accent-bright); font-weight: 800; }
+.slot.one.filled { box-shadow: inset 0 0 0 1px var(--accent-muted); }
 
-  ol.slots { list-style: none; margin: 0; padding: 0; }
+.overflow-head { display: flex; align-items: baseline; justify-content: space-between; margin: 22px 0 10px; }
 
-  /* Slot Row — the empty state of a Ten position. Recessed well, ghost
-     numeral, subtle invitation. specs/design.md → Components. */
-  .slot {
-    display: flex;
-    align-items: center;
-    gap: 16px;
-    background: var(--bg-recessed);
-    border: 1px solid var(--border-subtle);
-    border-radius: var(--radius-card);
-    padding: 14px 16px;
-    margin-bottom: 8px;
-    min-height: 60px;
-  }
+/* ── The dock ─────────────────────────────────────────────────────────────── */
+.dock {
+  position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
+  background: color-mix(in srgb, var(--bg-surface) 82%, transparent);
+  -webkit-backdrop-filter: saturate(180%) blur(20px);
+  backdrop-filter: saturate(180%) blur(20px);
+  border-top: 1px solid var(--border-subtle);
+  padding: 10px calc(env(safe-area-inset-right) + var(--margin)) calc(env(safe-area-inset-bottom) + 10px) calc(env(safe-area-inset-left) + var(--margin));
+}
+@media (prefers-reduced-transparency: reduce) {
+  .dock { background: var(--bg-surface); backdrop-filter: none; -webkit-backdrop-filter: none; }
+}
+.dock-inner { max-width: 560px; margin-inline: auto; display: flex; align-items: center; gap: 14px; min-height: 56px; }
+.count { flex: 1; min-width: 0; }
+.count .n { font-family: var(--serif); font-weight: 700; font-size: 1.25rem; }
+.count .hint { color: var(--text-secondary); font-size: 0.8125rem; margin-top: 1px; }
+.count.cut .n { color: var(--error); }
 
-  .numeral {
-    font-family: var(--serif);
-    font-weight: 700;
-    font-size: 28px;
-    line-height: 32px;
-    color: var(--text-disabled);
-    min-width: 1.6em;
-    text-align: right;
-    font-variant-numeric: lining-nums tabular-nums;
-  }
+.btn { background: var(--accent); color: #fff; border-radius: 999px; padding: 0 20px; min-height: 48px; display: inline-flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.9375rem; }
+@media (prefers-color-scheme: dark) { .btn { color: #17140B; } }
+.btn[disabled] { background: var(--bg-recessed); color: var(--text-disabled); }
+.btn.ghost { background: none; color: var(--accent); border: 1px solid var(--border-subtle); }
 
-  /* Position 1 is treated as a title, not an index. */
-  .slot--one { background: var(--bg-surface); border-color: var(--accent-laurel-muted); min-height: 84px; }
-  .slot--one .numeral { font-size: 48px; line-height: 52px; color: var(--accent-laurel-bright); font-weight: 800; }
-  .slot--one .invitation { color: var(--text-secondary); }
+/* ── The Cut ──────────────────────────────────────────────────────────────── */
+.cut-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 18px; }
+.cut-cell { position: relative; border-radius: var(--r-art); overflow: hidden; aspect-ratio: 2 / 3; background: var(--bg-recessed); }
+.cut-cell img { width: 100%; height: 100%; object-fit: cover; display: block; transition: opacity 180ms ease, transform 180ms ease; }
+.cut-cell:not([data-keep="1"]) img { opacity: 0.34; transform: scale(0.97); }
+.cut-cell[data-keep="1"]::after { content: ""; position: absolute; inset: 0; border: 3px solid var(--accent-bright); border-radius: var(--r-art); }
+.cut-cell .kn { position: absolute; left: 6px; top: 6px; width: 24px; height: 24px; border-radius: 999px; background: var(--accent-bright); color: #17140B; font-size: 0.75rem; font-weight: 700; display: grid; place-items: center; }
+.cut-cell:not([data-keep="1"]) .kn { display: none; }
 
-  .invitation { color: var(--text-disabled); }
+/* ── Rank ─────────────────────────────────────────────────────────────────── */
+.duel { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 18px 0 8px; }
+.duel button { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--r-sheet); padding: 12px; text-align: center; }
+.duel img { width: 100%; aspect-ratio: 2/3; object-fit: cover; border-radius: var(--r-art); display: block; }
+.duel .t { font-weight: 600; font-size: 0.9375rem; margin-top: 10px; line-height: 1.2; }
+.duel .y { color: var(--text-secondary); font-size: 0.8125rem; margin-top: 2px; }
+.duel .tag { font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 700; color: var(--accent); margin-bottom: 8px; }
+.spine { margin-top: 22px; }
+.spine li { display: flex; align-items: center; gap: 10px; padding: 5px 0; color: var(--text-secondary); font-size: 0.875rem; }
+.spine .n { font-family: var(--serif); font-weight: 700; min-width: 1.4em; text-align: right; color: var(--text-disabled); }
+.spine .now { color: var(--accent); font-weight: 600; }
+.progress { display: flex; gap: 4px; margin-top: 16px; }
+.progress i { flex: 1; height: 4px; border-radius: 2px; background: var(--bg-recessed); }
+.progress i.on { background: var(--accent); }
 
-  footer {
-    margin-top: 32px;
-    padding-top: 20px;
-    border-top: 1px solid var(--border-subtle);
-    color: var(--text-secondary);
-    font-size: 13px;
-  }
+/* ── Reveal ───────────────────────────────────────────────────────────────── */
+.vault { position: fixed; inset: 0; z-index: 50; background: var(--vault-bg); color: var(--vault-text); display: grid; place-items: center; padding: 24px; opacity: 0; transition: opacity 420ms ease; }
+.vault.in { opacity: 1; }
+.vault .stage { text-align: center; max-width: 340px; width: 100%; }
+.badge-wrap { width: min(72vw, 260px); margin: 0 auto; aspect-ratio: 1; position: relative; }
+.badge-wrap svg { width: 100%; height: 100%; display: block; }
+/* transform-box/origin so layers scale from the badge's centre, not from the
+   SVG user-space origin. And :not(.on) so these never outrank the settled
+   state — an ID beats a class, which silently left the plate and the trim
+   ring at different scales. */
+.layer { opacity: 0; transform-box: fill-box; transform-origin: center; transition: opacity 460ms ease, transform 460ms cubic-bezier(.2,.8,.3,1); }
+.layer.on { opacity: 1; transform: none; }
+#l-plate:not(.on) { transform: scale(0.86); }
+#l-motif:not(.on) { transform: scale(0.7); }
+#l-metal:not(.on) { transform: scale(1.04); }
+.inscription { font-family: var(--serif); font-weight: 600; font-size: 1.25rem; margin-top: 22px; min-height: 1.6em; letter-spacing: 0.01em; }
+.inscription .ch { opacity: 0; }
+.inscription .ch.on { opacity: 1; transition: opacity 90ms linear; }
+.vault .skip { position: absolute; top: calc(env(safe-area-inset-top) + 14px); right: 18px; color: #A79F92; font-size: 0.875rem; min-height: 44px; padding: 0 8px; opacity: 0; transition: opacity 300ms ease; }
+.vault .skip.on { opacity: 1; }
+.vault .after { opacity: 0; transition: opacity 400ms ease; margin-top: 26px; display: flex; gap: 10px; justify-content: center; }
+.vault .after.on { opacity: 1; }
+.vault .after .btn.ghost { color: var(--accent-bright); border-color: #33302B; }
 
-  .build { font-variant-numeric: tabular-nums; color: var(--text-disabled); }
+@media (prefers-reduced-motion: reduce) {
+  .layer, .inscription .ch, .vault, .vault .after, .vault .skip { transition-duration: 1ms !important; }
+  #l-plate, #l-motif, #l-metal { transform: none; }
+}
 
-  a { color: var(--accent-laurel); }
+/* ── Finished ─────────────────────────────────────────────────────────────── */
+.badge-inline { width: 132px; margin: 0 auto 6px; }
+.badge-inline svg { width: 100%; display: block; }
+.finished-head { text-align: center; margin-bottom: 26px; }
+.finished-head .insc { font-family: var(--serif); font-weight: 600; font-size: 1.125rem; margin-top: 10px; }
+.sug-topic { display: block; width: 100%; text-align: left; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--r-card); padding: 14px 16px; margin-bottom: 8px; }
+.sug-topic .t { font-family: var(--serif); font-weight: 600; font-size: 1.0625rem; }
+.sug-topic .lvl { font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 700; color: var(--text-disabled); margin-bottom: 4px; }
+
+footer.notes { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--border-subtle); color: var(--text-secondary); font-size: 0.8125rem; }
+footer.notes .build { color: var(--text-disabled); font-variant-numeric: tabular-nums; margin-top: 10px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 </style>
 </head>
-<body data-build="0001">
+<body>
+<div id="app" class="wrap"></div>
+<div id="dock"></div>
+<div id="live" class="sr" aria-live="polite"></div>
 
-<header>
-  <h1 class="wordmark">Top&nbsp;Ten</h1>
-  <p class="standfirst">
-    The place your taste lives. Ten slots, ranked, and a badge you only get
-    for finishing.
-  </p>
-</header>
+<script src="catalog.js"></script>
+<script>
+/* ===========================================================================
+   Top Ten — flow prototype (M1.5).
+   Throwaway by design. Its job is to settle STRUCTURE: the shape of the
+   flow, slot anatomy, the cut, placement choreography, and copy. Every
+   conclusion goes into specs/design.md as a dated amendment before M2
+   builds any of it natively.
+   =========================================================================== */
 
-<main>
-  <p class="label">An empty Ten</p>
-  <ol class="slots">
-    <li class="slot slot--one"><span class="numeral">1</span><span class="invitation">The one you'd defend</span></li>
-    <li class="slot"><span class="numeral">2</span><span class="invitation">Slot 2</span></li>
-    <li class="slot"><span class="numeral">3</span><span class="invitation">Slot 3</span></li>
-    <li class="slot"><span class="numeral">4</span><span class="invitation">Slot 4</span></li>
-    <li class="slot"><span class="numeral">5</span><span class="invitation">Slot 5</span></li>
-    <li class="slot"><span class="numeral">6</span><span class="invitation">Slot 6</span></li>
-    <li class="slot"><span class="numeral">7</span><span class="invitation">Slot 7</span></li>
-    <li class="slot"><span class="numeral">8</span><span class="invitation">Slot 8</span></li>
-    <li class="slot"><span class="numeral">9</span><span class="invitation">Slot 9</span></li>
-    <li class="slot"><span class="numeral">10</span><span class="invitation">Slot 10</span></li>
-  </ol>
-</main>
+const IMG = 'https://image.tmdb.org/t/p/';
+const $ = (s, r = document) => r.querySelector(s);
+const app = $('#app'), dockEl = $('#dock'), live = $('#live');
+const CAT = window.CATALOG || [];
+const byId = new Map(CAT.map(f => [f.id, f]));
+const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const announce = m => { live.textContent = m; };
 
-<footer>
-  <p>
-    This is a deploy check, not the prototype. It exists to prove the chain —
-    push, build, real page on a real phone — and to put Laurel's colour, type,
-    and slot anatomy in front of a thumb. The gather, cut, rank, and reveal
-    ceremonies land next.
-  </p>
-  <p class="build">build 0001 · pipeline check</p>
-</footer>
+/* ── State ────────────────────────────────────────────────────────────────── */
+const KEY = 'topten.proto.v2';
 
+const TOPIC_ALL = { id: 'movies', title: 'Movies', prompt: 'Your ten favourite films of all time.' };
+
+function fresh(topic = TOPIC_ALL) {
+  return { scene: 'gather', topic, tray: [], keep: [], ranked: [], rank: null, comparisons: 0, q: '' };
+}
+let S = load() || fresh();
+
+function load() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(KEY));
+    if (raw && raw.topic && Array.isArray(raw.tray)) return raw;
+  } catch (e) {}
+  return null;
+}
+function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
+
+/* Topic scopes bind to catalog filters, so a suggested topic actually
+   narrows the shelf (PRD Req 6). */
+function inTopic(f, topic = S.topic) {
+  if (topic.director) return f.d === topic.director;
+  if (topic.genre && topic.decade) return f.g.includes(topic.genre) && Math.floor(f.y / 10) * 10 === topic.decade;
+  if (topic.genre) return f.g.includes(topic.genre);
+  if (topic.decade) return Math.floor(f.y / 10) * 10 === topic.decade;
+  return true;
+}
+const pool = () => CAT.filter(f => inTopic(f));
+
+/* ── Poster helpers ───────────────────────────────────────────────────────── */
+function art(f, size, cls = '') {
+  return `<img class="${cls}" src="${IMG}${size}${f.p}" alt="" loading="lazy" decoding="async">`;
+}
+
+/* ── Suggestions inside Gather ────────────────────────────────────────────── */
+function suggestions() {
+  const p = pool(), have = new Set(S.tray);
+  const out = [];
+  // "Because you picked X" once the tray has 3+ (PRD Req 2).
+  if (S.tray.length >= 3) {
+    for (const id of S.tray.slice(-4).reverse()) {
+      const seed = byId.get(id); if (!seed) continue;
+      const match = p.find(f => !have.has(f.id) && !out.some(o => o.f.id === f.id) &&
+        (f.d === seed.d || (f.g[0] && f.g[0] === seed.g[0])));
+      if (match) out.push({ f: match, why: `Because you picked ${seed.t}` });
+      if (out.length >= 3) break;
+    }
+  }
+  for (const f of p) {
+    if (out.length >= 14) break;
+    if (have.has(f.id) || out.some(o => o.f.id === f.id)) continue;
+    out.push({ f, why: f.v >= 8.3 ? 'Widely called great' : (f.y < 1990 ? 'A classic' : 'Popular pick') });
+  }
+  return out;
+}
+
+/* ── Gather ───────────────────────────────────────────────────────────────── */
+function renderGather() {
+  const q = S.q.trim().toLowerCase();
+  const results = q ? pool().filter(f => f.t.toLowerCase().includes(q)).slice(0, 24) : [];
+  const inTray = new Set(S.tray);
+
+  const source = q
+    ? `<ol class="results">${results.map(f => rowAdd(f, inTray.has(f.id))).join('') ||
+        `<li class="body-sec" style="padding:14px 2px">Nothing in the prototype's shelf matches that. It holds ${pool().length} films, not all of cinema.</li>`}</ol>`
+    : `<p class="label-sm">Suggested</p>
+       <div class="rail">${suggestions().map(s => `
+         <button class="sugg" data-add="${s.f.id}" data-in="${inTray.has(s.f.id) ? 1 : 0}">
+           ${art(s.f, 'w185')}
+           <div class="t">${esc(s.f.t)}</div>
+           <div class="why">${esc(s.why)}</div>
+         </button>`).join('')}</div>`;
+
+  const slots = [];
+  for (let i = 0; i < 10; i++) {
+    const id = S.tray[i];
+    slots.push(id ? slotFilled(i, byId.get(id)) : slotEmpty(i));
+  }
+  const extra = S.tray.slice(10);
+
+  app.innerHTML = `
+    <div class="topbar">
+      <h1 class="display-lg">${esc(S.topic.title)}</h1>
+      <button class="link" data-act="restart">Start over</button>
+    </div>
+    <p class="prompt">${esc(S.topic.prompt)}</p>
+
+    <div class="search">
+      <input id="q" type="search" inputmode="search" autocomplete="off" placeholder="Search films" value="${esc(S.q)}" aria-label="Search films">
+      ${S.q ? '<button class="clear" data-act="clearq">Clear</button>' : ''}
+    </div>
+
+    ${source}
+
+    <p class="label-sm" style="margin-top:26px">Your Ten</p>
+    <ol>${slots.join('')}</ol>
+
+    ${extra.length ? `
+      <div class="overflow-head">
+        <p class="label-sm" style="margin:0">Beyond ten</p>
+        <span class="body-sec" style="font-size:0.8125rem">You'll cut ${extra.length}</span>
+      </div>
+      <ol>${extra.map((id, i) => slotFilled(10 + i, byId.get(id), true)).join('')}</ol>` : ''}
+
+    ${notes()}
+  `;
+  renderDock();
+  const qi = $('#q');
+  if (qi) qi.oninput = e => { S.q = e.target.value; save(); renderGather(); if (document.activeElement !== qi) qi.focus(); };
+}
+
+function slotEmpty(i) {
+  return `<li><div class="slot ${i === 0 ? 'one' : ''}">
+    <span class="numeral">${i + 1}</span>
+    <span class="invitation">${i === 0 ? "The one you'd defend" : 'Slot ' + (i + 1)}</span>
+  </div></li>`;
+}
+function slotFilled(i, f, over = false) {
+  if (!f) return '';
+  return `<li><div class="slot filled ${i === 0 && !over ? 'one' : ''}">
+    ${over ? '' : `<span class="numeral">${i + 1}</span>`}
+    ${art(f, 'w185')}
+    <span class="meta"><span class="t">${esc(f.t)}</span><span class="s">${f.y}${f.d ? ' · ' + esc(f.d) : ''}</span></span>
+    <button class="remove" data-remove="${f.id}" aria-label="Remove ${esc(f.t)}">×</button>
+  </div></li>`;
+}
+function rowAdd(f, already) {
+  return `<li><button class="slot ${already ? '' : 'filled'}" data-add="${f.id}" style="${already ? 'opacity:.45' : ''}">
+    ${art(f, 'w185')}
+    <span class="meta"><span class="t">${esc(f.t)}</span><span class="s">${f.y}${f.d ? ' · ' + esc(f.d) : ''}</span></span>
+    <span class="remove" aria-hidden="true">${already ? '✓' : '+'}</span>
+  </button></li>`;
+}
+
+/* ── Dock — count copy is the product telling you where you are ───────────── */
+function renderDock() {
+  const n = S.tray.length;
+  let inner = '';
+  if (S.scene === 'gather') {
+    const over = n > 10;
+    inner = `<div class="count ${over ? 'cut' : ''}">
+        <div class="n">${n} of 10</div>
+        <div class="hint">${over ? `Make the cut — ${n - 10} to go` : (n === 10 ? 'Ready to rank' : 'or keep going and make the cut')}</div>
+      </div>
+      <button class="btn" data-act="${over ? 'cut' : 'rank'}" ${n < 10 ? 'disabled' : ''}>${over ? 'Make the cut' : 'Rank your Ten'}</button>`;
+  } else if (S.scene === 'cut') {
+    const k = S.keep.length;
+    inner = `<div class="count ${k === 10 ? '' : 'cut'}">
+        <div class="n">${k} of 10 kept</div>
+        <div class="hint">${k < 10 ? `Choose ${10 - k} more` : 'That is your ten'}</div>
+      </div>
+      <button class="btn" data-act="cutdone" ${k === 10 ? '' : 'disabled'}>Rank these</button>`;
+  } else { dockEl.innerHTML = ''; return; }
+  dockEl.innerHTML = `<div class="dock"><div class="dock-inner">${inner}</div></div>`;
+}
+
+/* ── The Cut ──────────────────────────────────────────────────────────────── */
+function renderCut() {
+  const keep = new Set(S.keep);
+  app.innerHTML = `
+    <div class="topbar"><h1 class="display-lg">The Cut</h1></div>
+    <p class="prompt">You gathered ${S.tray.length}. Ten make it. Tap the ones that stay.</p>
+    <div class="cut-grid">
+      ${S.tray.map(id => { const f = byId.get(id); if (!f) return '';
+        return `<button class="cut-cell" data-keep="${keep.has(id) ? 1 : 0}" data-toggle="${id}" aria-pressed="${keep.has(id)}" aria-label="${esc(f.t)}">
+          ${art(f, 'w342')}<span class="kn">${S.keep.indexOf(id) + 1}</span></button>`; }).join('')}
+    </div>
+    ${notes()}`;
+  renderDock();
+}
+
+/* ── Rank: guided placement ───────────────────────────────────────────────────
+   Binary insertion. Each answer is one bit, so the item being placed narrows
+   its position by half every time — the user never cold-sorts ten things,
+   and never compares two films they have already settled against each other.
+   ─────────────────────────────────────────────────────────────────────────── */
+function startRank() {
+  const items = (S.keep.length === 10 ? S.keep : S.tray).slice(0, 10);
+  const order = items.slice().sort(() => Math.random() - 0.5);
+  S.ranked = [order[0]];
+  S.rank = { queue: order.slice(1), current: null, lo: 0, hi: 1 };
+  S.comparisons = 0;
+  S.scene = 'rank';
+  nextPlacement();
+}
+function nextPlacement() {
+  const r = S.rank;
+  if (r.current === null) {
+    if (!r.queue.length) { finishRank(); return; }
+    r.current = r.queue.shift();
+    r.lo = 0; r.hi = S.ranked.length;
+  }
+  if (r.lo >= r.hi) {                       // position found
+    S.ranked.splice(r.lo, 0, r.current);
+    r.current = null;
+    save();
+    if (!r.queue.length) { finishRank(); return; }
+    nextPlacement(); return;
+  }
+  save(); renderRank();
+}
+function answer(currentIsHigher) {
+  const r = S.rank, mid = (r.lo + r.hi) >> 1;
+  if (currentIsHigher) r.hi = mid; else r.lo = mid + 1;
+  S.comparisons++;
+  nextPlacement();
+}
+function finishRank() {
+  S.scene = 'reveal'; S.rank = null; save(); renderReveal();
+}
+function renderRank() {
+  const r = S.rank, mid = (r.lo + r.hi) >> 1;
+  const cur = byId.get(r.current), piv = byId.get(S.ranked[mid]);
+  const placed = S.ranked.length, total = 10;
+
+  app.innerHTML = `
+    <div class="topbar"><h1 class="display-lg">Which is higher?</h1></div>
+    <p class="prompt">${placed} of ${total} placed · ${S.comparisons} question${S.comparisons === 1 ? '' : 's'} so far</p>
+
+    <div class="duel">
+      <button data-higher="1">
+        <div class="tag">In hand</div>${art(cur, 'w342')}
+        <div class="t">${esc(cur.t)}</div><div class="y">${cur.y}</div>
+      </button>
+      <button data-higher="0">
+        <div class="tag">Placed</div>${art(piv, 'w342')}
+        <div class="t">${esc(piv.t)}</div><div class="y">${piv.y}</div>
+      </button>
+    </div>
+    <div class="progress">${Array.from({ length: total }, (_, i) => `<i class="${i < placed ? 'on' : ''}"></i>`).join('')}</div>
+
+    <ol class="spine">
+      ${S.ranked.map((id, i) => `<li><span class="n">${i + 1}</span>
+        <span class="${i === mid ? 'now' : ''}">${esc(byId.get(id).t)}</span></li>`).join('')}
+    </ol>
+    ${notes()}`;
+  dockEl.innerHTML = '';
+  announce(`Which is higher: ${cur.t} or ${piv.t}?`);
+}
+
+/* ── Badge composition (specs/badges.md) ──────────────────────────────────────
+   The deterministic pre-pass, which is also the bottom of the fallback
+   ladder: shape and motif chosen from the list's own metadata, palette
+   derived from the artwork of the top three, template inscription. No model
+   is involved here, so what you see is the floor the ritual has to clear.
+   ─────────────────────────────────────────────────────────────────────────── */
+function hash(str) { let h = 2166136261; for (const c of String(str)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
+
+const SHAPES = ['seal', 'shield', 'oval', 'stub', 'hex', 'lozenge'];
+const MOTIFS = {
+  Crime: 'briefcase', Thriller: 'eye', 'Science Fiction': 'planet', Horror: 'skull',
+  Romance: 'rose', Animation: 'star', Drama: 'mask', Comedy: 'grin', War: 'helm',
+  Adventure: 'compass', Action: 'flame', Fantasy: 'sword', Music: 'note',
+  History: 'column', Western: 'sun', Family: 'star', Mystery: 'eye', Documentary: 'column'
+};
+
+function facts(ids) {
+  const fs = ids.map(i => byId.get(i)).filter(Boolean);
+  const gc = {}, dc = {}, dec = {};
+  for (const f of fs) {
+    for (const g of f.g) if (g) gc[g] = (gc[g] || 0) + 1;
+    if (f.d) dc[f.d] = (dc[f.d] || 0) + 1;
+    const d = Math.floor(f.y / 10) * 10; dec[d] = (dec[d] || 0) + 1;
+  }
+  const top = o => Object.entries(o).sort((a, b) => b[1] - a[1])[0] || [null, 0];
+  const years = fs.map(f => f.y);
+  return {
+    films: fs, genre: top(gc), director: top(dc), decade: top(dec),
+    span: Math.max(...years) - Math.min(...years)
+  };
+}
+
+function compose(ids, topic) {
+  const F = facts(ids), seed = hash(ids.join(',') + topic.title);
+  const pal = F.films.slice(0, 3).map(f => f.c);
+  const shape = SHAPES[seed % SHAPES.length];
+  const motif = MOTIFS[F.genre[0]] || 'laurel';
+  return {
+    shape, motif, seed,
+    primary: pal[0] || '#6E675D',
+    secondary: pal[1] || pal[0] || '#3A311A',
+    metal: '#C9A227',
+    inscription: inscribe(F, seed),
+    founder: (seed % 5) === 0            // the quiet founder's mark
+  };
+}
+
+/* ≤6 words, never the rank-1 title, always derived from the list itself.
+   A generic compliment is the failure mode badges.md explicitly rejects. */
+function inscribe(F, seed) {
+  const [g, gn] = F.genre, [d, dn] = F.director, [dec, decn] = F.decade;
+  const second = F.films[1];
+  const short = t => t.split(/[:—–-]/)[0].trim();
+  const cands = [];
+  if (dn >= 3) cands.push(`${dn} ${d.split(' ').pop()} films, no apologies`);
+  if (gn >= 4) cands.push(`${gn} ${g.toLowerCase()} films, zero regrets`);
+  if (decn >= 4) cands.push(`The ${dec}s never let go`);
+  if (F.span >= 45) cands.push(`${F.span} years, one taste`);
+  if (second) cands.push(`Everything after ${short(second.t)}`);
+  if (gn >= 3) cands.push(`Ranked in ${g.toLowerCase()} order`);
+  cands.push('Ten hills, all defended');
+  cands.push('Argued into this order');
+
+  // The post-check from badges.md, run for real rather than assumed: at most
+  // six words, and never the rank-1 title (too obvious to be a joke). A long
+  // title silently overflowing the cap is exactly what this catches.
+  const rank1 = F.films[0] ? F.films[0].t.toLowerCase() : '';
+  const ok = cands.filter(l =>
+    l.split(/\s+/).length <= 6 && (!rank1 || !l.toLowerCase().includes(rank1)));
+  return ok.length ? ok[seed % ok.length] : 'Ten hills, all defended';
+}
+
+function badgeSVG(c, size = 200) {
+  const s = size, half = s / 2;
+  const plate = {
+    seal: `<circle cx="${half}" cy="${half}" r="${half - 10}"/>`,
+    shield: `<path d="M${half} 12 L${s - 18} 42 V${half + 10} Q${s - 18} ${s - 22} ${half} ${s - 10} Q18 ${s - 22} 18 ${half + 10} V42 Z"/>`,
+    oval: `<ellipse cx="${half}" cy="${half}" rx="${half - 26}" ry="${half - 10}"/>`,
+    stub: `<path d="M22 34 H${s - 22} V${half - 14} A14 14 0 0 0 ${s - 22} ${half + 14} V${s - 34} H22 V${half + 14} A14 14 0 0 0 22 ${half - 14} Z"/>`,
+    hex: `<path d="M${half} 10 L${s - 16} ${half / 2 + 8} V${s - half / 2 - 8} L${half} ${s - 10} L16 ${s - half / 2 - 8} V${half / 2 + 8} Z"/>`,
+    lozenge: `<path d="M14 ${half} L46 26 H${s - 46} L${s - 14} ${half} L${s - 46} ${s - 26} H46 Z"/>`
+  }[c.shape];
+
+  const M = {
+    briefcase: `<rect x="66" y="86" width="68" height="46" rx="5"/><path d="M86 86 V76 a6 6 0 0 1 6-6h16a6 6 0 0 1 6 6v10" fill="none" stroke-width="7"/>`,
+    eye: `<path d="M56 100 Q100 66 144 100 Q100 134 56 100 Z" fill="none" stroke-width="7"/><circle cx="100" cy="100" r="13"/>`,
+    planet: `<circle cx="100" cy="98" r="26"/><ellipse cx="100" cy="98" rx="46" ry="15" fill="none" stroke-width="6" transform="rotate(-18 100 98)"/>`,
+    skull: `<path d="M100 66 c-24 0-40 17-40 38 0 12 6 19 12 24 v10 h56 v-10 c6-5 12-12 12-24 0-21-16-38-40-38z"/><circle cx="86" cy="104" r="8" fill="#0000"/><circle cx="114" cy="104" r="8" fill="#0000"/>`,
+    rose: `<circle cx="100" cy="94" r="12"/><path d="M100 70 a24 24 0 0 1 24 24 24 24 0 0 1-24 24 24 24 0 0 1-24-24" fill="none" stroke-width="7"/><path d="M100 118 v22" stroke-width="6" fill="none"/>`,
+    star: `<path d="M100 62 L112 92 L145 94 L119 114 L128 146 L100 128 L72 146 L81 114 L55 94 L88 92 Z"/>`,
+    mask: `<path d="M62 72 h76 v34 c0 26-17 42-38 42s-38-16-38-42z"/><circle cx="84" cy="102" r="7" fill="#0000"/><circle cx="116" cy="102" r="7" fill="#0000"/>`,
+    grin: `<circle cx="100" cy="100" r="38" fill="none" stroke-width="7"/><path d="M78 106 q22 22 44 0" fill="none" stroke-width="7"/><circle cx="86" cy="88" r="5"/><circle cx="114" cy="88" r="5"/>`,
+    helm: `<path d="M62 104 a38 38 0 0 1 76 0 v22 h-76z"/><rect x="94" y="104" width="12" height="22" fill="#0000"/>`,
+    compass: `<circle cx="100" cy="100" r="38" fill="none" stroke-width="7"/><path d="M100 74 L112 100 L100 126 L88 100 Z"/>`,
+    flame: `<path d="M100 60 c16 22 30 30 30 50 a30 30 0 0 1-60 0c0-14 10-20 16-30 4 10 10 12 14 6 4-8-2-16 0-26z"/>`,
+    sword: `<rect x="94" y="58" width="12" height="70"/><rect x="74" y="126" width="52" height="10" rx="4"/><rect x="94" y="136" width="12" height="16"/>`,
+    note: `<circle cx="84" cy="128" r="15"/><rect x="96" y="62" width="9" height="66"/><path d="M105 62 q22 6 22 22" fill="none" stroke-width="8"/>`,
+    column: `<rect x="76" y="76" width="48" height="8"/><rect x="82" y="84" width="10" height="46"/><rect x="108" y="84" width="10" height="46"/><rect x="72" y="130" width="56" height="9"/>`,
+    sun: `<circle cx="100" cy="100" r="22"/>` + Array.from({ length: 8 }, (_, i) =>
+      `<rect x="97" y="52" width="6" height="16" transform="rotate(${i * 45} 100 100)"/>`).join(''),
+    laurel: `<path d="M100 60 v78" stroke-width="6" fill="none"/>` + Array.from({ length: 5 }, (_, i) =>
+      `<ellipse cx="${86 - i * 2}" cy="${78 + i * 14}" rx="12" ry="6" transform="rotate(-35 ${86 - i * 2} ${78 + i * 14})"/>
+       <ellipse cx="${114 + i * 2}" cy="${78 + i * 14}" rx="12" ry="6" transform="rotate(35 ${114 + i * 2} ${78 + i * 14})"/>`).join('')
+  }[c.motif] || '';
+
+  const rivets = Array.from({ length: 8 }, (_, i) => {
+    const a = (i / 8) * Math.PI * 2, R = half - 22;
+    return `<circle cx="${(half + Math.cos(a) * R).toFixed(1)}" cy="${(half + Math.sin(a) * R).toFixed(1)}" r="3" fill="${c.metal}" opacity="0.85"/>`;
+  }).join('');
+
+  return `
+  <svg viewBox="0 0 ${s} ${s}" role="img" aria-label="Badge: ${esc(c.inscription)}">
+    <defs>
+      <linearGradient id="fld${c.seed}" x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stop-color="${c.primary}"/>
+        <stop offset="100%" stop-color="${c.secondary}"/>
+      </linearGradient>
+    </defs>
+    <g class="layer" id="l-plate" fill="url(#fld${c.seed})">${plate}</g>
+    <g class="layer" id="l-motif" fill="${c.metal}" stroke="${c.metal}" opacity="0.95">${M}</g>
+    <g class="layer" id="l-metal" fill="none">
+      <g stroke="${c.metal}" stroke-width="3" opacity="0.9">${plate.replace('<path', '<path fill="none"').replace('<circle', '<circle fill="none"').replace('<ellipse', '<ellipse fill="none"')}</g>
+      ${rivets}
+    </g>
+  </svg>`;
+}
+
+/* ── Reveal ceremony — design.md Motion.revealSequence ────────────────────── */
+let timers = [];
+function renderReveal() {
+  const c = compose(S.ranked, S.topic);
+  S.badge = c; save();
+
+  const v = document.createElement('div');
+  v.className = 'vault';
+  v.innerHTML = `
+    <button class="skip" data-act="skip">Skip</button>
+    <div class="stage">
+      <div class="badge-wrap">${badgeSVG(c)}</div>
+      <div class="inscription">${[...c.inscription].map(ch => `<span class="ch">${esc(ch)}</span>`).join('')}</div>
+      <div class="after">
+        <button class="btn ghost" data-act="replay">Replay</button>
+        <button class="btn" data-act="done">Your Ten</button>
+      </div>
+    </div>`;
+  document.body.appendChild(v);
+  // The ceremony owns the screen. Without this the rank scene is still behind
+  // the vault and still reachable by VoiceOver and by a swipe — the badge is
+  // never previewable during creation (badges.md), and neither is the flow
+  // that produced it.
+  setBackgroundInert(true);
+  announce(`Badge revealed. Inscription: ${c.inscription}`);
+  runReveal(v);
+}
+function runReveal(v) {
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
+  const at = (ms, fn) => timers.push(setTimeout(fn, reduced ? 0 : ms));
+  timers.forEach(clearTimeout); timers = [];
+  requestAnimationFrame(() => v.classList.add('in'));
+  at(300, () => $('#l-plate', v).classList.add('on'));
+  at(900, () => $('#l-motif', v).classList.add('on'));
+  at(1400, () => $('#l-metal', v).classList.add('on'));
+  at(800, () => $('.skip', v).classList.add('on'));
+  at(1900, () => {
+    // The inscription is written letter by letter, but inside a fixed budget:
+    // per-character delays made a long line run the ceremony past 3.5s, and
+    // design.md budgets the whole sequence at ~2.8s. Length changes the
+    // cadence, never the duration.
+    const chs = [...v.querySelectorAll('.inscription .ch')];
+    const step = Math.min(45, 700 / Math.max(chs.length, 1));
+    chs.forEach((ch, i) => at(i * step, () => ch.classList.add('on')));
+    at(chs.length * step + 240, () => $('.after', v).classList.add('on'));
+  });
+}
+function skipReveal(v) {
+  timers.forEach(clearTimeout); timers = [];
+  v.classList.add('in');
+  v.querySelectorAll('.layer').forEach(l => l.classList.add('on'));
+  v.querySelectorAll('.inscription .ch').forEach(ch => ch.classList.add('on'));
+  $('.after', v).classList.add('on');
+  $('.skip', v).classList.remove('on');
+}
+
+/* ── Finished: the Ten, the badge, and the rabbit hole ────────────────────── */
+function renderFinished() {
+  const c = S.badge || compose(S.ranked, S.topic);
+  app.innerHTML = `
+    <div class="finished-head">
+      <div class="badge-inline">${badgeSVG(c, 200).replace(/class="layer"/g, 'class="layer on"')}</div>
+      <h1 class="display-lg">${esc(S.topic.title)}</h1>
+      <div class="insc">${esc(c.inscription)}</div>
+    </div>
+
+    <ol>${S.ranked.map((id, i) => slotFilled(i, byId.get(id)).replace(/<button class="remove".*?<\/button>/, '')).join('')}</ol>
+
+    <p class="label-sm" style="margin-top:30px">Where to next</p>
+    ${rabbitHole().map(t => `
+      <button class="sug-topic" data-topic='${esc(JSON.stringify(t))}'>
+        <div class="lvl">${t.level}</div>
+        <div class="t">${esc(t.title)}</div>
+        <div class="provocation">${esc(t.why)}</div>
+      </button>`).join('')}
+
+    <div style="display:flex;gap:10px;margin-top:22px">
+      <button class="btn ghost" data-act="replayfull">Watch the reveal again</button>
+      <button class="btn ghost" data-act="restart">Start over</button>
+    </div>
+    ${notes()}`;
+  dockEl.innerHTML = '';
+}
+
+/* ≥5 suggestions across three specificity levels, each with a provocation
+   naming why you (PRD Req 5). Static here — on device this is the
+   Foundation Models pass, with this tree as the fallback. */
+function rabbitHole() {
+  const F = facts(S.ranked), out = [];
+  const [g, gn] = F.genre, [d, dn] = F.director, [dec, decn] = F.decade;
+  if (d && dn >= 2) out.push({ level: 'Very specific', title: `${d} films`, director: d,
+    prompt: `Your ten favourite ${d} films.`, why: `${dn} of your ten are ${d}. Prove it.` });
+  if (g && dec) out.push({ level: 'Very specific', title: `${g} of the ${dec}s`, genre: g, decade: dec,
+    prompt: `Your ten favourite ${g.toLowerCase()} films of the ${dec}s.`, why: `You keep going back to one decade.` });
+  if (g) out.push({ level: 'Specific', title: `${g} films`, genre: g,
+    prompt: `Your ten favourite ${g.toLowerCase()} films.`, why: `${gn} of your ten are ${g.toLowerCase()}. Commit.` });
+  // A provocation that is not true is worse than no provocation. Only claim a
+  // genre is missing after checking every pick, including secondary genres.
+  const present = new Set(F.films.flatMap(f => f.g));
+  const absent = Object.keys(MOTIFS).find(x =>
+    !present.has(x) && CAT.filter(f => f.g.includes(x)).length > 12);
+  if (absent) out.push({ level: 'Specific', title: `${absent} films`, genre: absent,
+    prompt: `Your ten favourite ${absent.toLowerCase()} films.`,
+    why: `Not one ${absent.toLowerCase()} film made your ten. Suspicious.` });
+  if (dec) out.push({ level: 'Broad', title: `The ${dec}s`, decade: dec,
+    prompt: `Your ten favourite films of the ${dec}s.`, why: `${decn} of your ten came from the ${dec}s.` });
+  out.push({ level: 'Broad', title: 'Movies, again', prompt: 'Your ten favourite films of all time.',
+    why: 'Taste moves. Re-rank from scratch and see.' });
+  return out.slice(0, 6).map((t, i) => ({ ...t, id: 'topic' + i }));
+}
+
+/* ── Prototype notes, so feedback is about the right thing ────────────────── */
+function notes() {
+  return `<footer class="notes">
+    <p>Structure prototype. Glass, haptics, and final motion are deliberately
+    not attempted here — those can only be judged on device, and they land at
+    M2/M3. Judge the flow, the anatomy, and the words.</p>
+    <p class="build">build 0002 · gather · cut · rank · reveal</p>
+  </footer>`;
+}
+
+/* ── Routing ──────────────────────────────────────────────────────────────── */
+function setBackgroundInert(on) {
+  for (const el of [app, dockEl]) {
+    el.inert = on;
+    if (on) el.setAttribute('aria-hidden', 'true'); else el.removeAttribute('aria-hidden');
+  }
+}
+function render() {
+  document.querySelectorAll('.vault').forEach(v => v.remove());
+  setBackgroundInert(false);
+  if (S.scene === 'gather') renderGather();
+  else if (S.scene === 'cut') renderCut();
+  else if (S.scene === 'rank') { if (!S.rank) startRank(); else renderRank(); }
+  else if (S.scene === 'reveal') renderReveal();
+  else if (S.scene === 'done') renderFinished();
+  window.scrollTo(0, 0);
+}
+
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-add],[data-remove],[data-toggle],[data-higher],[data-act],[data-topic]');
+  if (!t) return;
+
+  if (t.dataset.add) {
+    const id = +t.dataset.add;
+    if (!S.tray.includes(id)) { S.tray.push(id); announce(`${byId.get(id).t} added. ${S.tray.length} of ten.`); }
+    else S.tray = S.tray.filter(x => x !== id);
+    save(); renderGather(); return;
+  }
+  if (t.dataset.remove) { S.tray = S.tray.filter(x => x !== +t.dataset.remove); save(); renderGather(); return; }
+  if (t.dataset.toggle) {
+    const id = +t.dataset.toggle;
+    if (S.keep.includes(id)) S.keep = S.keep.filter(x => x !== id);
+    else if (S.keep.length < 10) S.keep.push(id);
+    save(); renderCut(); return;
+  }
+  if (t.dataset.higher !== undefined) { answer(t.dataset.higher === '1'); return; }
+  if (t.dataset.topic) {
+    const topic = JSON.parse(t.dataset.topic);
+    S = fresh(topic); save(); render(); return;
+  }
+
+  switch (t.dataset.act) {
+    case 'clearq': S.q = ''; save(); renderGather(); break;
+    case 'cut': S.scene = 'cut'; S.keep = []; save(); renderCut(); break;
+    case 'cutdone': S.tray = S.keep.slice(); S.scene = 'rank'; save(); startRank(); break;
+    case 'rank': S.scene = 'rank'; save(); startRank(); break;
+    case 'skip': skipReveal(t.closest('.vault')); break;
+    case 'replay': {
+      const v = t.closest('.vault');
+      v.querySelectorAll('.layer').forEach(l => l.classList.remove('on'));
+      v.querySelectorAll('.inscription .ch').forEach(ch => ch.classList.remove('on'));
+      $('.after', v).classList.remove('on'); $('.skip', v).classList.remove('on');
+      runReveal(v); break;
+    }
+    case 'done': t.closest('.vault').remove(); setBackgroundInert(false); S.scene = 'done'; save(); renderFinished(); break;
+    case 'replayfull': S.scene = 'reveal'; save(); renderReveal(); break;
+    case 'restart': S = fresh(); save(); render(); break;
+  }
+});
+
+// Exposed for the Playwright harness that drives this prototype.
+window.S = S; window.byId = byId;
+render();
+</script>
 </body>
 </html>

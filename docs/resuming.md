@@ -3,79 +3,91 @@
 *Session-handoff file, rewritten at the end of each session (Stack
 convention). Read this first, then `AGENTS.md`, then `specs/`.*
 
-**Last written:** 2026-08-14 · cloud session (Linux, no Xcode) · end of **M0**
+**Last written:** 2026-08-14 · cloud session (Linux, no Xcode) · **M0 done,
+M1.5 prototype built and deployed, awaiting Mischa's first rounds**
 
 ---
 
 ## Where the project is
 
-M0 (repo bootstrap) is the only milestone with code in it. The founding
-documents — `AGENTS.md`, `KICKOFF.md`, `specs/*.md` — were already committed
-before this session; M0 added the `TopTenKit` package, CI, and this file.
+- **M0 — repo bootstrap: done.** `TopTenKit` builds and tests on CI, the CI
+  gate is proven able to fail, `docs/resuming.md` exists.
+- **M1.5 — flow prototype: built, not yet reacted to.** Live at
+  **https://topten-three.vercel.app**. Covers gather → the cut → rank →
+  badge reveal → rabbit-hole suggestions, over a 220-film catalog baked from
+  TMDB. Mischa has not yet used it on his phone; **M1.5 is not done until he
+  has been through at least two feedback rounds and design.md records what
+  changed.**
+- **M1 — the brain: not started.** Deliberately resequenced after the
+  prototype (see below).
 
-Next milestone is **M1 — the brain** (`KICKOFF.md`): domain models, the
-placement/ranking algorithm, consensus scoring, palette derivation, badge
-pre-pass, topic normalization, TMDB DTOs behind a `Catalog` protocol. All of
-it is cloud-verifiable through CI, and it is where correctness lives.
+## Sequencing change (2026-08-14, Mischa's call, executed by Claude)
 
-## Repo layout vs. `specs/tech-stack.md`
-
-| Path | Status |
-|---|---|
-| `AGENTS.md` | present (founding commit) |
-| `KICKOFF.md` | present (founding commit) |
-| `specs/` | present — `prd.md`, `design.md`, `badges.md`, `tech-stack.md` |
-| `docs/` | present — this file; investigations land here |
-| `TopTenKit/` | present — SPM package, builds and tests on Linux |
-| `.github/workflows/` | present — `ci.yml` |
-| `App/` | **not yet** — M2 scaffolds the Xcode project |
-| `web/` | **not yet** — M1.5 (prototype lives in `docs/`), real pages at M5 |
-| `supabase/` | **not yet** — M5 |
-
-Nothing in the layout has changed; the three missing directories are
-milestones that haven't run, not drift.
+KICKOFF orders M1 (the brain) before M1.5 (the prototype). We swapped them.
+Reasoning: the prototype is what puts something in Mischa's hands, and the
+placement algorithm M1 would harden is exactly what the prototype tests. It
+immediately paid for itself — the prototype proved the PRD's "≤15
+comparisons" acceptance criterion impossible (see prd.md Req 3 amendment)
+before a line of Swift was written against it.
 
 ## What is verified, and where
 
-- **CI (GitHub Actions, `kit-linux` job):** `swift build` + `swift test` on
-  `TopTenKit` in a pinned `swift:6.2` container — 4 tests in 1 suite, green
-  (Swift Testing 6.2.4, `x86_64-unknown-linux-gnu`). This is the only green
-  light M0 claims.
-- **The gate was falsified, not assumed.** A throwaway branch with one
-  assertion flipped (55 → 56) turned the run red at `TenTests.swift:36` with
-  exit code 1, so CI provably fails on a failing test rather than only ever
-  reporting green. Leftover to clean up: the branch `claude/ci-gate-check`
-  still exists on the remote — this session's git proxy refuses branch
-  deletion (403), so delete it from the GitHub UI or with
-  `git push origin --delete claude/ci-gate-check`.
-- **Nothing is verified on a Mac or a device.** No app target exists yet.
-- The `app-macos` job is written but **skipped** — a Linux probe job looks for
-  `App/*.xcodeproj` and gates it, so it burns nothing until M2. M2 owns
-  filling in `SCHEME` and `DESTINATION` in `.github/workflows/ci.yml`.
+- **CI (Linux, `kit-linux`):** `swift build` + `swift test` on TopTenKit —
+  4 tests, green. Falsified once on a throwaway branch to prove the gate can
+  go red.
+- **Browser (Chromium, iPhone 15 Pro viewport, `docs/prototype/drive.js`):**
+  the prototype driven end to end — 20 behavioural assertions, zero page
+  errors. Screenshots from the same run judged layout.
+- **Deploy:** verified by fetching the live page and finding the build tag,
+  not by assuming the push shipped.
+- **Nothing is verified on a Mac or a device.** No app target exists.
+
+## What the prototype changed in the specs
+
+All landed in the same commit as the code, per AGENTS.md:
+
+- `prd.md` Req 3 — the ≤15 comparison target was mathematically impossible
+  (floor is ⌈log₂(10!)⌉ = 22); relaxed to ≤ ~25, with the real design
+  question named rather than papered over.
+- `design.md` — gather anatomy, overflow shown not hidden, row artwork
+  56 × 84, the reveal makes the app behind it inert, inscription timing
+  budgeted rather than per-character.
+- `badges.md` — the inscription post-check must be enforcing code, and must
+  police templates too, not just model output.
+- `tech-stack.md` — prototype verification harness, and why posters are
+  mirrored locally for screenshot runs.
 
 ## Constraints you will hit in a cloud session
 
-- **No local Swift.** `download.swift.org` is denied by the session's egress
-  policy and there is no Docker daemon, so there is no local `swift test`
-  loop here. Write Kit code, push, and read the CI run. Batch your changes —
-  the round trip is a CI run, not a terminal. (Recorded in
-  `specs/tech-stack.md` → Verification workflow.)
-- **You cannot compile SwiftUI.** Never report app-level verification from a
-  cloud session; say "CI/Mac-verified" or "unverified" and mean it.
+- **No local Swift.** `download.swift.org` is denied by egress policy and
+  there is no Docker daemon. Kit changes verify through CI: batch, push, read
+  the run.
+- **You cannot compile SwiftUI.** Never claim app verification here.
+- **Chromium cannot reach `image.tmdb.org`.** Mirror posters with `curl` and
+  fulfil via `page.route` (already wired in `drive.js`). Never weaken TLS.
+- **Vercel and Supabase dashboards/APIs are blocked** (403 at the proxy).
+  Deployed `*.vercel.app` pages *are* reachable, which is how deploys get
+  verified. Anything needing the Vercel or Supabase dashboard is Mischa's
+  hands, not ours.
 
-## Standing traps (the ones that have already cost sessions)
+## Standing traps
 
-- **Vercel skips non-owner commits.** The repo's git config is set to commit
-  as `Mischa <onlinestuff4me@gmail.com>`; leave it that way. Anything web-
-  facing that lands on `main` with a different *committer* is silently not
-  built. Pushed is not shipped — verify a deploy ran.
-- **Specs update in the implementing commit**, dated, with the reasoning —
-  not in a cleanup pass.
+- **Vercel skips non-owner commits.** Repo git config commits as
+  `Mischa <onlinestuff4me@gmail.com>`; leave it. Pushed is not shipped.
+- **Pushing to `main` is allowed** (Mischa, 2026-08-14) on the standing
+  condition: say what is going before, confirm what landed after.
+- **Specs update in the implementing commit**, dated, with reasoning.
 - **Never print secret values.** Presence and length only.
-- The repo is **public**, so treat everything committed as world-readable.
-  Real keys go in a gitignored `Secrets.xcconfig` (M2 adds the committed
-  `Secrets.example.xcconfig` template).
+- Repo is **public** — treat everything committed as world-readable. The
+  prototype ships no API key by design; its catalog is baked at build time.
 
-## Open questions waiting on Mischa
+## Loose ends
 
-Tracked in `specs/prd.md` → Open Questions. None of them block M1.
+- `claude/ci-gate-check` still exists on the remote (the deliberate red
+  branch). This session's git access cannot delete branches — Mischa can, or
+  it can simply be ignored.
+- The env vars in cloud sessions (`EXPO_PUBLIC_SUPABASE_*`,
+  `EXPO_PUBLIC_TMDB_API_KEY`) are **Stack's**, not Top Ten's. The TMDB key is
+  fine to reuse for build-time catalog work. Top Ten needs its **own**
+  Supabase project at M5 — do not point it at Stack's database.
+- Open questions in `prd.md` are unchanged and none block M1.

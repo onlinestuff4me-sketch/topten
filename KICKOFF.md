@@ -113,6 +113,23 @@ fastlane vs Xcode Cloud and record it in tech-stack.md).
 **Done when:** Mischa has the app installed via TestFlight and the quality
 gates in AGENTS.md pass in a recorded audit in `docs/`.
 
+## Amendment 2026-08-14 — M1.5 runs before M1
+
+**Decided by Mischa, executed by Claude.** The prototype (M1.5) was built
+immediately after M0, ahead of M1. Two reasons: it is what puts a working
+thing in Mischa's hands, so his feedback rounds start straight away rather
+than after a session of invisible work; and the placement algorithm M1 would
+harden with an exhaustive test suite is precisely what the prototype exists
+to interrogate — hardening it first risks writing careful tests around the
+wrong interaction.
+
+It paid immediately: the prototype showed PRD Req 3's "≤ ~15 comparisons"
+acceptance criterion to be impossible (the floor for ordering ten items is
+22 binary answers), which would otherwise have been discovered as a failing
+test written against an unachievable spec. See the Req 3 amendment.
+
+M1 is otherwise unchanged and is next.
+
 ## Sequencing rationale
 
 M1 before any UI so the cloud can do real work and the app is thin over a

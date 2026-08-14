@@ -78,6 +78,17 @@ Rules for the inscription (enforced in prompt + post-check):
   quality floor we reject. Post-check: if the model returns a line that
   contains none of the candidate reference tokens supplied in the prompt,
   fall back to the template inscriptions (below).
+
+**Amendment 2026-08-14 (M1.5 prototype, Claude):** the post-check must be
+**code that rejects, not a rule the generator is asked to follow** — and it
+must police the templates too, not only the model. The prototype's own
+template `Ten kept, <title> last` produced "Ten kept, The Shawshank
+Redemption last": exactly six words by luck, and eight with a longer title.
+Nothing in the pipeline would have caught it, because the templates were
+assumed safe. Every candidate line — model-written or template-filled — is
+now filtered on word count and on containing the rank-1 title, and a
+candidate that fails is discarded rather than trimmed. Trimming produces
+half-jokes; discarding produces a different joke.
 - Language matches the user's locale.
 
 **Fallback ladder** (device unsupported / Apple Intelligence off / model
