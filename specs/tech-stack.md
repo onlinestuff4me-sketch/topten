@@ -121,6 +121,40 @@ green e2e proves the app works, not that data is live; keep a
 viewport-overflow test equivalent (Dynamic Type XL sweep asserting no
 truncation) once screens exist.
 
+### Amendment 2026-08-14 (M0, Claude) — cloud sessions have no local Swift
+
+Point 1 above says a cloud session runs `swift test`. In the actual cloud
+environment it can't run it *locally*: `download.swift.org` is denied by the
+session's egress policy (403 on CONNECT) and there is no Docker daemon to
+pull a `swift` image, so no toolchain can be installed. Swift on Linux is
+therefore verified **through CI**, not in the session's terminal.
+
+Consequence for how work is done here, which is why this is written down
+rather than worked around: a cloud session's red/green loop is a push and a
+CI run, not a command. Batch Kit changes before pushing, and read the run
+rather than guessing. Everything else in point 1 (web build, Playwright,
+Supabase migrations) is unaffected — those toolchains are present. If a
+future session finds swift.org reachable, install the toolchain and delete
+this amendment.
+
+### CI shape (decided 2026-08-14, M0, Claude)
+
+`.github/workflows/ci.yml`, one job per environment:
+
+- **`kit-linux`** — `swift build` + `swift test` on `TopTenKit` inside a
+  pinned `swift:6.2` container. Pinned image rather than a third-party setup
+  action: reproducible, and it keeps the dependency stance above honest about
+  CI as well as app code. Bump the tag deliberately.
+- **`probe-app` → `app-macos`** — a one-step Linux job looks for
+  `App/*.xcodeproj`; the macOS job only runs if it finds one. macOS runner
+  minutes bill at 10x, and a job whose whole output is "nothing to build yet"
+  is noise in every run. M2 owns the `SCHEME`/`DESTINATION` env values in
+  that job.
+- Triggers are **every branch push** plus PRs into `main`, because
+  cloud-authored Swift needs compiler truth before there's a PR to open —
+  waiting for review to discover a syntax error wastes a session.
+- The web/Playwright job joins at M1.5, when `web/` exists.
+
 ## Distribution
 
 - **TestFlight** via GitHub Actions (fastlane or Xcode Cloud — decide and

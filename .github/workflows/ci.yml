@@ -1,0 +1,93 @@
+name: CI
+
+# Two environments, per specs/tech-stack.md "Verification workflow":
+#   * Linux  — TopTenKit's tests. This is the only job that can run today, and
+#              it is where correctness lives (the Kit is the app's brain).
+#   * macOS  — builds the app target and runs its tests. Gated behind a cheap
+#              Linux probe so it costs nothing (macOS minutes bill at 10x)
+#              until M2 actually scaffolds App/.
+# The web/Playwright job joins at M1.5, when web/ exists.
+
+on:
+  push:
+    branches: ['**']
+  pull_request:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  kit-linux:
+    name: TopTenKit (Linux)
+    runs-on: ubuntu-latest
+    # Pinned toolchain rather than a setup action: reproducible, and no
+    # third-party action in the supply chain (specs/tech-stack.md dependency
+    # stance). Bump deliberately.
+    container: swift:6.2
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Toolchain
+        run: swift --version
+
+      - name: Build
+        run: swift build --package-path TopTenKit
+
+      - name: Test
+        run: swift test --package-path TopTenKit
+
+  probe-app:
+    name: Detect app target
+    runs-on: ubuntu-latest
+    outputs:
+      has-app: ${{ steps.detect.outputs.has-app }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Look for an Xcode project in App/
+        id: detect
+        run: |
+          if ls App/*.xcodeproj App/*.xcworkspace >/dev/null 2>&1; then
+            echo "has-app=true" >> "$GITHUB_OUTPUT"
+            echo "App target found — running the macOS job." >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "has-app=false" >> "$GITHUB_OUTPUT"
+            echo "No Xcode project in App/ yet, so the macOS job is skipped (M2 scaffolds it)." >> "$GITHUB_STEP_SUMMARY"
+          fi
+
+  app-macos:
+    name: App (macOS)
+    needs: probe-app
+    if: needs.probe-app.outputs.has-app == 'true'
+    runs-on: macos-latest
+    env:
+      # M2 owns these: set SCHEME to the app scheme it creates, and pin
+      # DESTINATION to a simulator the runner's Xcode actually ships.
+      SCHEME: TopTen
+      DESTINATION: 'platform=iOS Simulator,name=iPhone 17'
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Toolchain
+        run: |
+          xcodebuild -version
+          swift --version
+
+      # The Kit again on the Apple toolchain — same sources, different
+      # compiler and SDK, so Linux-only assumptions surface here.
+      - name: TopTenKit on Apple toolchain
+        run: swift test --package-path TopTenKit
+
+      - name: Build and test the app
+        working-directory: App
+        run: |
+          xcodebuild build test \
+            -scheme "$SCHEME" \
+            -destination "$DESTINATION" \
+            CODE_SIGNING_ALLOWED=NO

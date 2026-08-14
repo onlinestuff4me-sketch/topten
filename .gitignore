@@ -1,0 +1,25 @@
+# Swift / SwiftPM
+.build/
+.swiftpm/
+DerivedData/
+
+# Xcode user state
+xcuserdata/
+*.xcuserstate
+
+# Secrets — see specs/tech-stack.md. Real keys never land in the repo;
+# Secrets.example.xcconfig (committed, placeholder values) is the template.
+Secrets.xcconfig
+.env
+.env.local
+
+# Web (Next.js / Playwright)
+node_modules/
+.next/
+out/
+.vercel/
+test-results/
+playwright-report/
+
+# macOS
+.DS_Store
