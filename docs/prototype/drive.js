@@ -52,6 +52,25 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   check(clears, 'the page scrolls clear of the dock — nothing is trapped behind it');
   check(await page.locator('.rail .card').count() > 0, 'suggestions are showing');
 
+  // Round 2: "I didn't know how to add something to the 10 list vs what the
+  // chevron would do." Both actions must say what they are, in words.
+  const addLabel = (await page.locator('.rail .card').first().locator('.do-add').innerText()).trim();
+  const simLabel = (await page.locator('.rail .card').first().locator('.do-similar').innerText()).trim();
+  check(/add/i.test(addLabel), `the add control is labelled ("${addLabel}")`);
+  check(/similar/i.test(simLabel), `the drill-in control is labelled ("${simLabel}")`);
+  // A label that overflows its card is a label the user cannot read.
+  const fits = await page.evaluate(() => {
+    const card = document.querySelector('.rail .card').getBoundingClientRect();
+    return [...document.querySelectorAll('.rail .card:first-child .acts button')]
+      .every(b => { const r = b.getBoundingClientRect(); return r.left >= card.left - 1 && r.right <= card.right + 1; });
+  });
+  check(fits, 'both card actions fit inside the card');
+  const verbs = await page.locator('.section-head .more').count();
+  check(verbs === 0, 'no per-section "Back"/"Go deeper" verbs competing with each other');
+
+  // The query must be stated, not inferred.
+  check(await page.locator('.showing').count() === 1, 'a Now showing bar states what is on screen');
+
   // ── Copy regression: the repeated meaningless caption is gone ────────────
   const bodyText = await page.locator('body').innerText();
   check(!/widely called great/i.test(bodyText), 'no "Widely called great" caption under every poster');
@@ -91,29 +110,55 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
 
   // ── Branching: more like this, with a trail you can walk back ────────────
   const branchFrom = await page.locator('.rail .card').nth(2).getAttribute('data-card');
-  await page.locator('.rail .card').nth(2).locator('.deeper').click();
+  await page.locator('.rail .card').nth(2).locator('.do-similar').click();
   await page.waitForTimeout(120);
   const h2 = await page.locator('.section-h').first().innerText();
   check(/^MORE LIKE /i.test(h2), `drilling in opens a "${h2}" section`);
-  check(await page.locator('.trail button').count() >= 1, 'the branch trail is visible');
+  check(await page.locator('.showing .clause').count() >= 1, 'the Now showing bar states the branch you are in');
   const branchCards = await page.locator('.rail').first().locator('.card').count();
   check(branchCards >= 3, `the branch has ${branchCards} films to offer`);
   await page.screenshot({ path: SHOTS + '/2-branch.png' });
 
   // Going deeper again extends the trail rather than replacing it.
-  await page.locator('.rail').first().locator('.card').first().locator('.deeper').click();
+  await page.locator('.rail').first().locator('.card').first().locator('.do-similar').click();
   await page.waitForTimeout(120);
-  const trail = await page.evaluate(() => window.S.branch.length);
-  check(trail === 2, `going deeper extends the trail to ${trail}`);
-  check(await page.locator('.trail button').count() === 2, 'the trail shows both steps');
-  await page.locator('.trail button').first().click();
-  await page.waitForTimeout(120);
-  check(await page.evaluate(() => window.S.branch.length) === 1, 'tapping a step in the trail walks back to it');
-  await page.locator('[data-act="unbranch"]').click();
-  await page.waitForTimeout(100);
-  check(await page.evaluate(() => window.S.branch.length) === 0, 'Back leaves the branch entirely');
-  await page.locator('.rail .card').nth(2).locator('.deeper').click();
-  await page.waitForTimeout(120);
+  const explored = await page.evaluate(() => Object.keys(window.S.graph.nodes).length);
+  check(explored >= 2, `going deeper extends the path rather than replacing it (${explored} nodes)`);
+  const deepFocus = await page.evaluate(() => window.S.graph.focus);
+
+  // THE round-2 defect: walking back used to delete everything ahead of the
+  // node you returned to. Nothing may be lost by navigating.
+  const nodesBefore = await page.evaluate(() => Object.keys(window.S.graph.nodes).length);
+  await page.locator('.showing .clause').first().locator('button').first().click();
+  await page.waitForTimeout(150);
+  check(await page.evaluate(() => Object.keys(window.S.graph.nodes).length) === nodesBefore,
+    `walking back keeps every explored node (${nodesBefore} still there)`);
+  check(await page.evaluate(() => window.S.graph.focus) !== deepFocus, 'focus moved back up the path');
+
+  // ── The map ─────────────────────────────────────────────────────────────
+  await page.locator('[data-act="openmap"]').click();
+  await page.waitForTimeout(200);
+  check(await page.locator('.mapview svg').count() === 1, 'the map draws the explored graph');
+  check(await page.locator('.map-node').count() >= 3, `the map shows every node plus the origin (${await page.locator('.map-node').count()})`);
+  check(await page.locator('.map-edge').count() >= 2, 'the map draws the edges between them');
+  // Labels must not collide with their neighbours' — the map is unreadable
+  // the moment two titles overlap.
+  const collide = await page.evaluate(() => {
+    const boxes = [...document.querySelectorAll('.map-node text')].map(t => t.getBoundingClientRect());
+    for (let i = 0; i < boxes.length; i++) for (let j = i + 1; j < boxes.length; j++) {
+      const a = boxes[i], b = boxes[j];
+      if (a.left < b.right && b.left < a.right && a.top < b.bottom && b.top < a.bottom) return true;
+    }
+    return false;
+  });
+  check(!collide, 'no two map labels overlap');
+  await page.screenshot({ path: SHOTS + '/7-map.png' });
+
+  // Re-entering the deep node from the map is how you get forward again.
+  await page.locator(`.map-node[data-mapnode="${deepFocus}"]`).click();
+  await page.waitForTimeout(200);
+  check(await page.evaluate(() => window.S.graph.focus) === deepFocus, 'tapping a map node re-enters the path there');
+  check(await page.locator('.mapview').count() === 0, 'the map closes when you pick a node');
 
   // ── Services filter: the top-priority refinement ─────────────────────────
   await page.locator('.chip[data-sheet="services"]').click();
@@ -147,9 +192,17 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   check(await page.locator('.row').count() > 0, 'search returns results as you type, with no submit step');
   await page.locator('.row .add').first().click();
   check(await page.locator('.row').count() > 0, 'adding from a search result leaves the results in place');
-  await page.locator('[data-act="clearq"]').click();
-  await page.waitForTimeout(150);
-  check(await page.locator('.rail .card').count() > 0, 'clearing search returns to the suggestions');
+  // Two controls legitimately clear the query now: the in-field ⊗ and the
+  // query's own chip in Now showing. Both must work.
+  await page.locator('.showing [data-act="clearq"]').click();
+  await page.waitForTimeout(200);
+  check(await page.locator('.rail .card').count() > 0, 'dropping the query chip returns to the suggestions');
+  await page.fill('#q', 'batman');
+  await page.waitForTimeout(400);
+  check(await page.locator('.row').count() > 0, 'search works again after clearing');
+  await page.locator('.search [data-act="clearq"]').click();
+  await page.waitForTimeout(200);
+  check(await page.locator('.rail .card').count() > 0, 'the in-field clear returns to the suggestions too');
 
   // ── Fill to ten, then reorder in one place ──────────────────────────────
   while (await page.evaluate(() => window.S.tray.length) < 10) {

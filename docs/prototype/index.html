@@ -124,10 +124,22 @@ section { margin-top: var(--s8); }
 .card .ring rect { fill: none; stroke-width: 3; }
 .card .t { font-weight: 600; font-size: 0.8125rem; line-height: 1.25; margin-top: var(--s2);
   display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.5em; }
-.card .why { font-size: 0.75rem; line-height: 1.25; color: var(--text-secondary); margin-top: 2px;
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
-.card .deeper { position: absolute; top: 6px; right: 6px; width: 32px; height: 32px; border-radius: 999px;
-  background: rgba(18,17,16,.62); color: #F4F1EA; display: grid; place-items: center; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+/* A reason you can act on. "Also Nolan" now narrows to Nolan rather than
+   just explaining itself (Mischa, round 2). */
+.card .why { margin-top: 4px; }
+.card .why button { font-size: 0.6875rem; line-height: 1.2; color: var(--accent); border: 1px solid var(--accent-muted); background: var(--accent-muted); border-radius: 999px; padding: 4px 8px; min-height: 28px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+/* Two named controls per card. A bare chevron was a guess the user had to
+   make (Mischa, round 2: "I didn't know how to add something to the 10 list
+   vs what the chevron would do"), so both actions say what they do. */
+/* Stacked, not side by side. Two labelled pills do not fit across a 120pt
+   card, and a row that only just fits at the default text size is a row that
+   breaks at the accessibility sizes this app has to pass. */
+.card .acts { display: flex; flex-direction: column; gap: 6px; margin-top: var(--s2); }
+.card .acts button { width: 100%; min-height: 34px; border-radius: 999px; font-size: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 4px; padding: 0 8px; }
+.card .acts .do-add { background: var(--accent); color: #fff; }
+@media (prefers-color-scheme: dark) { .card .acts .do-add { color: #17140B; } }
+.card[data-in="1"] .acts .do-add { background: var(--accent-muted); color: var(--accent); }
+.card .acts .do-similar { border: 1px solid var(--border-subtle); color: var(--text-secondary); }
 .card .in { position: absolute; left: 6px; top: 6px; width: 26px; height: 26px; border-radius: 999px; background: var(--accent-bright); color: #17140B; font-size: 0.75rem; font-weight: 800; display: grid; place-items: center; opacity: 0; transform: scale(.6); transition: opacity var(--m-settle) var(--ease-out), transform var(--m-settle) var(--ease-out); }
 .card[data-in="1"] .in { opacity: 1; transform: none; }
 
@@ -142,6 +154,17 @@ section { margin-top: var(--s8); }
 .row[data-in="1"] .add { background: var(--accent-muted); border-color: var(--accent); }
 
 .empty { color: var(--text-secondary); padding: var(--s4) 0; }
+
+/* ── "Now showing" — one line that always answers what am I looking at ────
+   Every clause of the current query is a chip you can drop, and the count is
+   the proof it did something. */
+.showing { margin-top: var(--s4); }
+.showing .lead { font-size: 0.75rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-secondary); }
+.showing .clauses { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; }
+.showing .clause { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 10px; border-radius: 999px; background: var(--accent-muted); color: var(--accent); font-size: 0.8125rem; font-weight: 600; border: 1px solid var(--accent); }
+.showing .clause .x { opacity: .75; font-size: 0.9375rem; }
+.showing .count { color: var(--text-secondary); font-size: 0.8125rem; }
+.showing .mapbtn { margin-left: auto; color: var(--accent); font-weight: 700; font-size: 0.8125rem; min-height: 32px; display: inline-flex; align-items: center; gap: 4px; }
 
 /* The branch trail — where following one film led. Each step is walkable,
    because a path you can only read is a path you are stuck at the end of. */
@@ -261,6 +284,25 @@ section { margin-top: var(--s8); }
 
 footer.notes { margin-top: var(--s8); padding-top: var(--s4); border-top: 1px solid var(--border-subtle); color: var(--text-secondary); font-size: 0.8125rem; }
 footer.notes .build { color: var(--text-disabled); margin-top: var(--s2); }
+/* ── The map — the whole path you have explored, all at once ─────────────
+   Round 2's headline: moving back in a branch used to erase everything ahead
+   of it. The graph is now permanent; the map is how you see and re-enter it. */
+.mapview { position: fixed; inset: 0; z-index: 45; background: var(--bg-base); display: flex; flex-direction: column; }
+.map-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); padding: calc(env(safe-area-inset-top) + var(--s4)) var(--margin) var(--s3); }
+.map-head h2 { font-family: var(--serif); font-weight: 600; font-size: 1.25rem; margin: 0; }
+.map-head .done { color: var(--accent); font-weight: 700; min-height: 44px; display: inline-flex; align-items: center; }
+.map-legend { padding: 0 var(--margin) var(--s3); color: var(--text-secondary); font-size: 0.8125rem; }
+.map-scroll { flex: 1; overflow: auto; -webkit-overflow-scrolling: touch; padding: 0 var(--margin) calc(env(safe-area-inset-bottom) + var(--s6)); }
+.map-node { cursor: pointer; }
+.map-node .plate { fill: var(--bg-surface); stroke: var(--border-subtle); stroke-width: 1; }
+.map-node.focus .plate { stroke: var(--accent); stroke-width: 2.5; }
+.map-node.picked .plate { stroke: var(--accent-bright); stroke-width: 2.5; }
+.map-node text { font-family: var(--sans); font-size: 9px; fill: var(--text-secondary); }
+.map-node.focus text { fill: var(--text-primary); font-weight: 700; }
+.map-edge { fill: none; stroke: var(--border-subtle); stroke-width: 2; }
+.map-tick { fill: var(--accent-bright); }
+.map-empty { color: var(--text-secondary); padding: var(--s6) 0; }
+
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 </style>
 </head>
@@ -292,7 +334,7 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>
 const announce = m => { live.textContent = m; };
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-const KEY = 'topten.proto.v3';
+const KEY = 'topten.proto.v4';
 const TOPIC_ALL = { id: 'movies', title: 'Movies', prompt: 'Your ten favourite films of all time.' };
 
 /* Region decides which subscriptions are on offer. Guessed, never asked —
@@ -307,13 +349,51 @@ function guessRegion() {
 
 function fresh(topic = TOPIC_ALL) {
   return {
-    scene: 'build', topic, tray: [], q: '', branch: [],
+    scene: 'build', topic, tray: [], q: '',
+    // The explored graph. Nodes are films you followed or picked; edges are
+    // "this led to that". Walking back moves focus and destroys nothing —
+    // round 2's headline complaint was that it did.
+    graph: { nodes: {}, roots: [], focus: null },
     filters: { services: [], genre: null, director: null, actor: null },
-    region: guessRegion(), keep: [], ranked: [], rank: null, comparisons: 0, badge: null
+    region: guessRegion(), keep: [], ranked: [], rank: null, comparisons: 0, badge: null,
+    seenTip: false
   };
 }
+
+/* ── The graph ────────────────────────────────────────────────────────────── */
+function node(id) { return S.graph.nodes[id]; }
+function addNode(id, parent, kind) {
+  let n = node(id);
+  if (!n) {
+    n = S.graph.nodes[id] = { id, parent: parent ?? null, kids: [], kind };
+    if (n.parent == null) { if (!S.graph.roots.includes(id)) S.graph.roots.push(id); }
+    else if (!S.graph.nodes[n.parent].kids.includes(id)) S.graph.nodes[n.parent].kids.push(id);
+  }
+  if (kind === 'followed') n.kind = 'followed';       // picking then following upgrades it
+  return n;
+}
+function follow(id) {
+  addNode(id, S.graph.focus, 'followed');
+  S.graph.focus = id;
+  save();
+}
+function trail() {
+  const out = [];
+  for (let id = S.graph.focus; id != null; id = node(id)?.parent ?? null) out.unshift(id);
+  return out;
+}
 let S = load() || fresh();
-function load() { try { const r = JSON.parse(localStorage.getItem(KEY)); return (r && r.topic && Array.isArray(r.tray)) ? r : null; } catch (e) { return null; } }
+function load() {
+  try {
+    const r = JSON.parse(localStorage.getItem(KEY));
+    if (!r || !r.topic || !Array.isArray(r.tray)) return null;
+    // Normalise anything a older build may not have written. A saved draft
+    // that predates a field must not be able to crash the app that reads it.
+    const base = fresh(r.topic);
+    return { ...base, ...r, graph: r.graph && r.graph.nodes ? r.graph : base.graph,
+             filters: { ...base.filters, ...(r.filters || {}) } };
+  } catch (e) { return null; }
+}
 function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
 
 /* ── Scope and filters ────────────────────────────────────────────────────── */
@@ -367,22 +447,24 @@ function similarTo(seed, exclude) {
   return scored.sort((a, b) => b[0] - a[0] || b[1].v - a[1].v).slice(0, 12).map(x => x[1]);
 }
 
+/* A reason is a claim AND a control: tapping it narrows to that thing, so
+   "Also Nolan" answers "what else of his?" without a trip to a filter sheet. */
 function whySimilar(f, seed) {
-  if (f.d && f.d === seed.d) return `Also ${f.d}`;
+  if (f.d && f.d === seed.d) return { label: `Also ${f.d}`, jump: { kind: 'director', value: f.d } };
   const c = (f.ca || []).find(x => (seed.ca || []).includes(x));
-  if (c) return `With ${c}`;
+  if (c) return { label: `With ${c}`, jump: { kind: 'actor', value: c } };
   const g = f.g.find(x => seed.g.includes(x));
-  if (g) return `Also ${g.toLowerCase()}`;
-  return '';
+  if (g) return { label: `Also ${g.toLowerCase()}`, jump: { kind: 'genre', value: g } };
+  return null;
 }
 
 function sections() {
   const have = new Set(S.tray);
   const out = [];
 
-  // A branch the user opened, deepest first — this is the rabbit hole.
-  if (S.branch.length) {
-    const seed = byId.get(S.branch[S.branch.length - 1]);
+  // Whatever the map is focused on leads the page.
+  if (S.graph.focus != null) {
+    const seed = byId.get(S.graph.focus);
     if (seed) {
       const films = similarTo(seed, have).slice(0, 10);
       if (films.length) out.push({
@@ -396,7 +478,7 @@ function sections() {
   // you can see rather than a caption you might miss.
   for (const id of [...S.tray].reverse().slice(0, 2)) {
     const seed = byId.get(id); if (!seed) continue;
-    if (S.branch[S.branch.length - 1] === id) continue;
+    if (S.graph.focus === id) continue;
     const films = similarTo(seed, have).slice(0, 10);
     if (films.length >= 3) out.push({
       id: 'because' + id, title: `Because you picked ${seed.t}`, seed: id,
@@ -430,14 +512,17 @@ function svgIcon(name) {
 function cardHTML(c) {
   const inTen = S.tray.includes(c.f.id);
   return `<div class="card" data-card="${c.f.id}" data-in="${inTen ? 1 : 0}">
-    <button class="art" data-add="${c.f.id}" aria-label="Add ${esc(c.f.t)} to your Ten" aria-pressed="${inTen}">
+    <button class="art" data-add="${c.f.id}" aria-label="${inTen ? 'Remove' : 'Add'} ${esc(c.f.t)}" aria-pressed="${inTen}">
       <img src="${IMG}w342${c.f.p}" alt="" loading="lazy" decoding="async">
       <svg class="ring" viewBox="0 0 120 180" preserveAspectRatio="none"><rect x="1.5" y="1.5" width="117" height="177" rx="6"/></svg>
     </button>
     <span class="in" aria-hidden="true">✓</span>
-    <button class="deeper" data-deeper="${c.f.id}" aria-label="More films like ${esc(c.f.t)}">${svgIcon('deeper')}</button>
     <div class="t">${esc(c.f.t)}</div>
-    ${c.why ? `<div class="why">${esc(c.why)}</div>` : ''}
+    ${c.why ? `<div class="why"><button data-facetjump='${esc(JSON.stringify(c.why.jump))}'>${esc(c.why.label)}</button></div>` : ''}
+    <div class="acts">
+      <button class="do-add" data-add="${c.f.id}">${inTen ? '✓ Added' : '+ Add'}</button>
+      <button class="do-similar" data-deeper="${c.f.id}" aria-label="Show films like ${esc(c.f.t)}">Similar ${svgIcon('deeper')}</button>
+    </div>
   </div>`;
 }
 
@@ -449,6 +534,40 @@ function rowHTML(f) {
     <button class="add" data-add="${f.id}" aria-label="${inTen ? 'Remove' : 'Add'} ${esc(f.t)}" aria-pressed="${inTen}">${inTen ? '✓' : '+'}</button>
     <button class="add" data-deeper="${f.id}" aria-label="More films like ${esc(f.t)}">${svgIcon('deeper')}</button>
   </div></li>`;
+}
+
+/* Every clause of the current query, stated and droppable, with the count
+   that proves it did something. Round 2: "Can't tell what selecting a Genre
+   filter does… am I looking at movies like Spider-Man that are also in the
+   Drama genre and on one of my 3 services?" — this is that sentence. */
+function showingBar(q, results) {
+  const F = S.filters, clauses = [];
+  for (const id of trail()) {
+    const f = byId.get(id); if (!f) continue;
+    clauses.push({ label: `Like ${f.t}`, act: `data-focusnode="${id}"`, drop: `data-dropfocus="${id}"` });
+  }
+  if (F.services.length) {
+    const names = F.services.map(sid => (SERVICES.find(x => x[0] === sid) || [, sid])[1]).join(', ');
+    clauses.push({ label: `On ${names}`, act: 'data-sheet="services"', drop: 'data-clear="services"' });
+  }
+  for (const k of ['genre', 'director', 'actor']) {
+    if (F[k]) clauses.push({ label: F[k], act: `data-sheet="${k}"`, drop: `data-clear="${k}"` });
+  }
+  if (q) clauses.push({ label: `“${q}”`, act: '', drop: 'data-act="clearq"' });
+
+  const n = q ? results.length : new Set(sections().flatMap(s => s.cards.map(c => c.f.id))).size;
+  const hasMap = Object.keys(S.graph.nodes).length > 0;
+
+  return `<div class="showing">
+    <div class="lead">Now showing</div>
+    <div class="clauses">
+      ${clauses.length
+        ? clauses.map(c => `<span class="clause"><button ${c.act}>${esc(c.label)}</button><button class="x" ${c.drop} aria-label="Remove ${esc(c.label)}">×</button></span>`).join('')
+        : `<span class="count">Everything — ${n} films</span>`}
+      ${clauses.length ? `<span class="count">${n} film${n === 1 ? '' : 's'}</span>` : ''}
+      ${hasMap ? `<button class="mapbtn" data-act="openmap">Map</button>` : ''}
+    </div>
+  </div>`;
 }
 
 function filterChips() {
@@ -473,14 +592,14 @@ function renderBuild() {
       `<li class="empty">No match in this prototype's shelf of ${pool().length} films.</li>`}</ol></section>`;
   } else {
     const secs = sections();
+    // No per-section navigation verbs. "Back" and "Go deeper" sat next to
+    // each other meaning different kinds of thing (round 2: "hard to tell what
+    // these will do"); navigation now lives in one place — the Now showing bar
+    // and the map.
     body = secs.map(s => `<section>
-        <div class="section-head">
-          <h2 class="section-h">${esc(s.title)}</h2>
-          ${s.branch ? `<button class="more" data-act="unbranch">Back</button>`
-            : s.seed ? `<button class="more" data-deeper="${s.seed}">Go deeper</button>` : ''}
-        </div>
+        <div class="section-head"><h2 class="section-h">${esc(s.title)}</h2></div>
         <div class="rail">${s.cards.map(cardHTML).join('')}</div>
-      </section>`).join('') || `<section><p class="empty">Nothing matches those filters. Loosen one.</p></section>`;
+      </section>`).join('') || `<section><p class="empty">Nothing matches all of that. Drop one of the chips above.</p></section>`;
   }
 
   app.innerHTML = `
@@ -496,9 +615,7 @@ function renderBuild() {
       ${S.q ? '<button class="clear" data-act="clearq" aria-label="Clear search">×</button>' : ''}
     </div>
     ${filterChips()}
-    ${S.branch.length ? `<nav class="trail" aria-label="Suggestion trail"><span>Following</span>${
-      S.branch.map((id, i) => `<button data-trailto="${i}">${esc(byId.get(id).t)}</button>`).join('<span aria-hidden="true">›</span>')
-    }</nav>` : ''}
+    ${showingBar(q, results)}
     ${body}
     ${notes()}`;
 
@@ -552,7 +669,7 @@ function notes() {
   return `<footer class="notes">
     <p>Structure prototype. Glass, haptics, and final motion are judged on
     device, not here. Judge the flow, the anatomy, and the words.</p>
-    <p class="build">build 0004 · one screen · branching recs · filters · reorder</p>
+    <p class="build">build 0005 · the map · named actions · now showing</p>
   </footer>`;
 }
 
@@ -570,6 +687,7 @@ function addFilm(id, sourceEl) {
   const from = art ? art.getBoundingClientRect() : null;
 
   S.tray.push(id);
+  addNode(id, S.graph.focus, 'picked');   // the map shows outcomes, not just detours
   save();
   renderDock();
 
@@ -692,6 +810,98 @@ function refreshTenSheet() {
   const list = $('#tenlist');
   if (list) list.innerHTML = S.tray.map((id, i) => tenRow(id, i)).join('');
   renderDock();
+}
+
+/* ── The map ──────────────────────────────────────────────────────────────
+   Every film you followed or picked, and what led to what. Tapping a node
+   re-enters the path there; nothing is ever removed by navigating.
+   ─────────────────────────────────────────────────────────────────────────── */
+const MAP = { w: 56, h: 84, gx: 26, gy: 58, pad: 14, originH: 44 };
+// A label wider than its node collides with its neighbour's. 9px type runs
+// about 4.6px a character, so a 56px node holds ~12 before it has to stop.
+const mapLabel = t => (t.length > 12 ? t.slice(0, 11) + '…' : t);
+
+function layoutMap() {
+  const placed = [];
+  let cursor = 0;
+  const walk = (id, depth) => {
+    const n = node(id), kids = n.kids.filter(k => node(k));
+    let slot;
+    if (!kids.length) { slot = cursor++; }
+    else {
+      const xs = kids.map(k => walk(k, depth + 1));
+      slot = (xs[0] + xs[xs.length - 1]) / 2;
+    }
+    placed.push({ id, depth, slot });
+    return slot;
+  };
+  const rootSlots = S.graph.roots.filter(r => node(r)).map(r => walk(r, 1));
+  // A single origin so the whole thing reads as one map rather than several.
+  const origin = { id: null, depth: 0, slot: rootSlots.length ? (rootSlots[0] + rootSlots[rootSlots.length - 1]) / 2 : 0 };
+  placed.push(origin);
+  const pos = p => ({
+    cx: MAP.pad + p.slot * (MAP.w + MAP.gx) + MAP.w / 2,
+    cy: MAP.pad + p.depth * (MAP.h + MAP.gy) + MAP.h / 2
+  });
+  const width = MAP.pad * 2 + Math.max(cursor, 1) * (MAP.w + MAP.gx);
+  const depth = Math.max(...placed.map(p => p.depth));
+  const height = MAP.pad * 2 + (depth + 1) * (MAP.h + MAP.gy);
+  return { placed, pos, width, height };
+}
+
+function renderMap() {
+  const { placed, pos, width, height } = layoutMap();
+  const at = new Map(placed.map(p => [p.id, pos(p)]));
+
+  const edges = placed.filter(p => p.id != null).map(p => {
+    const n = node(p.id);
+    const parentId = n.parent ?? null;
+    const from = at.get(parentId), to = at.get(p.id);
+    if (!from || !to) return '';
+    // The origin's plate is shorter than a poster's, so its edges have to
+    // leave from its own bottom rather than from a poster-sized assumption.
+    const fromBottom = from.cy + (parentId == null ? MAP.originH : MAP.h) / 2;
+    const toTop = to.cy - MAP.h / 2;
+    const midY = (fromBottom + toTop) / 2;
+    return `<path class="map-edge" d="M${from.cx} ${fromBottom} C${from.cx} ${midY}, ${to.cx} ${midY}, ${to.cx} ${toTop}"/>`;
+  }).join('');
+
+  const nodes = placed.map(p => {
+    const c = at.get(p.id);
+    if (p.id == null) {
+      return `<g class="map-node ${S.graph.focus == null ? 'focus' : ''}" data-mapnode="home" tabindex="0" role="button" aria-label="All of ${esc(S.topic.title)}">
+        <rect class="plate" x="${c.cx - MAP.w / 2}" y="${c.cy - MAP.originH / 2}" width="${MAP.w}" height="${MAP.originH}" rx="10"/>
+        <text x="${c.cx}" y="${c.cy + 4}" text-anchor="middle">${esc(mapLabel(S.topic.title))}</text></g>`;
+    }
+    const f = byId.get(p.id), picked = S.tray.includes(p.id);
+    const label = mapLabel(f.t);
+    return `<g class="map-node ${S.graph.focus === p.id ? 'focus' : ''} ${picked ? 'picked' : ''}"
+        data-mapnode="${p.id}" tabindex="0" role="button" aria-label="${esc(f.t)}${picked ? ', in your Ten' : ''}">
+      <rect class="plate" x="${c.cx - MAP.w / 2 - 2}" y="${c.cy - MAP.h / 2 - 2}" width="${MAP.w + 4}" height="${MAP.h + 4}" rx="8"/>
+      <image href="${IMG}w185${f.p}" x="${c.cx - MAP.w / 2}" y="${c.cy - MAP.h / 2}" width="${MAP.w}" height="${MAP.h}"
+        preserveAspectRatio="xMidYMid slice" style="clip-path:inset(0 round 6px)"/>
+      ${picked ? `<circle class="map-tick" cx="${c.cx + MAP.w / 2 - 4}" cy="${c.cy - MAP.h / 2 + 4}" r="8"/>
+        <text x="${c.cx + MAP.w / 2 - 4}" y="${c.cy - MAP.h / 2 + 7}" text-anchor="middle" style="fill:#17140B;font-weight:800">✓</text>` : ''}
+      <text x="${c.cx}" y="${c.cy + MAP.h / 2 + 14}" text-anchor="middle">${esc(label)}</text>
+    </g>`;
+  }).join('');
+
+  const v = document.createElement('div');
+  v.className = 'mapview';
+  v.innerHTML = `
+    <div class="map-head"><h2>Where you have been</h2><button class="done" data-act="closemap">Done</button></div>
+    <p class="map-legend">Tap any film to pick the path back up there. Gold means it is in your Ten. Nothing here is lost by moving around.</p>
+    <div class="map-scroll">
+      ${placed.length > 1
+        ? `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="group" aria-label="Your exploration map">${edges}${nodes}</svg>`
+        : `<p class="map-empty">Nothing followed yet. Tap “Similar” on a film and it will appear here.</p>`}
+    </div>`;
+  document.body.appendChild(v);
+  setBackgroundInert(true);
+}
+function closeMap() {
+  $$('.mapview').forEach(v => v.remove());
+  setBackgroundInert(false);
 }
 
 /* ── The Cut ──────────────────────────────────────────────────────────────── */
@@ -930,6 +1140,7 @@ function setBackgroundInert(on) {
 }
 function render() {
   $$('.vault').forEach(v => v.remove());
+  closeMap();
   setBackgroundInert(false);
   if (S.scene === 'build') renderBuild();
   else if (S.scene === 'cut') renderCut();
@@ -939,16 +1150,33 @@ function render() {
 }
 
 document.addEventListener('click', e => {
-  const t = e.target.closest('[data-add],[data-deeper],[data-remove],[data-move],[data-toggle],[data-toggle-service],[data-facet],[data-higher],[data-sheet],[data-clear],[data-act],[data-topic],[data-trailto]');
+  const t = e.target.closest('[data-add],[data-deeper],[data-remove],[data-move],[data-toggle],[data-toggle-service],[data-facet],[data-facetjump],[data-higher],[data-sheet],[data-clear],[data-act],[data-topic],[data-focusnode],[data-dropfocus],[data-mapnode]');
   if (!t) return;
 
   if (t.dataset.clear) { e.stopPropagation(); const k = t.dataset.clear; S.filters[k] = k === 'services' ? [] : null; save(); renderBuild(); return; }
   if (t.dataset.add) { addFilm(+t.dataset.add, t); return; }
   if (t.dataset.deeper) {
     const id = +t.dataset.deeper;
-    S.branch = [...S.branch.filter(x => x !== id), id].slice(-4);
-    S.q = ''; save(); renderBuild(); window.scrollTo({ top: 0, behavior: reduced() ? 'auto' : 'smooth' });
+    follow(id); S.q = ''; renderBuild();
+    window.scrollTo({ top: 0, behavior: reduced() ? 'auto' : 'smooth' });
     announce(`Showing films like ${byId.get(id).t}`); return;
+  }
+  if (t.dataset.facetjump) {
+    const { kind, value } = JSON.parse(t.dataset.facetjump);
+    S.filters[kind] = S.filters[kind] === value ? null : value;
+    save(); renderBuild();
+    announce(S.filters[kind] ? `Narrowed to ${value}` : `${value} filter removed`); return;
+  }
+  if (t.dataset.focusnode) { S.graph.focus = +t.dataset.focusnode; save(); renderBuild(); return; }
+  if (t.dataset.dropfocus) {
+    // Stepping out of a branch moves focus to its parent and keeps every node
+    // that was ever explored — the map still holds the way back.
+    const n = node(+t.dataset.dropfocus);
+    S.graph.focus = n ? n.parent : null; save(); renderBuild(); return;
+  }
+  if (t.dataset.mapnode) {
+    S.graph.focus = t.dataset.mapnode === 'home' ? null : +t.dataset.mapnode;
+    save(); closeMap(); renderBuild(); return;
   }
   if (t.dataset.trailto !== undefined) { S.branch = S.branch.slice(0, +t.dataset.trailto + 1); save(); renderBuild(); return; }
   if (t.dataset.remove) { removeFilm(+t.dataset.remove); refreshTenSheet(); return; }
@@ -980,7 +1208,8 @@ document.addEventListener('click', e => {
     case 'finish': closeSheet(); S.ranked = S.tray.slice(0, 10); S.scene = 'reveal'; save(); renderReveal(); break;
     case 'cut': S.scene = 'cut'; S.keep = []; save(); renderCut(); break;
     case 'cutdone': S.tray = S.keep.slice(); S.scene = 'build'; save(); renderBuild(); openSheet('ten'); break;
-    case 'unbranch': S.branch.pop(); save(); renderBuild(); break;
+    case 'openmap': renderMap(); break;
+    case 'closemap': closeMap(); break;
     case 'skip': skipReveal(t.closest('.vault')); break;
     case 'replay': { const v = t.closest('.vault');
       $$('.layer', v).forEach(l => l.classList.remove('on'));

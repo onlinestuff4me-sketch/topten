@@ -15,11 +15,11 @@ M1.5 prototype built and deployed, awaiting Mischa's first rounds**
 - **M1.5 — flow prototype: round 1 of feedback applied.** Live at
   **https://topten-three.vercel.app**. Building a Ten is now ONE screen —
   search with live results, refinements (services, genre, director, actor),
-  branching suggestions with a walkable trail, and the ten slots pinned in the
-  dock, reorderable in place. Then the cut (only on overflow), the badge
+  branching suggestions backed by a persistent graph with a map view, and the
+  ten slots pinned in the dock, reorderable in place. Then the cut (only on overflow), the badge
   reveal, and the post-completion rabbit hole. 220-film catalog baked from
   TMDB with per-film streaming availability, cast, and recommendation edges.
-  **Round 2 is pending Mischa's next pass.**
+  **Round 3 is pending Mischa's next pass.**
 - **M1 — the brain: not started.** Deliberately resequenced after the
   prototype (see below).
 
@@ -38,7 +38,7 @@ before a line of Swift was written against it.
   4 tests, green. Falsified once on a throwaway branch to prove the gate can
   go red.
 - **Browser (Chromium, iPhone 15 Pro viewport, `docs/prototype/drive.js`):**
-  the prototype driven end to end — 38 assertions, zero page errors. These now
+  the prototype driven end to end — 48 assertions, zero page errors. These now
   include layout invariants Mischa reported by eye: every block shares one
   left edge, rails align to it, all ten slots fit without scrolling, and
   nothing is trapped behind the dock. Screenshots from the same run judge the
@@ -60,9 +60,20 @@ Mischa's notes, and where each landed:
 | Text alignment and spacing are all over the place | One left edge and one spacing scale, both now asserted in tests |
 | Language sounds unnatural ("Widely called great") | Reasons only when earned; captions removed |
 
-Still open, deliberately: the **mind-map view** of the branching structure.
-The trail is the cheap version that tests whether branching is compelling
-before a whole screen is built for visualising it.
+## Round 2 feedback (2026-08-14) and what it changed
+
+| Note | Outcome |
+|---|---|
+| Build the mind-map view | Built — `Where you have been`, a tidy tree of every followed and picked film |
+| Going back destroys the branch ahead of it | Exploration is a persistent graph; navigating never removes a node |
+| Didn't know how to add vs what the chevron did | Two named buttons per card: `+ Add` and `Similar ›` |
+| Can't tell what a filter did | The **Now showing** bar states every clause of the query plus the match count |
+| "Also adventure" isn't actionable | Reasons are tappable and narrow to that director/actor/genre |
+| "Back" vs "Go deeper" unclear | Per-section verbs removed; navigation lives in Now showing and the map |
+
+Storage key moved to `topten.proto.v4` and `load()` now normalises against a
+fresh state — a v3 draft had no graph in it and would have thrown on first
+read, which would have meant a dead page for the one person using it.
 
 ## What the prototype changed in the specs
 

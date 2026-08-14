@@ -280,10 +280,59 @@ they exist, then shared director, shared cast, shared genre, proximity in
 years — so *why* a film is being offered can always be said in three words
 (*"Also Nolan"*, *"With Cillian Murphy"*).
 
-The mind-map reading of this — seeing the whole branching structure at once —
-is **not built and is the open question**: it is a genuinely different screen,
-and the trail is the cheapest version that tests whether the branching itself
-is compelling. Revisit once Mischa has used the trail.
+### Round 2 (2026-08-14, Mischa) — the path is a graph, and the map is how you see it
+
+*"Moving backward in the branch is destructive to the rest of the branch ahead
+of that node… without a way to get back to them."*
+
+The trail was a stack, so stepping back popped everything above it. Exploration
+is now a **persistent graph**: nodes are films you followed or picked, edges are
+*this led to that*, and **navigation never removes a node**. Stepping out of a
+branch moves focus to the parent; the branch you left is still on the map, and
+tapping it there re-enters it. This is the difference between a path you are
+walking and a path you are consuming.
+
+**The map** (`Where you have been`) draws the whole graph — origin at the top,
+each followed film below whatever led to it, picks marked gold. It is the
+answer to *how do I get forward again*, and it doubles as the record of the
+session: you can see that three of your ten came out of one Nolan detour.
+
+Layout is a tidy tree: leaves take the next slot, parents centre over their
+children, and labels are clamped to what a node's width can hold — two
+overlapping titles make the map unreadable, so a test asserts no two labels
+intersect.
+
+**Picks are on the map too**, not just detours. A map that showed only the
+wandering and not what it produced would be missing the point of wandering.
+
+### Round 2 — every control says what it does
+
+*"I didn't know how to add something to the 10 list vs what the chevron would
+do… Some rows say 'Back', some say 'Go deeper' and it's hard to tell what these
+will do."*
+
+- A card now carries **two named buttons**, stacked: `+ Add` (filled, becomes
+  `✓ Added`) and `Similar ›` (outlined). Stacked rather than side by side
+  because two labelled pills do not fit across a 120pt card, and a row that
+  only just fits at the default text size breaks at the accessibility sizes
+  this app must pass.
+- **Per-section navigation verbs are gone.** *Back* and *Go deeper* sat beside
+  each other meaning different categories of thing. Navigation lives in exactly
+  two places now: the Now showing bar, and the map.
+- **A reason is also a control.** *"Also Nolan"* narrows to Nolan on tap —
+  the answer to *what else of his?* without a trip through a filter sheet.
+
+### Round 2 — "Now showing", the line that answers what am I looking at
+
+*"Can't tell what selecting a Genre filter does… am I looking at movies like
+Spider-Man that are also in the Drama genre and on one of my 3 services?"*
+
+One bar states the whole current query as chips — every branch step, every
+filter, the search text — each droppable on its own, followed by the **count of
+films that match**. The count is what proves a refinement did something; a
+filter with no visible consequence is indistinguishable from a broken one.
+The same bar carries the entry to the map, so *where am I* and *how did I get
+here* are one glance apart.
 
 ### The add hand-off (2026-08-14, Mischa: *"very abrupt and unclear what's happening"*)
 
