@@ -51,14 +51,32 @@ catalog. Exhaustive unit tests — this package is where correctness lives.
 ranking, consensus, and badge pre-pass (including the floor test from
 badges.md rendered as composition data).
 
+### M1.5 — Flow prototype & design iteration (cloud-friendly)
+Before building any ceremony natively, build an interactive HTML prototype
+of the three ceremonies — gather→cut→rank and the badge reveal — deployed to
+a Vercel preview URL so Mischa can use it on his phone and iterate in chat
+rounds. This is the Stack precedent (`docs/prototype.html` validated every
+core interaction pattern before code) and it is where the *structure* of the
+UX gets argued about cheaply: slot anatomy, the cut, placement choreography,
+copy. The prototype approximates Laurel (tokens, type, layout) but does NOT
+attempt glass, haptics, or final motion — those are native-only questions.
+**Every conclusion lands in `specs/design.md` as a dated amendment before M2
+builds it.** The prototype is throwaway by design; keep it in `docs/`.
+**Done when:** Mischa has been through at least two feedback rounds on his
+phone and signed off on the flow of all three ceremonies, and design.md
+reflects what changed and why.
+
 ### M2 — Gather & Rank (Mac-verified)
 SwiftUI app shell: Laurel tokens, tab structure (Today / Make / You),
 Gather (slot rows, tray, suggestion rail with static seed suggestions,
 TMDB search), the Cut, the Rank ceremony, drafts in SwiftData. No badges,
 no accounts, no network publish.
 **Done when:** on-simulator XCUITest completes gather→cut→rank end-to-end;
-Dynamic Type + VoiceOver pass per AGENTS.md quality gates; Mischa can make
-a Ten on his phone via TestFlight internal build or simulator demo.
+Dynamic Type + VoiceOver pass per AGENTS.md quality gates; **and the feel
+gate passes: Mischa has used it on his own phone** (TestFlight internal
+build) and his feedback rounds on glass, motion, and haptics are recorded
+as dated design.md amendments. Simulator proves behaviour; only the device
+proves feel — M2 is not done from a simulator demo alone.
 
 ### M3 — The badge (Mac-verified, FM-gated paths tested both ways)
 Badge renderer (SwiftUI/Core Graphics from BadgeComposition), the
@@ -67,7 +85,9 @@ fallbacks, the reveal ceremony with haptics + Reduce Motion variant, the
 Badge Case on the You tab.
 **Done when:** reveal runs offline on simulator; fallback ladder forced in
 tests produces screenshot-worthy badges (lineup test rendered); inscriptions
-pass the post-check in badges.md.
+pass the post-check in badges.md; **and the reveal has passed the device
+feel gate** — Mischa has felt the full ceremony (timing, haptics, skip) on
+his phone and signed off, with iterations recorded in design.md/badges.md.
 
 ### M4 — Rabbit-hole engine (Mac-verified)
 FoundationModels suggestion generation (specific→general spread, provocation
@@ -96,7 +116,11 @@ gates in AGENTS.md pass in a recorded audit in `docs/`.
 ## Sequencing rationale
 
 M1 before any UI so the cloud can do real work and the app is thin over a
-tested core. Badges (M3) before the rabbit-hole (M4) because the reveal is
+tested core. M1.5 exists because design iteration is cheapest before native
+code and the ADA bar is won through rounds of feedback, not a polish pass —
+the plan deliberately splits *structure* iteration (HTML prototype, cloud,
+fast) from *feel* iteration (native on device, M2/M3 gates), so neither
+blocks the other's cadence. Badges (M3) before the rabbit-hole (M4) because the reveal is
 the retention ritual and it de-risks FoundationModels integration on the
 smaller, more constrained task first. Publish/web last among features (M5)
 because everything before it is verifiable without a backend — and because

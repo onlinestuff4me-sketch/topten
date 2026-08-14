@@ -188,6 +188,32 @@ Timings are tokens in code (`Motion.gatherFlick`, `Motion.slotSettle`,
 - The reveal ceremony is narrated for VoiceOver as a composed announcement,
   not a silent animation.
 
+## How Laurel evolves — the iteration loop
+
+Laurel is a starting hypothesis, not a finished system. The process that
+made Stack's design work is the process here, made explicit:
+
+- **Structure iterates in prototype.** Flow, anatomy, copy, and layout
+  questions are settled in the M1.5 HTML prototype (and later, quick
+  prototype branches) — cheap rounds, Mischa on his phone, before native
+  code hardens anything.
+- **Feel iterates on device, and only on device.** Liquid Glass rendering,
+  haptic weight, motion timing, and the reveal's drama cannot be judged in
+  a simulator or a screenshot. Milestones touching a ceremony carry a
+  device feel gate: Mischa uses a TestFlight build, reacts, and the change
+  lands with reasoning. Budget for multiple rounds — the first version of
+  every ceremony is wrong in ways only a thumb discovers.
+- **Every design reaction becomes a dated amendment** in this file (or
+  badges.md), including the ones that *confirm* a choice — "reveal timing
+  felt right at 2.8s on device, 2026-XX-XX" prevents relitigation as
+  surely as a correction does.
+- **Screenshots judge layout and copy; device time judges feel; tests
+  judge behaviour.** Three different instruments — never substitute one
+  for another (inherited Stack law).
+- When Mischa gives a directional note without a number ("more weight,"
+  "slower"), pick a value, ship it to the next build, and report the value
+  chosen — convergence by build rounds, not by guessing his number in chat.
+
 ## Web parity (share pages)
 
 The web page is Laurel translated, not approximated: same tokens exported to
