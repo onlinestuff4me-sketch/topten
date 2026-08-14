@@ -119,6 +119,26 @@ gathering 14 then cutting to 10 is a supported, labeled moment ("the cut").
   catalog results with artwork in <1s on broadband; the cut is required
   before ranking when the tray holds >10.
 
+**Amendment 2026-08-14 (Mischa, round 1 on the prototype) — Requirements 2
+and 3 are one screen.** Gathering and ranking are no longer two phases the
+user is marched through. One screen holds search, refinements, suggestions and
+the Ten itself; items are added from either source without losing the other,
+and the Ten is reordered in place. The guided placement flow in Req 3 survives
+as an offered aid and as the accessible path, not as the only road to an order.
+Reasoning: the two-phase split made sense as a description of the work, but as
+an interface it separated the list from the things that fill it, and it meant
+the answer to *"what have I got so far"* was always on another screen.
+
+Req 2 additionally gains **refinement by subscription service, genre, director
+and actor**, services first — the only refinement that changes what the user
+could actually watch tonight, and the one Mischa named the value proposition.
+Service data is canonicalised at catalog-build time; see design.md for the
+storefront trap inherited from Stack.
+
+Req 5's rabbit hole also starts **during** gather, not only after completion:
+every suggestion can be drilled into (*more like this*), and the path taken is
+a walkable trail. See design.md, "Branching suggestions".
+
 **3. Rank — the ceremony.** Phase two orders the ten. Primary mechanic:
 guided placement (each item slotted against those already placed — a
 pairwise-style flow that never asks the user to cold-sort ten things), with

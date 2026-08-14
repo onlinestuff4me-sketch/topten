@@ -12,12 +12,14 @@ M1.5 prototype built and deployed, awaiting Mischa's first rounds**
 
 - **M0 — repo bootstrap: done.** `TopTenKit` builds and tests on CI, the CI
   gate is proven able to fail, `docs/resuming.md` exists.
-- **M1.5 — flow prototype: built, not yet reacted to.** Live at
-  **https://topten-three.vercel.app**. Covers gather → the cut → rank →
-  badge reveal → rabbit-hole suggestions, over a 220-film catalog baked from
-  TMDB. Mischa has not yet used it on his phone; **M1.5 is not done until he
-  has been through at least two feedback rounds and design.md records what
-  changed.**
+- **M1.5 — flow prototype: round 1 of feedback applied.** Live at
+  **https://topten-three.vercel.app**. Building a Ten is now ONE screen —
+  search with live results, refinements (services, genre, director, actor),
+  branching suggestions with a walkable trail, and the ten slots pinned in the
+  dock, reorderable in place. Then the cut (only on overflow), the badge
+  reveal, and the post-completion rabbit hole. 220-film catalog baked from
+  TMDB with per-film streaming availability, cast, and recommendation edges.
+  **Round 2 is pending Mischa's next pass.**
 - **M1 — the brain: not started.** Deliberately resequenced after the
   prototype (see below).
 
@@ -36,11 +38,31 @@ before a line of Swift was written against it.
   4 tests, green. Falsified once on a throwaway branch to prove the gate can
   go red.
 - **Browser (Chromium, iPhone 15 Pro viewport, `docs/prototype/drive.js`):**
-  the prototype driven end to end — 20 behavioural assertions, zero page
-  errors. Screenshots from the same run judged layout.
+  the prototype driven end to end — 38 assertions, zero page errors. These now
+  include layout invariants Mischa reported by eye: every block shares one
+  left edge, rails align to it, all ten slots fit without scrolling, and
+  nothing is trapped behind the dock. Screenshots from the same run judge the
+  rest.
 - **Deploy:** verified by fetching the live page and finding the build tag,
   not by assuming the push shipped.
 - **Nothing is verified on a Mac or a device.** No app target exists.
+
+## Round 1 feedback (2026-08-14) and what it changed
+
+Mischa's notes, and where each landed:
+
+| Note | Outcome |
+|---|---|
+| Build the list in one place: recs, search, refine, reorder, confirm | One screen; PRD Req 2/3 amended |
+| Filter by subscriptions (top priority), genre, director, actor | Chip row, services first; catalog carries availability |
+| Adding is abrupt — show where the item went | Poster flies to its slot; the card stays and draws a ring |
+| "Because you picked X" is valuable but hard to see, and should branch | Section headings, plus a deeper control and a walkable trail |
+| Text alignment and spacing are all over the place | One left edge and one spacing scale, both now asserted in tests |
+| Language sounds unnatural ("Widely called great") | Reasons only when earned; captions removed |
+
+Still open, deliberately: the **mind-map view** of the branching structure.
+The trail is the cheap version that tests whether branching is compelling
+before a whole screen is built for visualising it.
 
 ## What the prototype changed in the specs
 

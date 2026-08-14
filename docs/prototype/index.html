@@ -9,15 +9,16 @@
 <meta name="apple-mobile-web-app-title" content="Top Ten">
 <meta name="theme-color" content="#FAF8F4" media="(prefers-color-scheme: light)">
 <meta name="theme-color" content="#121110" media="(prefers-color-scheme: dark)">
-<meta name="description" content="Top Ten — flow prototype: gather, cut, rank, reveal.">
+<meta name="description" content="Top Ten — flow prototype.">
 <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23121110'/%3E%3Ctext x='50' y='72' font-family='Georgia,serif' font-size='62' font-weight='700' fill='%23C9A227' text-anchor='middle'%3E10%3C/text%3E%3C/svg%3E">
 <title>Top Ten</title>
 <style>
 /* ───────────────────────────────────────────────────────────────────────────
-   Laurel — specs/design.md. This prototype approximates the design system:
-   tokens, type scale, layout, and slot anatomy are real. Liquid Glass,
-   haptics, and final motion are deliberately NOT attempted — those are
-   native-only judgements (design.md, "How Laurel evolves").
+   Laurel — specs/design.md, with the layout and motion discipline inherited
+   from Stack's design system (see specs/design.md amendments).
+   Two rules this file follows without exception:
+     · one left edge — every block starts at --margin, rails bleed right only
+     · one spacing scale — sections are --s8 apart, always
    ─────────────────────────────────────────────────────────────────────────── */
 :root {
   --bg-base: #FAF8F4;
@@ -30,33 +31,36 @@
   --accent: #8A6D1F;
   --accent-bright: #C9A227;
   --accent-muted: #EFE6CC;
-  --locked: #8B8578;
   --error: #B3402E;
-
   --vault-bg: #121110;
   --vault-text: #F4F1EA;
 
   --serif: "New York", ui-serif, Georgia, "Times New Roman", serif;
   --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
 
+  /* 4pt scale — design.md. Nothing gets a bespoke gap. */
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s6: 24px; --s8: 32px;
   --margin: 20px;
-  --r-card: 10px;
-  --r-sheet: 16px;
-  --r-art: 6px;
+  --r-card: 10px; --r-sheet: 16px; --r-art: 6px;
+  /* Ten minis plus nine gaps must fit the screen. The count is the product,
+     and a slot you have to scroll to reach is not visible. */
+  --mini-w: clamp(24px, calc((100vw - (var(--margin) * 2) - 54px) / 10), 40px);
 
-  --dock-h: 76px;
+  /* Motion tokens. Never type a duration inline — that is how four surfaces
+     drift into four feels (Stack law). */
+  --m-press: 120ms;
+  --m-travel: 380ms;
+  --m-ring: 480ms;
+  --m-glimmer: 760ms;
+  --m-retreat: 340ms;
+  --m-settle: 260ms;
+  --ease-out: cubic-bezier(.2,.8,.3,1);
 }
 @media (prefers-color-scheme: dark) {
   :root {
-    --bg-base: #121110;
-    --bg-surface: #1C1A18;
-    --bg-recessed: #0C0B0A;
-    --border-subtle: #2E2B27;
-    --text-primary: #F4F1EA;
-    --text-secondary: #A79F92;
-    --text-disabled: #6E675D;
-    --accent: #D9B23A;
-    --accent-bright: #D9B23A;
+    --bg-base: #121110; --bg-surface: #1C1A18; --bg-recessed: #0C0B0A;
+    --border-subtle: #2E2B27; --text-primary: #F4F1EA; --text-secondary: #A79F92;
+    --text-disabled: #6E675D; --accent: #D9B23A; --accent-bright: #D9B23A;
     --accent-muted: #3A311A;
   }
 }
@@ -64,11 +68,8 @@
 * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
 html { -webkit-text-size-adjust: 100%; }
 body {
-  margin: 0;
-  background: var(--bg-base);
-  color: var(--text-primary);
-  font: 15px/1.35 var(--sans);
-  -webkit-font-smoothing: antialiased;
+  margin: 0; background: var(--bg-base); color: var(--text-primary);
+  font: 15px/1.35 var(--sans); -webkit-font-smoothing: antialiased;
   overscroll-behavior-y: none;
 }
 button { font: inherit; color: inherit; background: none; border: 0; padding: 0; cursor: pointer; }
@@ -76,256 +77,411 @@ input { font: inherit; }
 ol, ul { list-style: none; margin: 0; padding: 0; }
 
 .wrap {
-  max-width: 560px;
-  margin-inline: auto;
-  padding:
-    calc(env(safe-area-inset-top) + 16px)
-    calc(env(safe-area-inset-right) + var(--margin))
-    calc(env(safe-area-inset-bottom) + var(--dock-h) + 28px)
-    calc(env(safe-area-inset-left) + var(--margin));
+  max-width: 560px; margin-inline: auto;
+  padding: calc(env(safe-area-inset-top) + var(--s4)) var(--margin)
+           calc(var(--dock-h, 168px) + var(--s8)) var(--margin);
 }
 
-/* Type scale — design.md "Typography" */
-.display-lg { font-family: var(--serif); font-weight: 600; font-size: 2rem; line-height: 1.18; letter-spacing: -0.015em; margin: 0; }
-.display-md { font-family: var(--serif); font-weight: 600; font-size: 1.375rem; line-height: 1.27; margin: 0; }
-.label-sm { font-size: 0.75rem; font-weight: 600; letter-spacing: 0.02em; text-transform: uppercase; color: var(--text-secondary); margin: 0; }
-.provocation { font-style: italic; font-weight: 500; font-size: 0.875rem; line-height: 1.36; color: var(--text-secondary); }
-.body-sec { color: var(--text-secondary); }
+.display-lg { font-family: var(--serif); font-weight: 600; font-size: 1.875rem; line-height: 1.16; letter-spacing: -0.015em; margin: 0; }
+.section-h { font-size: 0.75rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-secondary); margin: 0; }
+.prompt { color: var(--text-secondary); margin: var(--s2) 0 0; }
 
-/* ── Scene chrome ─────────────────────────────────────────────────────────── */
-.topbar { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; margin-bottom: 4px; }
-.topbar .link { color: var(--accent); font-size: 0.8125rem; font-weight: 600; padding: 8px 0 8px 12px; min-height: 44px; display: inline-flex; align-items: center; }
-.prompt { color: var(--text-secondary); margin: 6px 0 22px; }
+/* ── Sections: one rule for the gap between every major block ───────────── */
+section { margin-top: var(--s8); }
+.section-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); margin-bottom: var(--s3); min-height: 24px; }
+.section-head .more { color: var(--accent); font-size: 0.8125rem; font-weight: 600; white-space: nowrap; padding: var(--s2) 0 var(--s2) var(--s2); }
 
-/* ── Suggestion rail — design.md "Suggestion Card" ────────────────────────── */
-.rail { display: flex; gap: 12px; overflow-x: auto; scroll-snap-type: x mandatory; padding-bottom: 6px; margin: 0 calc(var(--margin) * -1); padding-inline: var(--margin); -webkit-overflow-scrolling: touch; }
-.rail::-webkit-scrollbar { display: none; }
-.sugg { flex: 0 0 120px; scroll-snap-align: start; text-align: left; }
-.sugg img, .sugg .noart { width: 120px; height: 180px; border-radius: var(--r-art); display: block; object-fit: cover; background: var(--bg-recessed); }
-.sugg .t { font-weight: 600; font-size: 0.8125rem; margin-top: 8px; line-height: 1.25; }
-.sugg .why { font-size: 0.75rem; color: var(--text-secondary); margin-top: 2px; line-height: 1.25; }
-.sugg[data-in="1"] { opacity: 0.4; }
+.topbar { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s3); }
+.topbar .link { color: var(--accent); font-size: 0.8125rem; font-weight: 600; min-height: 44px; display: inline-flex; align-items: center; padding-left: var(--s3); }
 
-/* ── Search ───────────────────────────────────────────────────────────────── */
-.search { display: flex; align-items: center; gap: 8px; background: var(--bg-recessed); border: 1px solid var(--border-subtle); border-radius: var(--r-card); padding: 0 12px; margin: 20px 0 8px; }
-.search input { flex: 1; background: none; border: 0; outline: none; padding: 13px 0; font-size: 16px; color: var(--text-primary); }
+/* ── Search ─────────────────────────────────────────────────────────────── */
+.search { display: flex; align-items: center; gap: var(--s2); background: var(--bg-recessed); border: 1px solid var(--border-subtle); border-radius: var(--r-card); padding: 0 var(--s3); margin-top: var(--s6); }
+.search svg { flex: 0 0 18px; color: var(--text-disabled); }
+.search input { flex: 1; min-width: 0; background: none; border: 0; outline: none; padding: 13px 0; font-size: 16px; color: var(--text-primary); }
 .search input::placeholder { color: var(--text-disabled); }
-.search .clear { color: var(--text-secondary); font-size: 0.8125rem; padding: 10px 0 10px 8px; min-height: 44px; }
+.search .clear { flex: 0 0 44px; height: 44px; display: grid; place-items: center; color: var(--text-disabled); font-size: 1.125rem; }
 
-/* ── Rows: the Ten list row is [numeral][artwork][title/meta] ─────────────── */
-.slot { display: flex; align-items: center; gap: 14px; background: var(--bg-recessed); border: 1px solid var(--border-subtle); border-radius: var(--r-card); padding: 10px 12px; margin-bottom: 8px; min-height: 104px; width: 100%; text-align: left; }
-.slot.filled { background: var(--bg-surface); }
-.slot .numeral { font-family: var(--serif); font-weight: 700; font-size: 1.75rem; line-height: 1; color: var(--text-disabled); min-width: 1.5em; text-align: right; font-variant-numeric: lining-nums tabular-nums; }
-.slot.filled .numeral { color: var(--text-primary); }
-/* Fixed artwork sizes, per design.md: the Ten list row is 56 × 84. No fluid
-   poster maths — that is an inherited Stack lesson. */
-.slot img, .slot .noart { width: 56px; height: 84px; border-radius: var(--r-art); object-fit: cover; background: var(--bg-recessed); flex: 0 0 56px; }
-.slot .meta { min-width: 0; flex: 1; }
-.slot .meta .t { display: block; font-weight: 600; font-size: 1.0625rem; line-height: 1.2; }
-.slot .meta .s { display: block; color: var(--text-secondary); font-size: 0.8125rem; margin-top: 3px; }
-.slot .remove { color: var(--text-disabled); font-size: 1.25rem; width: 44px; height: 44px; display: flex; align-items: center; justify-content: center; flex: 0 0 44px; }
-.slot .invitation { color: var(--text-disabled); }
+/* ── Filter chips ───────────────────────────────────────────────────────── */
+.chips { display: flex; gap: var(--s2); overflow-x: auto; margin: var(--s3) calc(var(--margin) * -1) 0; padding: 0 var(--margin) var(--s1); scrollbar-width: none; }
+.chips::-webkit-scrollbar { display: none; }
+.chip { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 var(--s3); border-radius: 999px; border: 1px solid var(--border-subtle); color: var(--text-secondary); font-size: 0.8125rem; font-weight: 600; background: var(--bg-surface); }
+.chip[aria-pressed="true"], .chip.on { background: var(--accent-muted); border-color: var(--accent); color: var(--accent); }
+.chip .x { font-size: 1rem; line-height: 1; opacity: .7; }
 
-/* Position 1 treated as a title, not an index (design.md principle 2) */
-.slot.one { min-height: 118px; border-color: var(--accent-muted); }
-.slot.one .numeral { font-size: 2.75rem; color: var(--accent-bright); font-weight: 800; }
-.slot.one.filled { box-shadow: inset 0 0 0 1px var(--accent-muted); }
+/* ── Rails and cards ────────────────────────────────────────────────────── */
+/* scroll-padding is load-bearing, not a nicety: scroll-snap aligns a card to
+   the SCROLLPORT edge, which ignores the rail's own left padding, so the rail
+   silently scrolled itself 20px on load and the first card sat half off the
+   screen — the ragged left edge reported 2026-08-14. */
+.rail { display: flex; gap: var(--s3); overflow-x: auto; scroll-snap-type: x proximity; scroll-padding-left: var(--margin); margin: 0 calc(var(--margin) * -1); padding: 0 var(--margin) var(--s2); scrollbar-width: none; }
+.rail::-webkit-scrollbar { display: none; }
 
-.overflow-head { display: flex; align-items: baseline; justify-content: space-between; margin: 22px 0 10px; }
+.card { position: relative; flex: 0 0 120px; scroll-snap-align: start; text-align: left; }
+.card .art { position: relative; width: 120px; height: 180px; border-radius: var(--r-art); overflow: hidden; background: var(--bg-recessed); display: block; }
+.card .art img { width: 100%; height: 100%; object-fit: cover; display: block; transition: transform var(--m-press) ease-out; }
+.card:active .art img { transform: scale(0.97); }
+.card .ring { position: absolute; inset: 0; pointer-events: none; }
+.card .ring rect { fill: none; stroke-width: 3; }
+.card .t { font-weight: 600; font-size: 0.8125rem; line-height: 1.25; margin-top: var(--s2);
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; min-height: 2.5em; }
+.card .why { font-size: 0.75rem; line-height: 1.25; color: var(--text-secondary); margin-top: 2px;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.card .deeper { position: absolute; top: 6px; right: 6px; width: 32px; height: 32px; border-radius: 999px;
+  background: rgba(18,17,16,.62); color: #F4F1EA; display: grid; place-items: center; backdrop-filter: blur(6px); -webkit-backdrop-filter: blur(6px); }
+.card .in { position: absolute; left: 6px; top: 6px; width: 26px; height: 26px; border-radius: 999px; background: var(--accent-bright); color: #17140B; font-size: 0.75rem; font-weight: 800; display: grid; place-items: center; opacity: 0; transform: scale(.6); transition: opacity var(--m-settle) var(--ease-out), transform var(--m-settle) var(--ease-out); }
+.card[data-in="1"] .in { opacity: 1; transform: none; }
 
-/* ── The dock ─────────────────────────────────────────────────────────────── */
-.dock {
-  position: fixed; left: 0; right: 0; bottom: 0; z-index: 20;
-  background: color-mix(in srgb, var(--bg-surface) 82%, transparent);
-  -webkit-backdrop-filter: saturate(180%) blur(20px);
-  backdrop-filter: saturate(180%) blur(20px);
+/* ── Search results / list rows ─────────────────────────────────────────── */
+.row { display: flex; align-items: center; gap: var(--s3); width: 100%; text-align: left; padding: var(--s2) 0; border-bottom: 1px solid var(--border-subtle); min-height: 76px; }
+.row .thumb { position: relative; flex: 0 0 40px; width: 40px; height: 60px; border-radius: 4px; overflow: hidden; background: var(--bg-recessed); }
+.row .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.row .meta { flex: 1; min-width: 0; }
+.row .meta .t { display: block; font-weight: 600; font-size: 1rem; line-height: 1.25; }
+.row .meta .s { display: block; color: var(--text-secondary); font-size: 0.8125rem; margin-top: 3px; }
+.row .add { flex: 0 0 44px; height: 44px; border-radius: 999px; display: grid; place-items: center; border: 1px solid var(--border-subtle); color: var(--accent); font-size: 1.25rem; }
+.row[data-in="1"] .add { background: var(--accent-muted); border-color: var(--accent); }
+
+.empty { color: var(--text-secondary); padding: var(--s4) 0; }
+
+/* The branch trail — where following one film led. Each step is walkable,
+   because a path you can only read is a path you are stuck at the end of. */
+.trail { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; margin-top: var(--s3); color: var(--text-disabled); font-size: 0.8125rem; }
+.trail > span:first-child { text-transform: uppercase; letter-spacing: .04em; font-weight: 700; font-size: 0.6875rem; }
+.trail button { color: var(--accent); font-weight: 600; min-height: 32px; }
+.trail button:last-of-type { color: var(--text-secondary); }
+
+/* ── The dock: ten slots, always visible ────────────────────────────────── */
+.dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+  background: color-mix(in srgb, var(--bg-surface) 84%, transparent);
+  -webkit-backdrop-filter: saturate(180%) blur(20px); backdrop-filter: saturate(180%) blur(20px);
   border-top: 1px solid var(--border-subtle);
-  padding: 10px calc(env(safe-area-inset-right) + var(--margin)) calc(env(safe-area-inset-bottom) + 10px) calc(env(safe-area-inset-left) + var(--margin));
-}
-@media (prefers-reduced-transparency: reduce) {
-  .dock { background: var(--bg-surface); backdrop-filter: none; -webkit-backdrop-filter: none; }
-}
-.dock-inner { max-width: 560px; margin-inline: auto; display: flex; align-items: center; gap: 14px; min-height: 56px; }
-.count { flex: 1; min-width: 0; }
-.count .n { font-family: var(--serif); font-weight: 700; font-size: 1.25rem; }
-.count .hint { color: var(--text-secondary); font-size: 0.8125rem; margin-top: 1px; }
-.count.cut .n { color: var(--error); }
+  padding: var(--s3) 0 calc(env(safe-area-inset-bottom) + var(--s3)); }
+@media (prefers-reduced-transparency: reduce) { .dock { background: var(--bg-surface); backdrop-filter: none; -webkit-backdrop-filter: none; } }
+.dock-in { max-width: 560px; margin-inline: auto; }
+.dock-top { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); padding: 0 var(--margin); }
+.dock-top .n { font-family: var(--serif); font-weight: 700; font-size: 1.0625rem; }
+.dock-top .hint { color: var(--text-secondary); font-size: 0.8125rem; margin-top: 1px; }
+.dock-top .n.over { color: var(--error); }
+.slots { display: flex; gap: 6px; justify-content: flex-start; overflow-x: auto; padding: var(--s3) var(--margin) 0; scrollbar-width: none; }
+.slots::-webkit-scrollbar { display: none; }
+.slotmini { position: relative; flex: 0 0 var(--mini-w); width: var(--mini-w); height: calc(var(--mini-w) * 1.5); border-radius: 4px; background: var(--bg-recessed); border: 1px solid var(--border-subtle); overflow: hidden; display: grid; place-items: center; }
+.slotmini img { width: 100%; height: 100%; object-fit: cover; }
+.slotmini .gh { font-family: var(--serif); font-weight: 700; color: var(--text-disabled); font-size: 0.875rem; }
+.slotmini.one { box-shadow: inset 0 0 0 2px var(--accent-bright); }
+.slotmini.landing { animation: land var(--m-settle) var(--ease-out); }
+@keyframes land { 0% { transform: scale(.82); } 60% { transform: scale(1.04); } 100% { transform: none; } }
 
-.btn { background: var(--accent); color: #fff; border-radius: 999px; padding: 0 20px; min-height: 48px; display: inline-flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.9375rem; }
+.btn { background: var(--accent); color: #fff; border-radius: 999px; padding: 0 var(--s4); min-height: 48px; display: inline-flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.9375rem; white-space: nowrap; }
 @media (prefers-color-scheme: dark) { .btn { color: #17140B; } }
 .btn[disabled] { background: var(--bg-recessed); color: var(--text-disabled); }
 .btn.ghost { background: none; color: var(--accent); border: 1px solid var(--border-subtle); }
 
-/* ── The Cut ──────────────────────────────────────────────────────────────── */
-.cut-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin-top: 18px; }
-.cut-cell { position: relative; border-radius: var(--r-art); overflow: hidden; aspect-ratio: 2 / 3; background: var(--bg-recessed); }
-.cut-cell img { width: 100%; height: 100%; object-fit: cover; display: block; transition: opacity 180ms ease, transform 180ms ease; }
-.cut-cell:not([data-keep="1"]) img { opacity: 0.34; transform: scale(0.97); }
-.cut-cell[data-keep="1"]::after { content: ""; position: absolute; inset: 0; border: 3px solid var(--accent-bright); border-radius: var(--r-art); }
-.cut-cell .kn { position: absolute; left: 6px; top: 6px; width: 24px; height: 24px; border-radius: 999px; background: var(--accent-bright); color: #17140B; font-size: 0.75rem; font-weight: 700; display: grid; place-items: center; }
-.cut-cell:not([data-keep="1"]) .kn { display: none; }
+/* ── Sheets ─────────────────────────────────────────────────────────────── */
+.scrim { position: fixed; inset: 0; z-index: 40; background: rgba(10,9,8,.42); opacity: 0; transition: opacity var(--m-settle) ease; }
+.scrim.on { opacity: 1; }
+.sheet { position: fixed; left: 0; right: 0; bottom: 0; z-index: 41; background: var(--bg-surface);
+  border-radius: var(--r-sheet) var(--r-sheet) 0 0; max-height: 86vh; display: flex; flex-direction: column;
+  transform: translateY(100%); transition: transform var(--m-settle) var(--ease-out); }
+.sheet.on { transform: none; }
+.sheet-in { overflow-y: auto; padding: var(--s4) var(--margin) calc(env(safe-area-inset-bottom) + var(--s4)); max-width: 560px; margin-inline: auto; width: 100%; }
+.sheet-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); margin-bottom: var(--s4); }
+.sheet-head h2 { font-family: var(--serif); font-weight: 600; font-size: 1.25rem; margin: 0; }
+.sheet-head .done { color: var(--accent); font-weight: 600; min-height: 44px; display: inline-flex; align-items: center; }
 
-/* ── Rank ─────────────────────────────────────────────────────────────────── */
-.duel { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; margin: 18px 0 8px; }
-.duel button { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--r-sheet); padding: 12px; text-align: center; }
-.duel img { width: 100%; aspect-ratio: 2/3; object-fit: cover; border-radius: var(--r-art); display: block; }
-.duel .t { font-weight: 600; font-size: 0.9375rem; margin-top: 10px; line-height: 1.2; }
-.duel .y { color: var(--text-secondary); font-size: 0.8125rem; margin-top: 2px; }
-.duel .tag { font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 700; color: var(--accent); margin-bottom: 8px; }
-.spine { margin-top: 22px; }
-.spine li { display: flex; align-items: center; gap: 10px; padding: 5px 0; color: var(--text-secondary); font-size: 0.875rem; }
-.spine .n { font-family: var(--serif); font-weight: 700; min-width: 1.4em; text-align: right; color: var(--text-disabled); }
-.spine .now { color: var(--accent); font-weight: 600; }
-.progress { display: flex; gap: 4px; margin-top: 16px; }
-.progress i { flex: 1; height: 4px; border-radius: 2px; background: var(--bg-recessed); }
-.progress i.on { background: var(--accent); }
+/* Reorderable Ten */
+.tenrow { display: flex; align-items: center; gap: var(--s3); padding: var(--s2) 0; border-bottom: 1px solid var(--border-subtle); }
+.tenrow .num { font-family: var(--serif); font-weight: 700; font-size: 1.375rem; min-width: 1.4em; text-align: right; color: var(--text-primary); }
+.tenrow.one .num { color: var(--accent-bright); font-size: 1.75rem; }
+.tenrow .thumb { flex: 0 0 40px; width: 40px; height: 60px; border-radius: 4px; overflow: hidden; background: var(--bg-recessed); }
+.tenrow .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.tenrow .meta { flex: 1; min-width: 0; }
+.tenrow .meta .t { display: block; font-weight: 600; line-height: 1.25; }
+.tenrow .meta .s { display: block; color: var(--text-secondary); font-size: 0.8125rem; margin-top: 2px; }
+.tenrow .mv { display: flex; flex-direction: column; }
+.tenrow .mv button { width: 44px; height: 32px; display: grid; place-items: center; color: var(--accent); }
+.tenrow .mv button[disabled] { color: var(--text-disabled); }
+.tenrow .rm { width: 44px; height: 44px; display: grid; place-items: center; color: var(--text-disabled); font-size: 1.25rem; }
 
-/* ── Reveal ───────────────────────────────────────────────────────────────── */
-.vault { position: fixed; inset: 0; z-index: 50; background: var(--vault-bg); color: var(--vault-text); display: grid; place-items: center; padding: 24px; opacity: 0; transition: opacity 420ms ease; }
+/* Flying poster for the add hand-off */
+.flier { position: fixed; z-index: 60; border-radius: var(--r-art); overflow: hidden; pointer-events: none; box-shadow: 0 12px 30px rgba(0,0,0,.28); }
+.flier img { width: 100%; height: 100%; object-fit: cover; display: block; }
+
+/* ── Reveal ─────────────────────────────────────────────────────────────── */
+.vault { position: fixed; inset: 0; z-index: 50; background: var(--vault-bg); color: var(--vault-text); display: grid; place-items: center; padding: var(--s6); opacity: 0; transition: opacity 420ms ease; }
 .vault.in { opacity: 1; }
 .vault .stage { text-align: center; max-width: 340px; width: 100%; }
-.badge-wrap { width: min(72vw, 260px); margin: 0 auto; aspect-ratio: 1; position: relative; }
+.badge-wrap { width: min(72vw, 260px); margin: 0 auto; aspect-ratio: 1; }
 .badge-wrap svg { width: 100%; height: 100%; display: block; }
-/* transform-box/origin so layers scale from the badge's centre, not from the
-   SVG user-space origin. And :not(.on) so these never outrank the settled
-   state — an ID beats a class, which silently left the plate and the trim
-   ring at different scales. */
-.layer { opacity: 0; transform-box: fill-box; transform-origin: center; transition: opacity 460ms ease, transform 460ms cubic-bezier(.2,.8,.3,1); }
+.layer { opacity: 0; transform-box: fill-box; transform-origin: center; transition: opacity 460ms ease, transform 460ms var(--ease-out); }
 .layer.on { opacity: 1; transform: none; }
 #l-plate:not(.on) { transform: scale(0.86); }
 #l-motif:not(.on) { transform: scale(0.7); }
 #l-metal:not(.on) { transform: scale(1.04); }
-.inscription { font-family: var(--serif); font-weight: 600; font-size: 1.25rem; margin-top: 22px; min-height: 1.6em; letter-spacing: 0.01em; }
+.inscription { font-family: var(--serif); font-weight: 600; font-size: 1.25rem; margin-top: var(--s6); min-height: 1.6em; }
 .inscription .ch { opacity: 0; }
 .inscription .ch.on { opacity: 1; transition: opacity 90ms linear; }
-.vault .skip { position: absolute; top: calc(env(safe-area-inset-top) + 14px); right: 18px; color: #A79F92; font-size: 0.875rem; min-height: 44px; padding: 0 8px; opacity: 0; transition: opacity 300ms ease; }
+.vault .skip { position: absolute; top: calc(env(safe-area-inset-top) + 14px); right: 18px; color: #A79F92; font-size: 0.875rem; min-height: 44px; padding: 0 var(--s2); opacity: 0; transition: opacity 300ms ease; }
 .vault .skip.on { opacity: 1; }
-.vault .after { opacity: 0; transition: opacity 400ms ease; margin-top: 26px; display: flex; gap: 10px; justify-content: center; }
+.vault .after { opacity: 0; transition: opacity 400ms ease; margin-top: var(--s6); display: flex; gap: var(--s2); justify-content: center; }
 .vault .after.on { opacity: 1; }
 .vault .after .btn.ghost { color: var(--accent-bright); border-color: #33302B; }
 
 @media (prefers-reduced-motion: reduce) {
-  .layer, .inscription .ch, .vault, .vault .after, .vault .skip { transition-duration: 1ms !important; }
+  .layer, .inscription .ch, .vault, .vault .after, .vault .skip, .sheet, .scrim, .slotmini { transition-duration: 1ms !important; animation: none !important; }
   #l-plate, #l-motif, #l-metal { transform: none; }
 }
 
-/* ── Finished ─────────────────────────────────────────────────────────────── */
-.badge-inline { width: 132px; margin: 0 auto 6px; }
+/* ── Finished ───────────────────────────────────────────────────────────── */
+.badge-inline { width: 128px; margin: 0 auto var(--s2); }
 .badge-inline svg { width: 100%; display: block; }
-.finished-head { text-align: center; margin-bottom: 26px; }
-.finished-head .insc { font-family: var(--serif); font-weight: 600; font-size: 1.125rem; margin-top: 10px; }
-.sug-topic { display: block; width: 100%; text-align: left; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--r-card); padding: 14px 16px; margin-bottom: 8px; }
+.finished-head { text-align: center; }
+.finished-head .insc { font-family: var(--serif); font-weight: 600; font-size: 1.0625rem; margin-top: var(--s2); }
+.sug-topic { display: block; width: 100%; text-align: left; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--r-card); padding: var(--s3) var(--s4); margin-bottom: var(--s2); }
 .sug-topic .t { font-family: var(--serif); font-weight: 600; font-size: 1.0625rem; }
-.sug-topic .lvl { font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 700; color: var(--text-disabled); margin-bottom: 4px; }
+.sug-topic .lvl { font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 700; color: var(--text-disabled); margin-bottom: var(--s1); }
+.sug-topic .why { font-style: italic; font-size: 0.875rem; color: var(--text-secondary); margin-top: 2px; }
 
-footer.notes { margin-top: 40px; padding-top: 18px; border-top: 1px solid var(--border-subtle); color: var(--text-secondary); font-size: 0.8125rem; }
-footer.notes .build { color: var(--text-disabled); font-variant-numeric: tabular-nums; margin-top: 10px; }
+/* ── Duel (optional ranking help) ───────────────────────────────────────── */
+.duel { display: grid; grid-template-columns: 1fr 1fr; gap: var(--s3); margin-top: var(--s6); }
+.duel button { background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--r-sheet); padding: var(--s3); text-align: center; }
+.duel img { width: 100%; aspect-ratio: 2/3; object-fit: cover; border-radius: var(--r-art); display: block; }
+.duel .t { font-weight: 600; font-size: 0.9375rem; margin-top: var(--s2); line-height: 1.2; }
+.progress { display: flex; gap: var(--s1); margin-top: var(--s4); }
+.progress i { flex: 1; height: 4px; border-radius: 2px; background: var(--bg-recessed); }
+.progress i.on { background: var(--accent); }
+
+/* ── The Cut ────────────────────────────────────────────────────────────── */
+.cut-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: var(--s2); margin-top: var(--s4); }
+.cut-cell { position: relative; border-radius: var(--r-art); overflow: hidden; aspect-ratio: 2/3; background: var(--bg-recessed); }
+.cut-cell img { width: 100%; height: 100%; object-fit: cover; display: block; transition: opacity var(--m-settle) ease, transform var(--m-settle) ease; }
+.cut-cell:not([data-keep="1"]) img { opacity: .34; transform: scale(.97); }
+.cut-cell[data-keep="1"]::after { content: ""; position: absolute; inset: 0; border: 3px solid var(--accent-bright); border-radius: var(--r-art); }
+.cut-cell .kn { position: absolute; left: 6px; top: 6px; width: 24px; height: 24px; border-radius: 999px; background: var(--accent-bright); color: #17140B; font-size: .75rem; font-weight: 700; display: grid; place-items: center; }
+.cut-cell:not([data-keep="1"]) .kn { display: none; }
+
+footer.notes { margin-top: var(--s8); padding-top: var(--s4); border-top: 1px solid var(--border-subtle); color: var(--text-secondary); font-size: 0.8125rem; }
+footer.notes .build { color: var(--text-disabled); margin-top: var(--s2); }
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 </style>
 </head>
 <body>
 <div id="app" class="wrap"></div>
 <div id="dock"></div>
+<div id="sheets"></div>
 <div id="live" class="sr" aria-live="polite"></div>
 
 <script src="catalog.js"></script>
 <script>
 /* ===========================================================================
-   Top Ten — flow prototype (M1.5).
-   Throwaway by design. Its job is to settle STRUCTURE: the shape of the
-   flow, slot anatomy, the cut, placement choreography, and copy. Every
-   conclusion goes into specs/design.md as a dated amendment before M2
-   builds any of it natively.
+   Top Ten — flow prototype, build 0003.
+   Rebuilt around Mischa's rounds (2026-08-14) and Stack's hard-won rules:
+     · acting on a card must not make the card leave
+     · a thing that moves must be seen travelling to where it went
+     · one left edge, one spacing scale
+     · a reason is shown only when there is one
    =========================================================================== */
 
 const IMG = 'https://image.tmdb.org/t/p/';
 const $ = (s, r = document) => r.querySelector(s);
-const app = $('#app'), dockEl = $('#dock'), live = $('#live');
+const $$ = (s, r = document) => [...r.querySelectorAll(s)];
+const app = $('#app'), dockEl = $('#dock'), sheetsEl = $('#sheets'), live = $('#live');
 const CAT = window.CATALOG || [];
+const SERVICES = window.SERVICES || [];
 const byId = new Map(CAT.map(f => [f.id, f]));
-const esc = s => String(s).replace(/[&<>"]/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;' }[c]));
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;' }[c]));
 const announce = m => { live.textContent = m; };
+const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-/* ── State ────────────────────────────────────────────────────────────────── */
-const KEY = 'topten.proto.v2';
-
+const KEY = 'topten.proto.v3';
 const TOPIC_ALL = { id: 'movies', title: 'Movies', prompt: 'Your ten favourite films of all time.' };
 
+/* Region decides which subscriptions are on offer. Guessed, never asked —
+   a question at the door costs more than a wrong guess you can change. */
+function guessRegion() {
+  try {
+    const tz = Intl.DateTimeFormat().resolvedOptions().timeZone || '';
+    if (/New_York|Chicago|Denver|Los_Angeles|Phoenix|Anchorage|Honolulu/.test(tz)) return 'US';
+  } catch (e) {}
+  return 'GB';
+}
+
 function fresh(topic = TOPIC_ALL) {
-  return { scene: 'gather', topic, tray: [], keep: [], ranked: [], rank: null, comparisons: 0, q: '' };
+  return {
+    scene: 'build', topic, tray: [], q: '', branch: [],
+    filters: { services: [], genre: null, director: null, actor: null },
+    region: guessRegion(), keep: [], ranked: [], rank: null, comparisons: 0, badge: null
+  };
 }
 let S = load() || fresh();
-
-function load() {
-  try {
-    const raw = JSON.parse(localStorage.getItem(KEY));
-    if (raw && raw.topic && Array.isArray(raw.tray)) return raw;
-  } catch (e) {}
-  return null;
-}
+function load() { try { const r = JSON.parse(localStorage.getItem(KEY)); return (r && r.topic && Array.isArray(r.tray)) ? r : null; } catch (e) { return null; } }
 function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
 
-/* Topic scopes bind to catalog filters, so a suggested topic actually
-   narrows the shelf (PRD Req 6). */
-function inTopic(f, topic = S.topic) {
-  if (topic.director) return f.d === topic.director;
-  if (topic.genre && topic.decade) return f.g.includes(topic.genre) && Math.floor(f.y / 10) * 10 === topic.decade;
-  if (topic.genre) return f.g.includes(topic.genre);
-  if (topic.decade) return Math.floor(f.y / 10) * 10 === topic.decade;
+/* ── Scope and filters ────────────────────────────────────────────────────── */
+function inTopic(f, t = S.topic) {
+  if (t.director && f.d !== t.director) return false;
+  if (t.actor && !(f.ca || []).includes(t.actor)) return false;
+  if (t.genre && !f.g.includes(t.genre)) return false;
+  if (t.decade && Math.floor(f.y / 10) * 10 !== t.decade) return false;
   return true;
 }
-const pool = () => CAT.filter(f => inTopic(f));
+function passesFilters(f) {
+  const F = S.filters;
+  if (F.services.length) {
+    const on = (f.sv || {})[S.region] || [];
+    if (!F.services.some(s => on.includes(s))) return false;
+  }
+  if (F.genre && !f.g.includes(F.genre)) return false;
+  if (F.director && f.d !== F.director) return false;
+  if (F.actor && !(f.ca || []).includes(F.actor)) return false;
+  return true;
+}
+const pool = () => CAT.filter(f => inTopic(f) && passesFilters(f));
 
-/* ── Poster helpers ───────────────────────────────────────────────────────── */
-function art(f, size, cls = '') {
-  return `<img class="${cls}" src="${IMG}${size}${f.p}" alt="" loading="lazy" decoding="async">`;
+function facetValues(kind) {
+  const counts = new Map();
+  for (const f of CAT.filter(inTopic)) {
+    const vals = kind === 'genre' ? f.g : kind === 'director' ? [f.d] : (f.ca || []);
+    for (const v of vals) if (v) counts.set(v, (counts.get(v) || 0) + 1);
+  }
+  return [...counts.entries()].filter(([, n]) => n >= 2).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
 }
 
-/* ── Suggestions inside Gather ────────────────────────────────────────────── */
-function suggestions() {
-  const p = pool(), have = new Set(S.tray);
+/* ── Suggestions ──────────────────────────────────────────────────────────
+   Sections, each with a headline that says why it exists. A card carries a
+   reason line ONLY when the section doesn't already give it — repeating
+   "widely called great" under every poster is noise, not a reason.
+   ─────────────────────────────────────────────────────────────────────── */
+function similarTo(seed, exclude) {
+  const scored = [];
+  for (const f of pool()) {
+    if (f.id === seed.id || exclude.has(f.id)) continue;
+    let s = 0;
+    if ((seed.r || []).includes(f.id)) s += 6;          // TMDB's own edge
+    if (f.d && f.d === seed.d) s += 4;
+    const sharedCast = (f.ca || []).filter(c => (seed.ca || []).includes(c)).length;
+    s += sharedCast * 2;
+    s += f.g.filter(g => seed.g.includes(g)).length;
+    if (Math.abs(f.y - seed.y) <= 6) s += 1;
+    if (s > 0) scored.push([s, f]);
+  }
+  return scored.sort((a, b) => b[0] - a[0] || b[1].v - a[1].v).slice(0, 12).map(x => x[1]);
+}
+
+function whySimilar(f, seed) {
+  if (f.d && f.d === seed.d) return `Also ${f.d}`;
+  const c = (f.ca || []).find(x => (seed.ca || []).includes(x));
+  if (c) return `With ${c}`;
+  const g = f.g.find(x => seed.g.includes(x));
+  if (g) return `Also ${g.toLowerCase()}`;
+  return '';
+}
+
+function sections() {
+  const have = new Set(S.tray);
   const out = [];
-  // "Because you picked X" once the tray has 3+ (PRD Req 2).
-  if (S.tray.length >= 3) {
-    for (const id of S.tray.slice(-4).reverse()) {
-      const seed = byId.get(id); if (!seed) continue;
-      const match = p.find(f => !have.has(f.id) && !out.some(o => o.f.id === f.id) &&
-        (f.d === seed.d || (f.g[0] && f.g[0] === seed.g[0])));
-      if (match) out.push({ f: match, why: `Because you picked ${seed.t}` });
-      if (out.length >= 3) break;
+
+  // A branch the user opened, deepest first — this is the rabbit hole.
+  if (S.branch.length) {
+    const seed = byId.get(S.branch[S.branch.length - 1]);
+    if (seed) {
+      const films = similarTo(seed, have).slice(0, 10);
+      if (films.length) out.push({
+        id: 'branch', title: `More like ${seed.t}`, branch: true,
+        cards: films.map(f => ({ f, why: whySimilar(f, seed) }))
+      });
     }
   }
-  for (const f of p) {
-    if (out.length >= 14) break;
-    if (have.has(f.id) || out.some(o => o.f.id === f.id)) continue;
-    out.push({ f, why: f.v >= 8.3 ? 'Widely called great' : (f.y < 1990 ? 'A classic' : 'Popular pick') });
+
+  // Because you picked X — one section per recent pick, so it is a heading
+  // you can see rather than a caption you might miss.
+  for (const id of [...S.tray].reverse().slice(0, 2)) {
+    const seed = byId.get(id); if (!seed) continue;
+    if (S.branch[S.branch.length - 1] === id) continue;
+    const films = similarTo(seed, have).slice(0, 10);
+    if (films.length >= 3) out.push({
+      id: 'because' + id, title: `Because you picked ${seed.t}`, seed: id,
+      cards: films.map(f => ({ f, why: whySimilar(f, seed) }))
+    });
   }
+
+  // One rail per subscription the user has told us about.
+  for (const sid of S.filters.services.length ? S.filters.services : []) {
+    const label = (SERVICES.find(s => s[0] === sid) || [, sid])[1];
+    const films = pool().filter(f => !have.has(f.id) && ((f.sv || {})[S.region] || []).includes(sid)).slice(0, 12);
+    if (films.length) out.push({ id: 'sv' + sid, title: `On ${label}`, cards: films.map(f => ({ f, why: '' })) });
+  }
+
+  const rest = pool().filter(f => !have.has(f.id) && !out.some(s => s.cards.some(c => c.f.id === f.id)));
+  if (rest.length) out.push({ id: 'acclaimed', title: S.tray.length ? 'More to consider' : 'Start here', cards: rest.slice(0, 16).map(f => ({ f, why: '' })) });
   return out;
 }
 
-/* ── Gather ───────────────────────────────────────────────────────────────── */
-function renderGather() {
+/* ── Rendering ────────────────────────────────────────────────────────────── */
+function svgIcon(name) {
+  const p = {
+    search: '<circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/>',
+    deeper: '<path d="M9 6l6 6-6 6"/>',
+    up: '<path d="M12 8l-5 6h10z" fill="currentColor" stroke="none"/>',
+    down: '<path d="M12 16l5-6H7z" fill="currentColor" stroke="none"/>'
+  }[name];
+  return `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">${p}</svg>`;
+}
+
+function cardHTML(c) {
+  const inTen = S.tray.includes(c.f.id);
+  return `<div class="card" data-card="${c.f.id}" data-in="${inTen ? 1 : 0}">
+    <button class="art" data-add="${c.f.id}" aria-label="Add ${esc(c.f.t)} to your Ten" aria-pressed="${inTen}">
+      <img src="${IMG}w342${c.f.p}" alt="" loading="lazy" decoding="async">
+      <svg class="ring" viewBox="0 0 120 180" preserveAspectRatio="none"><rect x="1.5" y="1.5" width="117" height="177" rx="6"/></svg>
+    </button>
+    <span class="in" aria-hidden="true">✓</span>
+    <button class="deeper" data-deeper="${c.f.id}" aria-label="More films like ${esc(c.f.t)}">${svgIcon('deeper')}</button>
+    <div class="t">${esc(c.f.t)}</div>
+    ${c.why ? `<div class="why">${esc(c.why)}</div>` : ''}
+  </div>`;
+}
+
+function rowHTML(f) {
+  const inTen = S.tray.includes(f.id);
+  return `<li><div class="row" data-card="${f.id}" data-in="${inTen ? 1 : 0}">
+    <span class="thumb"><img src="${IMG}w185${f.p}" alt="" loading="lazy"></span>
+    <span class="meta"><span class="t">${esc(f.t)}</span><span class="s">${f.y}${f.d ? ' · ' + esc(f.d) : ''}</span></span>
+    <button class="add" data-add="${f.id}" aria-label="${inTen ? 'Remove' : 'Add'} ${esc(f.t)}" aria-pressed="${inTen}">${inTen ? '✓' : '+'}</button>
+    <button class="add" data-deeper="${f.id}" aria-label="More films like ${esc(f.t)}">${svgIcon('deeper')}</button>
+  </div></li>`;
+}
+
+function filterChips() {
+  const F = S.filters;
+  const svLabel = F.services.length === 1 ? (SERVICES.find(s => s[0] === F.services[0]) || [, ''])[1]
+    : F.services.length ? `${F.services.length} services` : 'Services';
+  return `<div class="chips">
+    <button class="chip ${F.services.length ? 'on' : ''}" data-sheet="services">${esc(svLabel)}${F.services.length ? ' <span class="x" data-clear="services">×</span>' : ''}</button>
+    <button class="chip ${F.genre ? 'on' : ''}" data-sheet="genre">${esc(F.genre || 'Genre')}${F.genre ? ' <span class="x" data-clear="genre">×</span>' : ''}</button>
+    <button class="chip ${F.director ? 'on' : ''}" data-sheet="director">${esc(F.director || 'Director')}${F.director ? ' <span class="x" data-clear="director">×</span>' : ''}</button>
+    <button class="chip ${F.actor ? 'on' : ''}" data-sheet="actor">${esc(F.actor || 'Actor')}${F.actor ? ' <span class="x" data-clear="actor">×</span>' : ''}</button>
+  </div>`;
+}
+
+function renderBuild() {
   const q = S.q.trim().toLowerCase();
-  const results = q ? pool().filter(f => f.t.toLowerCase().includes(q)).slice(0, 24) : [];
-  const inTray = new Set(S.tray);
+  const results = q ? CAT.filter(f => inTopic(f) && passesFilters(f) && f.t.toLowerCase().includes(q)).slice(0, 30) : [];
 
-  const source = q
-    ? `<ol class="results">${results.map(f => rowAdd(f, inTray.has(f.id))).join('') ||
-        `<li class="body-sec" style="padding:14px 2px">Nothing in the prototype's shelf matches that. It holds ${pool().length} films, not all of cinema.</li>`}</ol>`
-    : `<p class="label-sm">Suggested</p>
-       <div class="rail">${suggestions().map(s => `
-         <button class="sugg" data-add="${s.f.id}" data-in="${inTray.has(s.f.id) ? 1 : 0}">
-           ${art(s.f, 'w185')}
-           <div class="t">${esc(s.f.t)}</div>
-           <div class="why">${esc(s.why)}</div>
-         </button>`).join('')}</div>`;
-
-  const slots = [];
-  for (let i = 0; i < 10; i++) {
-    const id = S.tray[i];
-    slots.push(id ? slotFilled(i, byId.get(id)) : slotEmpty(i));
+  let body;
+  if (q) {
+    body = `<section><ol>${results.map(rowHTML).join('') ||
+      `<li class="empty">No match in this prototype's shelf of ${pool().length} films.</li>`}</ol></section>`;
+  } else {
+    const secs = sections();
+    body = secs.map(s => `<section>
+        <div class="section-head">
+          <h2 class="section-h">${esc(s.title)}</h2>
+          ${s.branch ? `<button class="more" data-act="unbranch">Back</button>`
+            : s.seed ? `<button class="more" data-deeper="${s.seed}">Go deeper</button>` : ''}
+        </div>
+        <div class="rail">${s.cards.map(cardHTML).join('')}</div>
+      </section>`).join('') || `<section><p class="empty">Nothing matches those filters. Loosen one.</p></section>`;
   }
-  const extra = S.tray.slice(10);
 
   app.innerHTML = `
     <div class="topbar">
@@ -335,72 +491,207 @@ function renderGather() {
     <p class="prompt">${esc(S.topic.prompt)}</p>
 
     <div class="search">
-      <input id="q" type="search" inputmode="search" autocomplete="off" placeholder="Search films" value="${esc(S.q)}" aria-label="Search films">
-      ${S.q ? '<button class="clear" data-act="clearq">Clear</button>' : ''}
+      ${svgIcon('search')}
+      <input id="q" type="search" autocomplete="off" placeholder="Search films" value="${esc(S.q)}" aria-label="Search films">
+      ${S.q ? '<button class="clear" data-act="clearq" aria-label="Clear search">×</button>' : ''}
     </div>
+    ${filterChips()}
+    ${S.branch.length ? `<nav class="trail" aria-label="Suggestion trail"><span>Following</span>${
+      S.branch.map((id, i) => `<button data-trailto="${i}">${esc(byId.get(id).t)}</button>`).join('<span aria-hidden="true">›</span>')
+    }</nav>` : ''}
+    ${body}
+    ${notes()}`;
 
-    ${source}
-
-    <p class="label-sm" style="margin-top:26px">Your Ten</p>
-    <ol>${slots.join('')}</ol>
-
-    ${extra.length ? `
-      <div class="overflow-head">
-        <p class="label-sm" style="margin:0">Beyond ten</p>
-        <span class="body-sec" style="font-size:0.8125rem">You'll cut ${extra.length}</span>
-      </div>
-      <ol>${extra.map((id, i) => slotFilled(10 + i, byId.get(id), true)).join('')}</ol>` : ''}
-
-    ${notes()}
-  `;
   renderDock();
   const qi = $('#q');
-  if (qi) qi.oninput = e => { S.q = e.target.value; save(); renderGather(); if (document.activeElement !== qi) qi.focus(); };
+  if (qi) {
+    // Live autocomplete, debounced — no submit step (Stack search rule).
+    let t;
+    qi.oninput = e => {
+      const v = e.target.value;
+      clearTimeout(t);
+      t = setTimeout(() => { S.q = v; save(); const at = qi.selectionStart; renderBuild(); const n = $('#q'); if (n) { n.focus(); try { n.setSelectionRange(at, at); } catch (e) {} } }, 220);
+    };
+  }
 }
 
-function slotEmpty(i) {
-  return `<li><div class="slot ${i === 0 ? 'one' : ''}">
-    <span class="numeral">${i + 1}</span>
-    <span class="invitation">${i === 0 ? "The one you'd defend" : 'Slot ' + (i + 1)}</span>
-  </div></li>`;
-}
-function slotFilled(i, f, over = false) {
-  if (!f) return '';
-  return `<li><div class="slot filled ${i === 0 && !over ? 'one' : ''}">
-    ${over ? '' : `<span class="numeral">${i + 1}</span>`}
-    ${art(f, 'w185')}
-    <span class="meta"><span class="t">${esc(f.t)}</span><span class="s">${f.y}${f.d ? ' · ' + esc(f.d) : ''}</span></span>
-    <button class="remove" data-remove="${f.id}" aria-label="Remove ${esc(f.t)}">×</button>
-  </div></li>`;
-}
-function rowAdd(f, already) {
-  return `<li><button class="slot ${already ? '' : 'filled'}" data-add="${f.id}" style="${already ? 'opacity:.45' : ''}">
-    ${art(f, 'w185')}
-    <span class="meta"><span class="t">${esc(f.t)}</span><span class="s">${f.y}${f.d ? ' · ' + esc(f.d) : ''}</span></span>
-    <span class="remove" aria-hidden="true">${already ? '✓' : '+'}</span>
-  </button></li>`;
-}
-
-/* ── Dock — count copy is the product telling you where you are ───────────── */
 function renderDock() {
-  const n = S.tray.length;
+  const n = S.tray.length, over = n > 10;
+  const hint = over ? `${n - 10} too many — make the cut`
+    : n === 10 ? 'Arrange them, then you are done'
+    : n === 0 ? 'Tap a poster to start'
+    : `${10 - n} to go`;
+  const slots = [];
+  for (let i = 0; i < Math.max(10, n); i++) {
+    const f = byId.get(S.tray[i]);
+    slots.push(`<div class="slotmini ${i === 0 ? 'one' : ''}" data-slot="${i}">${
+      f ? `<img src="${IMG}w185${f.p}" alt="${esc(f.t)}">` : `<span class="gh">${i + 1}</span>`}</div>`);
+  }
+  dockEl.innerHTML = `<div class="dock"><div class="dock-in">
+    <div class="dock-top">
+      <div>
+        <div class="n ${over ? 'over' : ''}">${n} of 10</div>
+        <div class="hint">${esc(hint)}</div>
+      </div>
+      <button class="btn" data-act="${over ? 'cut' : 'arrange'}" ${n === 10 || over ? '' : 'disabled'}>${over ? 'Make the cut' : 'Arrange'}</button>
+    </div>
+    <button class="slots" data-act="openten" aria-label="Open your Ten to reorder">${slots.join('')}</button>
+  </div></div>`;
+  measureDock();
+}
+
+/* The page must clear the dock exactly, whatever the dock currently is —
+   the count row grows a line, the safe-area inset differs per device. */
+function measureDock() {
+  const d = $('.dock', dockEl);
+  if (d) document.documentElement.style.setProperty('--dock-h', d.offsetHeight + 'px');
+}
+addEventListener('resize', measureDock);
+
+function notes() {
+  return `<footer class="notes">
+    <p>Structure prototype. Glass, haptics, and final motion are judged on
+    device, not here. Judge the flow, the anatomy, and the words.</p>
+    <p class="build">build 0004 · one screen · branching recs · filters · reorder</p>
+  </footer>`;
+}
+
+/* ── The add hand-off ──────────────────────────────────────────────────────
+   Stack's law: acting on a row must not make the row leave. The card stays
+   exactly where it is and shows its new state; what moves is a copy of the
+   poster, travelling to the slot it just filled, so where it went is never
+   in question.
+   ───────────────────────────────────────────────────────────────────────── */
+function addFilm(id, sourceEl) {
+  if (S.tray.includes(id)) { removeFilm(id); return; }
+  const f = byId.get(id); if (!f) return;
+
+  const art = sourceEl ? sourceEl.closest('.card, .row')?.querySelector('img') : null;
+  const from = art ? art.getBoundingClientRect() : null;
+
+  S.tray.push(id);
+  save();
+  renderDock();
+
+  const index = S.tray.length - 1;
+  const target = $(`.slotmini[data-slot="${index}"]`);
+  if (from && target && !reduced()) flyTo(art, from, target.getBoundingClientRect());
+  if (target) { target.classList.add('landing'); setTimeout(() => target.classList.remove('landing'), 400); }
+
+  markCard(id, true);
+  announce(`${f.t} added. ${S.tray.length} of ten.`);
+}
+
+function removeFilm(id) {
+  S.tray = S.tray.filter(x => x !== id);
+  save();
+  renderDock();
+  markCard(id, false);
+  const f = byId.get(id);
+  if (f) announce(`${f.t} removed. ${S.tray.length} of ten.`);
+}
+
+/* The ring is really drawn, not faded in — the travel is what makes it read
+   as an act rather than a repaint (Stack, StatusRing). It retreats faster
+   than it draws, and on an ease-out, because undoing should not look
+   reluctant. */
+function markCard(id, on) {
+  for (const el of $$(`[data-card="${id}"]`)) {
+    el.dataset.in = on ? '1' : '0';
+    const btn = el.querySelector('[data-add]');
+    if (btn) { btn.setAttribute('aria-pressed', String(on)); if (btn.classList.contains('add')) btn.textContent = on ? '✓' : '+'; }
+    const rect = el.querySelector('.ring rect');
+    if (!rect) continue;
+    const len = rect.getTotalLength ? rect.getTotalLength() : 600;
+    rect.style.stroke = 'var(--accent-bright)';
+    rect.style.strokeDasharray = len;
+    if (reduced()) { rect.style.transition = 'none'; rect.style.strokeDashoffset = on ? 0 : len; continue; }
+    rect.style.transition = 'none';
+    rect.style.strokeDashoffset = on ? len : 0;
+    rect.getBoundingClientRect();
+    rect.style.transition = on
+      ? `stroke-dashoffset var(--m-ring) var(--ease-out)`
+      : `stroke-dashoffset var(--m-retreat) ease-out`;
+    rect.style.strokeDashoffset = on ? 0 : len;
+  }
+}
+
+function flyTo(img, from, to) {
+  const fl = document.createElement('div');
+  fl.className = 'flier';
+  fl.style.cssText = `left:${from.left}px;top:${from.top}px;width:${from.width}px;height:${from.height}px;transition:transform var(--m-travel) var(--ease-out),opacity var(--m-travel) ease;`;
+  fl.innerHTML = `<img src="${img.src}" alt="">`;
+  document.body.appendChild(fl);
+  requestAnimationFrame(() => {
+    const sx = to.width / from.width, sy = to.height / from.height;
+    fl.style.transformOrigin = 'top left';
+    fl.style.transform = `translate(${to.left - from.left}px, ${to.top - from.top}px) scale(${sx}, ${sy})`;
+    fl.style.opacity = '0.9';
+  });
+  setTimeout(() => fl.remove(), 420);
+}
+
+/* ── Sheets ───────────────────────────────────────────────────────────────── */
+function openSheet(kind) {
   let inner = '';
-  if (S.scene === 'gather') {
-    const over = n > 10;
-    inner = `<div class="count ${over ? 'cut' : ''}">
-        <div class="n">${n} of 10</div>
-        <div class="hint">${over ? `Make the cut — ${n - 10} to go` : (n === 10 ? 'Ready to rank' : 'or keep going and make the cut')}</div>
-      </div>
-      <button class="btn" data-act="${over ? 'cut' : 'rank'}" ${n < 10 ? 'disabled' : ''}>${over ? 'Make the cut' : 'Rank your Ten'}</button>`;
-  } else if (S.scene === 'cut') {
-    const k = S.keep.length;
-    inner = `<div class="count ${k === 10 ? '' : 'cut'}">
-        <div class="n">${k} of 10 kept</div>
-        <div class="hint">${k < 10 ? `Choose ${10 - k} more` : 'That is your ten'}</div>
-      </div>
-      <button class="btn" data-act="cutdone" ${k === 10 ? '' : 'disabled'}>Rank these</button>`;
-  } else { dockEl.innerHTML = ''; return; }
-  dockEl.innerHTML = `<div class="dock"><div class="dock-inner">${inner}</div></div>`;
+  if (kind === 'ten') {
+    inner = `<div class="sheet-head"><h2>Your Ten</h2><button class="done" data-act="closesheet">Done</button></div>
+      ${S.tray.length ? `<ol id="tenlist">${S.tray.map((id, i) => tenRow(id, i)).join('')}</ol>` : '<p class="empty">Nothing picked yet.</p>'}
+      <div style="display:flex;gap:var(--s2);margin-top:var(--s4)">
+        ${S.tray.length >= 2 ? `<button class="btn ghost" data-act="duel">Rank them for me</button>` : ''}
+        ${S.tray.length === 10 ? `<button class="btn" data-act="finish">This is my Ten</button>` : ''}
+      </div>`;
+  } else if (kind === 'services') {
+    inner = `<div class="sheet-head"><h2>Your subscriptions</h2><button class="done" data-act="closesheet">Done</button></div>
+      <p class="prompt" style="margin:0 0 var(--s4)">Pick what you pay for and the suggestions lean towards what you can actually watch tonight.</p>
+      <div class="chips" style="flex-wrap:wrap;overflow:visible;margin:0;padding:0;gap:var(--s2)">
+        ${SERVICES.map(([id, label]) => `<button class="chip ${S.filters.services.includes(id) ? 'on' : ''}" data-toggle-service="${id}" aria-pressed="${S.filters.services.includes(id)}">${esc(label)}</button>`).join('')}
+      </div>`;
+  } else {
+    const vals = facetValues(kind);
+    const cur = S.filters[kind];
+    inner = `<div class="sheet-head"><h2>${kind[0].toUpperCase() + kind.slice(1)}</h2><button class="done" data-act="closesheet">Done</button></div>
+      <ol>${vals.slice(0, 60).map(([v, n]) => `<li><button class="row" data-facet="${kind}" data-value="${esc(v)}" style="border-bottom:1px solid var(--border-subtle);min-height:52px">
+        <span class="meta"><span class="t">${esc(v)}</span><span class="s">${n} film${n === 1 ? '' : 's'}</span></span>
+        <span class="add" aria-hidden="true">${cur === v ? '✓' : '+'}</span></button></li>`).join('')}</ol>`;
+  }
+
+  sheetsEl.innerHTML = `<div class="scrim" data-act="closesheet"></div><div class="sheet" role="dialog" aria-modal="true"><div class="sheet-in">${inner}</div></div>`;
+  requestAnimationFrame(() => { $('.scrim').classList.add('on'); $('.sheet').classList.add('on'); });
+  app.inert = true; dockEl.inert = true;
+}
+function closeSheet() {
+  const sc = $('.scrim'), sh = $('.sheet');
+  if (sc) sc.classList.remove('on');
+  if (sh) sh.classList.remove('on');
+  app.inert = false; dockEl.inert = false;
+  setTimeout(() => {
+    sheetsEl.innerHTML = '';
+    // Rebuild what is behind the sheet. Held order is right while the user
+    // works, but Stack's rule names the two moments the freeze lifts —
+    // leaving the screen, and changing the filter — and closing a sheet is
+    // both. Without this, a filter chosen in the sheet left the rails behind
+    // it showing films it had just excluded.
+    if (S.scene === 'build') renderBuild();
+  }, reduced() ? 0 : 260);
+}
+function tenRow(id, i) {
+  const f = byId.get(id); if (!f) return '';
+  return `<li><div class="tenrow ${i === 0 ? 'one' : ''}">
+    <span class="num">${i + 1}</span>
+    <span class="thumb"><img src="${IMG}w185${f.p}" alt=""></span>
+    <span class="meta"><span class="t">${esc(f.t)}</span><span class="s">${f.y}${f.d ? ' · ' + esc(f.d) : ''}</span></span>
+    <span class="mv">
+      <button data-move="${id}" data-dir="-1" ${i === 0 ? 'disabled' : ''} aria-label="Move ${esc(f.t)} up">${svgIcon('up')}</button>
+      <button data-move="${id}" data-dir="1" ${i === S.tray.length - 1 ? 'disabled' : ''} aria-label="Move ${esc(f.t)} down">${svgIcon('down')}</button>
+    </span>
+    <button class="rm" data-remove="${id}" aria-label="Remove ${esc(f.t)}">×</button>
+  </div></li>`;
+}
+function refreshTenSheet() {
+  const list = $('#tenlist');
+  if (list) list.innerHTML = S.tray.map((id, i) => tenRow(id, i)).join('');
+  renderDock();
 }
 
 /* ── The Cut ──────────────────────────────────────────────────────────────── */
@@ -408,100 +699,72 @@ function renderCut() {
   const keep = new Set(S.keep);
   app.innerHTML = `
     <div class="topbar"><h1 class="display-lg">The Cut</h1></div>
-    <p class="prompt">You gathered ${S.tray.length}. Ten make it. Tap the ones that stay.</p>
-    <div class="cut-grid">
-      ${S.tray.map(id => { const f = byId.get(id); if (!f) return '';
-        return `<button class="cut-cell" data-keep="${keep.has(id) ? 1 : 0}" data-toggle="${id}" aria-pressed="${keep.has(id)}" aria-label="${esc(f.t)}">
-          ${art(f, 'w342')}<span class="kn">${S.keep.indexOf(id) + 1}</span></button>`; }).join('')}
-    </div>
+    <p class="prompt">You picked ${S.tray.length}. Ten make it. Tap the ones that stay.</p>
+    <div class="cut-grid">${S.tray.map(id => { const f = byId.get(id); if (!f) return '';
+      return `<button class="cut-cell" data-keep="${keep.has(id) ? 1 : 0}" data-toggle="${id}" aria-pressed="${keep.has(id)}" aria-label="${esc(f.t)}">
+        <img src="${IMG}w342${f.p}" alt=""><span class="kn">${S.keep.indexOf(id) + 1}</span></button>`; }).join('')}</div>
     ${notes()}`;
-  renderDock();
+  dockEl.innerHTML = `<div class="dock"><div class="dock-in"><div class="dock-top">
+      <div><div class="n ${S.keep.length === 10 ? '' : 'over'}">${S.keep.length} of 10 kept</div>
+      <div class="hint">${S.keep.length < 10 ? `Choose ${10 - S.keep.length} more` : 'That is your ten'}</div></div>
+      <button class="btn" data-act="cutdone" ${S.keep.length === 10 ? '' : 'disabled'}>Keep these</button>
+    </div></div></div>`;
 }
 
-/* ── Rank: guided placement ───────────────────────────────────────────────────
-   Binary insertion. Each answer is one bit, so the item being placed narrows
-   its position by half every time — the user never cold-sorts ten things,
-   and never compares two films they have already settled against each other.
-   ─────────────────────────────────────────────────────────────────────────── */
-function startRank() {
-  const items = (S.keep.length === 10 ? S.keep : S.tray).slice(0, 10);
-  const order = items.slice().sort(() => Math.random() - 0.5);
+/* ── Optional guided ranking ──────────────────────────────────────────────── */
+function startDuel() {
+  const items = S.tray.slice(0, 10);
+  const order = items.slice();
   S.ranked = [order[0]];
   S.rank = { queue: order.slice(1), current: null, lo: 0, hi: 1 };
-  S.comparisons = 0;
-  S.scene = 'rank';
-  nextPlacement();
+  S.comparisons = 0; S.scene = 'rank';
+  closeSheet(); nextPlacement();
 }
 function nextPlacement() {
   const r = S.rank;
   if (r.current === null) {
-    if (!r.queue.length) { finishRank(); return; }
-    r.current = r.queue.shift();
-    r.lo = 0; r.hi = S.ranked.length;
+    if (!r.queue.length) return endDuel();
+    r.current = r.queue.shift(); r.lo = 0; r.hi = S.ranked.length;
   }
-  if (r.lo >= r.hi) {                       // position found
-    S.ranked.splice(r.lo, 0, r.current);
-    r.current = null;
-    save();
-    if (!r.queue.length) { finishRank(); return; }
-    nextPlacement(); return;
+  if (r.lo >= r.hi) {
+    S.ranked.splice(r.lo, 0, r.current); r.current = null; save();
+    if (!r.queue.length) return endDuel();
+    return nextPlacement();
   }
-  save(); renderRank();
+  save(); renderDuel();
 }
-function answer(currentIsHigher) {
+function answer(higher) {
   const r = S.rank, mid = (r.lo + r.hi) >> 1;
-  if (currentIsHigher) r.hi = mid; else r.lo = mid + 1;
-  S.comparisons++;
-  nextPlacement();
+  if (higher) r.hi = mid; else r.lo = mid + 1;
+  S.comparisons++; nextPlacement();
 }
-function finishRank() {
-  S.scene = 'reveal'; S.rank = null; save(); renderReveal();
+function endDuel() {
+  S.tray = S.ranked.slice(); S.rank = null; S.scene = 'build'; save();
+  renderBuild(); openSheet('ten');
+  announce('Ranked. Check the order, then finish.');
 }
-function renderRank() {
+function renderDuel() {
   const r = S.rank, mid = (r.lo + r.hi) >> 1;
   const cur = byId.get(r.current), piv = byId.get(S.ranked[mid]);
-  const placed = S.ranked.length, total = 10;
-
   app.innerHTML = `
     <div class="topbar"><h1 class="display-lg">Which is higher?</h1></div>
-    <p class="prompt">${placed} of ${total} placed · ${S.comparisons} question${S.comparisons === 1 ? '' : 's'} so far</p>
-
+    <p class="prompt">${S.ranked.length} of ${S.tray.length} placed · ${S.comparisons} question${S.comparisons === 1 ? '' : 's'}</p>
     <div class="duel">
-      <button data-higher="1">
-        <div class="tag">In hand</div>${art(cur, 'w342')}
-        <div class="t">${esc(cur.t)}</div><div class="y">${cur.y}</div>
-      </button>
-      <button data-higher="0">
-        <div class="tag">Placed</div>${art(piv, 'w342')}
-        <div class="t">${esc(piv.t)}</div><div class="y">${piv.y}</div>
-      </button>
+      <button data-higher="1"><img src="${IMG}w342${cur.p}" alt=""><div class="t">${esc(cur.t)}</div></button>
+      <button data-higher="0"><img src="${IMG}w342${piv.p}" alt=""><div class="t">${esc(piv.t)}</div></button>
     </div>
-    <div class="progress">${Array.from({ length: total }, (_, i) => `<i class="${i < placed ? 'on' : ''}"></i>`).join('')}</div>
-
-    <ol class="spine">
-      ${S.ranked.map((id, i) => `<li><span class="n">${i + 1}</span>
-        <span class="${i === mid ? 'now' : ''}">${esc(byId.get(id).t)}</span></li>`).join('')}
-    </ol>
+    <div class="progress">${Array.from({ length: S.tray.length }, (_, i) => `<i class="${i < S.ranked.length ? 'on' : ''}"></i>`).join('')}</div>
     ${notes()}`;
   dockEl.innerHTML = '';
   announce(`Which is higher: ${cur.t} or ${piv.t}?`);
 }
 
-/* ── Badge composition (specs/badges.md) ──────────────────────────────────────
-   The deterministic pre-pass, which is also the bottom of the fallback
-   ladder: shape and motif chosen from the list's own metadata, palette
-   derived from the artwork of the top three, template inscription. No model
-   is involved here, so what you see is the floor the ritual has to clear.
-   ─────────────────────────────────────────────────────────────────────────── */
+/* ── Badge (unchanged from build 0002 apart from where it is called) ─────── */
 function hash(str) { let h = 2166136261; for (const c of String(str)) { h ^= c.charCodeAt(0); h = Math.imul(h, 16777619); } return h >>> 0; }
-
 const SHAPES = ['seal', 'shield', 'oval', 'stub', 'hex', 'lozenge'];
-const MOTIFS = {
-  Crime: 'briefcase', Thriller: 'eye', 'Science Fiction': 'planet', Horror: 'skull',
-  Romance: 'rose', Animation: 'star', Drama: 'mask', Comedy: 'grin', War: 'helm',
-  Adventure: 'compass', Action: 'flame', Fantasy: 'sword', Music: 'note',
-  History: 'column', Western: 'sun', Family: 'star', Mystery: 'eye', Documentary: 'column'
-};
+const MOTIFS = { Crime: 'briefcase', Thriller: 'eye', 'Science Fiction': 'planet', Horror: 'skull', Romance: 'rose',
+  Animation: 'star', Drama: 'mask', Comedy: 'grin', War: 'helm', Adventure: 'compass', Action: 'flame',
+  Fantasy: 'sword', Music: 'note', History: 'column', Western: 'sun', Family: 'star', Mystery: 'eye', Documentary: 'column' };
 
 function facts(ids) {
   const fs = ids.map(i => byId.get(i)).filter(Boolean);
@@ -513,54 +776,33 @@ function facts(ids) {
   }
   const top = o => Object.entries(o).sort((a, b) => b[1] - a[1])[0] || [null, 0];
   const years = fs.map(f => f.y);
-  return {
-    films: fs, genre: top(gc), director: top(dc), decade: top(dec),
-    span: Math.max(...years) - Math.min(...years)
-  };
+  return { films: fs, genre: top(gc), director: top(dc), decade: top(dec), span: Math.max(...years) - Math.min(...years) };
 }
-
 function compose(ids, topic) {
   const F = facts(ids), seed = hash(ids.join(',') + topic.title);
   const pal = F.films.slice(0, 3).map(f => f.c);
-  const shape = SHAPES[seed % SHAPES.length];
-  const motif = MOTIFS[F.genre[0]] || 'laurel';
-  return {
-    shape, motif, seed,
-    primary: pal[0] || '#6E675D',
-    secondary: pal[1] || pal[0] || '#3A311A',
-    metal: '#C9A227',
-    inscription: inscribe(F, seed),
-    founder: (seed % 5) === 0            // the quiet founder's mark
-  };
+  return { shape: SHAPES[seed % SHAPES.length], motif: MOTIFS[F.genre[0]] || 'laurel', seed,
+    primary: pal[0] || '#6E675D', secondary: pal[1] || pal[0] || '#3A311A', metal: '#C9A227',
+    inscription: inscribe(F, seed) };
 }
-
-/* ≤6 words, never the rank-1 title, always derived from the list itself.
-   A generic compliment is the failure mode badges.md explicitly rejects. */
 function inscribe(F, seed) {
   const [g, gn] = F.genre, [d, dn] = F.director, [dec, decn] = F.decade;
   const second = F.films[1];
   const short = t => t.split(/[:—–-]/)[0].trim();
-  const cands = [];
-  if (dn >= 3) cands.push(`${dn} ${d.split(' ').pop()} films, no apologies`);
-  if (gn >= 4) cands.push(`${gn} ${g.toLowerCase()} films, zero regrets`);
-  if (decn >= 4) cands.push(`The ${dec}s never let go`);
-  if (F.span >= 45) cands.push(`${F.span} years, one taste`);
-  if (second) cands.push(`Everything after ${short(second.t)}`);
-  if (gn >= 3) cands.push(`Ranked in ${g.toLowerCase()} order`);
-  cands.push('Ten hills, all defended');
-  cands.push('Argued into this order');
-
-  // The post-check from badges.md, run for real rather than assumed: at most
-  // six words, and never the rank-1 title (too obvious to be a joke). A long
-  // title silently overflowing the cap is exactly what this catches.
+  const c = [];
+  if (dn >= 3) c.push(`${dn} ${d.split(' ').pop()} films, no apologies`);
+  if (gn >= 4) c.push(`${gn} ${g.toLowerCase()} films, zero regrets`);
+  if (decn >= 4) c.push(`The ${dec}s never let go`);
+  if (F.span >= 45) c.push(`${F.span} years, one taste`);
+  if (second) c.push(`Everything after ${short(second.t)}`);
+  if (gn >= 3) c.push(`Ranked in ${g.toLowerCase()} order`);
+  c.push('Ten hills, all defended', 'Argued into this order');
   const rank1 = F.films[0] ? F.films[0].t.toLowerCase() : '';
-  const ok = cands.filter(l =>
-    l.split(/\s+/).length <= 6 && (!rank1 || !l.toLowerCase().includes(rank1)));
+  const ok = c.filter(l => l.split(/\s+/).length <= 6 && (!rank1 || !l.toLowerCase().includes(rank1)));
   return ok.length ? ok[seed % ok.length] : 'Ten hills, all defended';
 }
-
-function badgeSVG(c, size = 200) {
-  const s = size, half = s / 2;
+function badgeSVG(c, s = 200) {
+  const half = s / 2;
   const plate = {
     seal: `<circle cx="${half}" cy="${half}" r="${half - 10}"/>`,
     shield: `<path d="M${half} 12 L${s - 18} 42 V${half + 10} Q${s - 18} ${s - 22} ${half} ${s - 10} Q18 ${s - 22} 18 ${half + 10} V42 Z"/>`,
@@ -569,81 +811,56 @@ function badgeSVG(c, size = 200) {
     hex: `<path d="M${half} 10 L${s - 16} ${half / 2 + 8} V${s - half / 2 - 8} L${half} ${s - 10} L16 ${s - half / 2 - 8} V${half / 2 + 8} Z"/>`,
     lozenge: `<path d="M14 ${half} L46 26 H${s - 46} L${s - 14} ${half} L${s - 46} ${s - 26} H46 Z"/>`
   }[c.shape];
-
   const M = {
     briefcase: `<rect x="66" y="86" width="68" height="46" rx="5"/><path d="M86 86 V76 a6 6 0 0 1 6-6h16a6 6 0 0 1 6 6v10" fill="none" stroke-width="7"/>`,
     eye: `<path d="M56 100 Q100 66 144 100 Q100 134 56 100 Z" fill="none" stroke-width="7"/><circle cx="100" cy="100" r="13"/>`,
     planet: `<circle cx="100" cy="98" r="26"/><ellipse cx="100" cy="98" rx="46" ry="15" fill="none" stroke-width="6" transform="rotate(-18 100 98)"/>`,
-    skull: `<path d="M100 66 c-24 0-40 17-40 38 0 12 6 19 12 24 v10 h56 v-10 c6-5 12-12 12-24 0-21-16-38-40-38z"/><circle cx="86" cy="104" r="8" fill="#0000"/><circle cx="114" cy="104" r="8" fill="#0000"/>`,
+    skull: `<path d="M100 66 c-24 0-40 17-40 38 0 12 6 19 12 24 v10 h56 v-10 c6-5 12-12 12-24 0-21-16-38-40-38z"/>`,
     rose: `<circle cx="100" cy="94" r="12"/><path d="M100 70 a24 24 0 0 1 24 24 24 24 0 0 1-24 24 24 24 0 0 1-24-24" fill="none" stroke-width="7"/><path d="M100 118 v22" stroke-width="6" fill="none"/>`,
     star: `<path d="M100 62 L112 92 L145 94 L119 114 L128 146 L100 128 L72 146 L81 114 L55 94 L88 92 Z"/>`,
-    mask: `<path d="M62 72 h76 v34 c0 26-17 42-38 42s-38-16-38-42z"/><circle cx="84" cy="102" r="7" fill="#0000"/><circle cx="116" cy="102" r="7" fill="#0000"/>`,
+    mask: `<path d="M62 72 h76 v34 c0 26-17 42-38 42s-38-16-38-42z"/>`,
     grin: `<circle cx="100" cy="100" r="38" fill="none" stroke-width="7"/><path d="M78 106 q22 22 44 0" fill="none" stroke-width="7"/><circle cx="86" cy="88" r="5"/><circle cx="114" cy="88" r="5"/>`,
-    helm: `<path d="M62 104 a38 38 0 0 1 76 0 v22 h-76z"/><rect x="94" y="104" width="12" height="22" fill="#0000"/>`,
+    helm: `<path d="M62 104 a38 38 0 0 1 76 0 v22 h-76z"/>`,
     compass: `<circle cx="100" cy="100" r="38" fill="none" stroke-width="7"/><path d="M100 74 L112 100 L100 126 L88 100 Z"/>`,
     flame: `<path d="M100 60 c16 22 30 30 30 50 a30 30 0 0 1-60 0c0-14 10-20 16-30 4 10 10 12 14 6 4-8-2-16 0-26z"/>`,
     sword: `<rect x="94" y="58" width="12" height="70"/><rect x="74" y="126" width="52" height="10" rx="4"/><rect x="94" y="136" width="12" height="16"/>`,
     note: `<circle cx="84" cy="128" r="15"/><rect x="96" y="62" width="9" height="66"/><path d="M105 62 q22 6 22 22" fill="none" stroke-width="8"/>`,
     column: `<rect x="76" y="76" width="48" height="8"/><rect x="82" y="84" width="10" height="46"/><rect x="108" y="84" width="10" height="46"/><rect x="72" y="130" width="56" height="9"/>`,
-    sun: `<circle cx="100" cy="100" r="22"/>` + Array.from({ length: 8 }, (_, i) =>
-      `<rect x="97" y="52" width="6" height="16" transform="rotate(${i * 45} 100 100)"/>`).join(''),
-    laurel: `<path d="M100 60 v78" stroke-width="6" fill="none"/>` + Array.from({ length: 5 }, (_, i) =>
-      `<ellipse cx="${86 - i * 2}" cy="${78 + i * 14}" rx="12" ry="6" transform="rotate(-35 ${86 - i * 2} ${78 + i * 14})"/>
-       <ellipse cx="${114 + i * 2}" cy="${78 + i * 14}" rx="12" ry="6" transform="rotate(35 ${114 + i * 2} ${78 + i * 14})"/>`).join('')
+    sun: `<circle cx="100" cy="100" r="22"/>` + Array.from({ length: 8 }, (_, i) => `<rect x="97" y="52" width="6" height="16" transform="rotate(${i * 45} 100 100)"/>`).join(''),
+    laurel: `<path d="M100 60 v78" stroke-width="6" fill="none"/>`
   }[c.motif] || '';
-
   const rivets = Array.from({ length: 8 }, (_, i) => {
     const a = (i / 8) * Math.PI * 2, R = half - 22;
-    return `<circle cx="${(half + Math.cos(a) * R).toFixed(1)}" cy="${(half + Math.sin(a) * R).toFixed(1)}" r="3" fill="${c.metal}" opacity="0.85"/>`;
+    return `<circle cx="${(half + Math.cos(a) * R).toFixed(1)}" cy="${(half + Math.sin(a) * R).toFixed(1)}" r="3" fill="${c.metal}" opacity=".85"/>`;
   }).join('');
-
-  return `
-  <svg viewBox="0 0 ${s} ${s}" role="img" aria-label="Badge: ${esc(c.inscription)}">
-    <defs>
-      <linearGradient id="fld${c.seed}" x1="0" y1="0" x2="0" y2="1">
-        <stop offset="0%" stop-color="${c.primary}"/>
-        <stop offset="100%" stop-color="${c.secondary}"/>
-      </linearGradient>
-    </defs>
-    <g class="layer" id="l-plate" fill="url(#fld${c.seed})">${plate}</g>
-    <g class="layer" id="l-motif" fill="${c.metal}" stroke="${c.metal}" opacity="0.95">${M}</g>
+  return `<svg viewBox="0 0 ${s} ${s}" role="img" aria-label="Badge: ${esc(c.inscription)}">
+    <defs><linearGradient id="f${c.seed}" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stop-color="${c.primary}"/><stop offset="100%" stop-color="${c.secondary}"/></linearGradient></defs>
+    <g class="layer" id="l-plate" fill="url(#f${c.seed})">${plate}</g>
+    <g class="layer" id="l-motif" fill="${c.metal}" stroke="${c.metal}" opacity=".95">${M}</g>
     <g class="layer" id="l-metal" fill="none">
-      <g stroke="${c.metal}" stroke-width="3" opacity="0.9">${plate.replace('<path', '<path fill="none"').replace('<circle', '<circle fill="none"').replace('<ellipse', '<ellipse fill="none"')}</g>
-      ${rivets}
-    </g>
-  </svg>`;
+      <g stroke="${c.metal}" stroke-width="3" opacity=".9">${plate.replace('<path', '<path fill="none"').replace('<circle', '<circle fill="none"').replace('<ellipse', '<ellipse fill="none"')}</g>
+      ${rivets}</g></svg>`;
 }
 
-/* ── Reveal ceremony — design.md Motion.revealSequence ────────────────────── */
 let timers = [];
 function renderReveal() {
-  const c = compose(S.ranked, S.topic);
-  S.badge = c; save();
-
+  const c = compose(S.ranked, S.topic); S.badge = c; save();
   const v = document.createElement('div');
   v.className = 'vault';
-  v.innerHTML = `
-    <button class="skip" data-act="skip">Skip</button>
+  v.innerHTML = `<button class="skip" data-act="skip">Skip</button>
     <div class="stage">
       <div class="badge-wrap">${badgeSVG(c)}</div>
       <div class="inscription">${[...c.inscription].map(ch => `<span class="ch">${esc(ch)}</span>`).join('')}</div>
-      <div class="after">
-        <button class="btn ghost" data-act="replay">Replay</button>
-        <button class="btn" data-act="done">Your Ten</button>
-      </div>
+      <div class="after"><button class="btn ghost" data-act="replay">Replay</button><button class="btn" data-act="done">Your Ten</button></div>
     </div>`;
   document.body.appendChild(v);
-  // The ceremony owns the screen. Without this the rank scene is still behind
-  // the vault and still reachable by VoiceOver and by a swipe — the badge is
-  // never previewable during creation (badges.md), and neither is the flow
-  // that produced it.
   setBackgroundInert(true);
   announce(`Badge revealed. Inscription: ${c.inscription}`);
   runReveal(v);
 }
 function runReveal(v) {
-  const reduced = matchMedia('(prefers-reduced-motion: reduce)').matches;
-  const at = (ms, fn) => timers.push(setTimeout(fn, reduced ? 0 : ms));
+  const at = (ms, fn) => timers.push(setTimeout(fn, reduced() ? 0 : ms));
   timers.forEach(clearTimeout); timers = [];
   requestAnimationFrame(() => v.classList.add('in'));
   at(300, () => $('#l-plate', v).classList.add('on'));
@@ -651,11 +868,7 @@ function runReveal(v) {
   at(1400, () => $('#l-metal', v).classList.add('on'));
   at(800, () => $('.skip', v).classList.add('on'));
   at(1900, () => {
-    // The inscription is written letter by letter, but inside a fixed budget:
-    // per-character delays made a long line run the ceremony past 3.5s, and
-    // design.md budgets the whole sequence at ~2.8s. Length changes the
-    // cadence, never the duration.
-    const chs = [...v.querySelectorAll('.inscription .ch')];
+    const chs = $$('.inscription .ch', v);
     const step = Math.min(45, 700 / Math.max(chs.length, 1));
     chs.forEach((ch, i) => at(i * step, () => ch.classList.add('on')));
     at(chs.length * step + 240, () => $('.after', v).classList.add('on'));
@@ -664,139 +877,135 @@ function runReveal(v) {
 function skipReveal(v) {
   timers.forEach(clearTimeout); timers = [];
   v.classList.add('in');
-  v.querySelectorAll('.layer').forEach(l => l.classList.add('on'));
-  v.querySelectorAll('.inscription .ch').forEach(ch => ch.classList.add('on'));
-  $('.after', v).classList.add('on');
-  $('.skip', v).classList.remove('on');
+  $$('.layer', v).forEach(l => l.classList.add('on'));
+  $$('.inscription .ch', v).forEach(ch => ch.classList.add('on'));
+  $('.after', v).classList.add('on'); $('.skip', v).classList.remove('on');
 }
 
-/* ── Finished: the Ten, the badge, and the rabbit hole ────────────────────── */
 function renderFinished() {
   const c = S.badge || compose(S.ranked, S.topic);
   app.innerHTML = `
     <div class="finished-head">
-      <div class="badge-inline">${badgeSVG(c, 200).replace(/class="layer"/g, 'class="layer on"')}</div>
+      <div class="badge-inline">${badgeSVG(c).replace(/class="layer"/g, 'class="layer on"')}</div>
       <h1 class="display-lg">${esc(S.topic.title)}</h1>
       <div class="insc">${esc(c.inscription)}</div>
     </div>
-
-    <ol>${S.ranked.map((id, i) => slotFilled(i, byId.get(id)).replace(/<button class="remove".*?<\/button>/, '')).join('')}</ol>
-
-    <p class="label-sm" style="margin-top:30px">Where to next</p>
-    ${rabbitHole().map(t => `
-      <button class="sug-topic" data-topic='${esc(JSON.stringify(t))}'>
-        <div class="lvl">${t.level}</div>
-        <div class="t">${esc(t.title)}</div>
-        <div class="provocation">${esc(t.why)}</div>
-      </button>`).join('')}
-
-    <div style="display:flex;gap:10px;margin-top:22px">
+    <section><ol>${S.ranked.map((id, i) => { const f = byId.get(id); return `<li><div class="tenrow ${i === 0 ? 'one' : ''}">
+      <span class="num">${i + 1}</span><span class="thumb"><img src="${IMG}w185${f.p}" alt=""></span>
+      <span class="meta"><span class="t">${esc(f.t)}</span><span class="s">${f.y}${f.d ? ' · ' + esc(f.d) : ''}</span></span>
+    </div></li>`; }).join('')}</ol></section>
+    <section>
+      <div class="section-head"><h2 class="section-h">Where to next</h2></div>
+      ${rabbitHole().map(t => `<button class="sug-topic" data-topic='${esc(JSON.stringify(t))}'>
+        <div class="lvl">${t.level}</div><div class="t">${esc(t.title)}</div><div class="why">${esc(t.why)}</div></button>`).join('')}
+    </section>
+    <section style="display:flex;gap:var(--s2)">
       <button class="btn ghost" data-act="replayfull">Watch the reveal again</button>
       <button class="btn ghost" data-act="restart">Start over</button>
-    </div>
+    </section>
     ${notes()}`;
   dockEl.innerHTML = '';
 }
-
-/* ≥5 suggestions across three specificity levels, each with a provocation
-   naming why you (PRD Req 5). Static here — on device this is the
-   Foundation Models pass, with this tree as the fallback. */
 function rabbitHole() {
   const F = facts(S.ranked), out = [];
   const [g, gn] = F.genre, [d, dn] = F.director, [dec, decn] = F.decade;
-  if (d && dn >= 2) out.push({ level: 'Very specific', title: `${d} films`, director: d,
-    prompt: `Your ten favourite ${d} films.`, why: `${dn} of your ten are ${d}. Prove it.` });
-  if (g && dec) out.push({ level: 'Very specific', title: `${g} of the ${dec}s`, genre: g, decade: dec,
-    prompt: `Your ten favourite ${g.toLowerCase()} films of the ${dec}s.`, why: `You keep going back to one decade.` });
-  if (g) out.push({ level: 'Specific', title: `${g} films`, genre: g,
-    prompt: `Your ten favourite ${g.toLowerCase()} films.`, why: `${gn} of your ten are ${g.toLowerCase()}. Commit.` });
-  // A provocation that is not true is worse than no provocation. Only claim a
-  // genre is missing after checking every pick, including secondary genres.
+  if (d && dn >= 2) out.push({ level: 'Very specific', title: `${d} films`, director: d, prompt: `Your ten favourite ${d} films.`, why: `${dn} of your ten are ${d}. Prove it.` });
+  const actorCounts = {};
+  for (const f of F.films) for (const a of (f.ca || [])) actorCounts[a] = (actorCounts[a] || 0) + 1;
+  const [actor, an] = Object.entries(actorCounts).sort((a, b) => b[1] - a[1])[0] || [null, 0];
+  if (actor && an >= 2) out.push({ level: 'Very specific', title: `${actor} films`, actor, prompt: `Your ten favourite ${actor} films.`, why: `${actor} turns up ${an} times in your ten.` });
+  if (g && dec) out.push({ level: 'Very specific', title: `${g} of the ${dec}s`, genre: g, decade: dec, prompt: `Your ten favourite ${g.toLowerCase()} films of the ${dec}s.`, why: 'You keep going back to one decade.' });
+  if (g) out.push({ level: 'Specific', title: `${g} films`, genre: g, prompt: `Your ten favourite ${g.toLowerCase()} films.`, why: `${gn} of your ten are ${g.toLowerCase()}. Commit.` });
   const present = new Set(F.films.flatMap(f => f.g));
-  const absent = Object.keys(MOTIFS).find(x =>
-    !present.has(x) && CAT.filter(f => f.g.includes(x)).length > 12);
-  if (absent) out.push({ level: 'Specific', title: `${absent} films`, genre: absent,
-    prompt: `Your ten favourite ${absent.toLowerCase()} films.`,
-    why: `Not one ${absent.toLowerCase()} film made your ten. Suspicious.` });
-  if (dec) out.push({ level: 'Broad', title: `The ${dec}s`, decade: dec,
-    prompt: `Your ten favourite films of the ${dec}s.`, why: `${decn} of your ten came from the ${dec}s.` });
-  out.push({ level: 'Broad', title: 'Movies, again', prompt: 'Your ten favourite films of all time.',
-    why: 'Taste moves. Re-rank from scratch and see.' });
-  return out.slice(0, 6).map((t, i) => ({ ...t, id: 'topic' + i }));
-}
-
-/* ── Prototype notes, so feedback is about the right thing ────────────────── */
-function notes() {
-  return `<footer class="notes">
-    <p>Structure prototype. Glass, haptics, and final motion are deliberately
-    not attempted here — those can only be judged on device, and they land at
-    M2/M3. Judge the flow, the anatomy, and the words.</p>
-    <p class="build">build 0002 · gather · cut · rank · reveal</p>
-  </footer>`;
+  const absent = Object.keys(MOTIFS).find(x => !present.has(x) && CAT.filter(f => f.g.includes(x)).length > 12);
+  if (absent) out.push({ level: 'Specific', title: `${absent} films`, genre: absent, prompt: `Your ten favourite ${absent.toLowerCase()} films.`, why: `Not one ${absent.toLowerCase()} film made your ten. Suspicious.` });
+  if (dec) out.push({ level: 'Broad', title: `The ${dec}s`, decade: dec, prompt: `Your ten favourite films of the ${dec}s.`, why: `${decn} of your ten came from the ${dec}s.` });
+  out.push({ level: 'Broad', title: 'Movies, again', prompt: 'Your ten favourite films of all time.', why: 'Taste moves. Re-rank from scratch and see.' });
+  return out.slice(0, 6);
 }
 
 /* ── Routing ──────────────────────────────────────────────────────────────── */
 function setBackgroundInert(on) {
-  for (const el of [app, dockEl]) {
-    el.inert = on;
-    if (on) el.setAttribute('aria-hidden', 'true'); else el.removeAttribute('aria-hidden');
-  }
+  for (const el of [app, dockEl]) { el.inert = on; if (on) el.setAttribute('aria-hidden', 'true'); else el.removeAttribute('aria-hidden'); }
 }
 function render() {
-  document.querySelectorAll('.vault').forEach(v => v.remove());
+  $$('.vault').forEach(v => v.remove());
   setBackgroundInert(false);
-  if (S.scene === 'gather') renderGather();
+  if (S.scene === 'build') renderBuild();
   else if (S.scene === 'cut') renderCut();
-  else if (S.scene === 'rank') { if (!S.rank) startRank(); else renderRank(); }
+  else if (S.scene === 'rank') { if (!S.rank) startDuel(); else renderDuel(); }
   else if (S.scene === 'reveal') renderReveal();
   else if (S.scene === 'done') renderFinished();
-  window.scrollTo(0, 0);
 }
 
 document.addEventListener('click', e => {
-  const t = e.target.closest('[data-add],[data-remove],[data-toggle],[data-higher],[data-act],[data-topic]');
+  const t = e.target.closest('[data-add],[data-deeper],[data-remove],[data-move],[data-toggle],[data-toggle-service],[data-facet],[data-higher],[data-sheet],[data-clear],[data-act],[data-topic],[data-trailto]');
   if (!t) return;
 
-  if (t.dataset.add) {
-    const id = +t.dataset.add;
-    if (!S.tray.includes(id)) { S.tray.push(id); announce(`${byId.get(id).t} added. ${S.tray.length} of ten.`); }
-    else S.tray = S.tray.filter(x => x !== id);
-    save(); renderGather(); return;
+  if (t.dataset.clear) { e.stopPropagation(); const k = t.dataset.clear; S.filters[k] = k === 'services' ? [] : null; save(); renderBuild(); return; }
+  if (t.dataset.add) { addFilm(+t.dataset.add, t); return; }
+  if (t.dataset.deeper) {
+    const id = +t.dataset.deeper;
+    S.branch = [...S.branch.filter(x => x !== id), id].slice(-4);
+    S.q = ''; save(); renderBuild(); window.scrollTo({ top: 0, behavior: reduced() ? 'auto' : 'smooth' });
+    announce(`Showing films like ${byId.get(id).t}`); return;
   }
-  if (t.dataset.remove) { S.tray = S.tray.filter(x => x !== +t.dataset.remove); save(); renderGather(); return; }
-  if (t.dataset.toggle) {
-    const id = +t.dataset.toggle;
-    if (S.keep.includes(id)) S.keep = S.keep.filter(x => x !== id);
-    else if (S.keep.length < 10) S.keep.push(id);
-    save(); renderCut(); return;
+  if (t.dataset.trailto !== undefined) { S.branch = S.branch.slice(0, +t.dataset.trailto + 1); save(); renderBuild(); return; }
+  if (t.dataset.remove) { removeFilm(+t.dataset.remove); refreshTenSheet(); return; }
+  if (t.dataset.move) {
+    const id = +t.dataset.move, dir = +t.dataset.dir, i = S.tray.indexOf(id), j = i + dir;
+    if (j >= 0 && j < S.tray.length) { S.tray.splice(j, 0, S.tray.splice(i, 1)[0]); save(); refreshTenSheet();
+      announce(`${byId.get(id).t} moved to ${j + 1}`); }
+    return;
   }
+  if (t.dataset.toggleService) {
+    const id = t.dataset.toggleService, on = S.filters.services.includes(id);
+    S.filters.services = on ? S.filters.services.filter(x => x !== id) : [...S.filters.services, id];
+    save(); openSheet('services'); return;
+  }
+  if (t.dataset.facet) {
+    const k = t.dataset.facet, v = t.dataset.value;
+    S.filters[k] = S.filters[k] === v ? null : v;
+    save(); closeSheet(); renderBuild(); return;
+  }
+  if (t.dataset.sheet) { openSheet(t.dataset.sheet); return; }
   if (t.dataset.higher !== undefined) { answer(t.dataset.higher === '1'); return; }
-  if (t.dataset.topic) {
-    const topic = JSON.parse(t.dataset.topic);
-    S = fresh(topic); save(); render(); return;
-  }
+  if (t.dataset.topic) { S = fresh(JSON.parse(t.dataset.topic)); save(); render(); return; }
 
   switch (t.dataset.act) {
-    case 'clearq': S.q = ''; save(); renderGather(); break;
+    case 'clearq': S.q = ''; save(); renderBuild(); break;
+    case 'openten': case 'arrange': openSheet('ten'); break;
+    case 'closesheet': closeSheet(); break;
+    case 'duel': startDuel(); break;
+    case 'finish': closeSheet(); S.ranked = S.tray.slice(0, 10); S.scene = 'reveal'; save(); renderReveal(); break;
     case 'cut': S.scene = 'cut'; S.keep = []; save(); renderCut(); break;
-    case 'cutdone': S.tray = S.keep.slice(); S.scene = 'rank'; save(); startRank(); break;
-    case 'rank': S.scene = 'rank'; save(); startRank(); break;
+    case 'cutdone': S.tray = S.keep.slice(); S.scene = 'build'; save(); renderBuild(); openSheet('ten'); break;
+    case 'unbranch': S.branch.pop(); save(); renderBuild(); break;
     case 'skip': skipReveal(t.closest('.vault')); break;
-    case 'replay': {
-      const v = t.closest('.vault');
-      v.querySelectorAll('.layer').forEach(l => l.classList.remove('on'));
-      v.querySelectorAll('.inscription .ch').forEach(ch => ch.classList.remove('on'));
-      $('.after', v).classList.remove('on'); $('.skip', v).classList.remove('on');
-      runReveal(v); break;
-    }
+    case 'replay': { const v = t.closest('.vault');
+      $$('.layer', v).forEach(l => l.classList.remove('on'));
+      $$('.inscription .ch', v).forEach(ch => ch.classList.remove('on'));
+      $('.after', v).classList.remove('on'); $('.skip', v).classList.remove('on'); runReveal(v); break; }
     case 'done': t.closest('.vault').remove(); setBackgroundInert(false); S.scene = 'done'; save(); renderFinished(); break;
     case 'replayfull': S.scene = 'reveal'; save(); renderReveal(); break;
     case 'restart': S = fresh(); save(); render(); break;
   }
 });
 
-// Exposed for the Playwright harness that drives this prototype.
-window.S = S; window.byId = byId;
+// The Cut's keep toggles.
+document.addEventListener('click', e => {
+  const t = e.target.closest('[data-toggle]'); if (!t) return;
+  const id = +t.dataset.toggle;
+  if (S.keep.includes(id)) S.keep = S.keep.filter(x => x !== id);
+  else if (S.keep.length < 10) S.keep.push(id);
+  save(); renderCut();
+});
+
+// For the Playwright harness. A getter, not a snapshot — S is reassigned on
+// restart and on entering a new topic, and a stale copy would make the tests
+// assert against a state the app has already left.
+Object.defineProperty(window, 'S', { get: () => S });
+window.byId = byId;
 render();
 </script>
 </body>

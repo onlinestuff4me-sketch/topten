@@ -214,6 +214,100 @@ made Stack's design work is the process here, made explicit:
   "slower"), pick a value, ship it to the next build, and report the value
   chosen — convergence by build rounds, not by guessing his number in chat.
 
+## Building a Ten is one screen (2026-08-14, Mischa — round 1 on the prototype)
+
+*"They need to be able to easily add items (from recs and from search, going
+back and forth between these…), as well as re-order their list and rankings
+all in one place."*
+
+Gather and rank were two scenes. They are now **one**, and the scene has four
+things in it and nothing else:
+
+1. **Search**, with live results as you type (no submit step), and an in-field
+   clear that returns the screen to its suggestions rather than to an empty
+   state. Adding from a result leaves the results on screen, because the next
+   thing you want is usually one row down.
+2. **Refinements** as a chip row, services first — see below.
+3. **Suggestions**, in titled sections. A section's heading carries the reason
+   it exists; a card carries a reason line only when the heading doesn't
+   already give it.
+4. **The Ten**, as a strip of ten slots pinned in the dock — always on screen,
+   filled slots showing artwork and empty ones showing their numeral. Tapping
+   it opens the list to reorder and remove.
+
+**The ten slots are sized to fit, not to scroll.** `--mini-w` is a clamp
+against viewport width so all ten and their gaps fit across; principle 1 says
+the interface never hides how many remain, and a tenth slot you have to scroll
+a strip to see is hidden.
+
+**Direct reordering is now the primary way to rank, and the guided duel is an
+aid.** Arranging ten things by hand is exactly the cold-sort the PRD said never
+to demand, so the duel survives as *"Rank them for me"* and as the fully
+operable non-drag path (Req 13). What changed is which one you meet first: you
+meet your list, and you ask for help if you want it. (PRD Req 3 amended.)
+
+### Refinement: subscriptions first (2026-08-14, Mischa)
+
+*"their subscription services (top priority filter/refinement and value prop)"*
+
+Services, genre, director and actor — in that order, services first because it
+is the only one that changes what you could actually watch tonight. Two rules
+inherited from Stack, both learned the expensive way:
+
+- **A canonical service registry, matched on id, displayed by name.** TMDB
+  returns storefronts as though they were subscriptions — *"Paramount+ Amazon
+  Channel"* comes back under Prime's provider id. Stack measured **43% false
+  positives for Prime** because of it. Holding Prime does not get you
+  Paramount+, so storefront rows are dropped at catalog-build time rather than
+  filtered in the UI.
+- **Never surface a service the user hasn't claimed.** A row for something they
+  don't pay for is the opposite of the feature.
+
+### Branching suggestions — the rabbit hole during gather, not only after it
+
+*"I want to then drill-in further and see more suggestions based on that
+recommendation… and go down that rabbit hole further after I pick the next
+film."*
+
+Every suggestion card carries a **deeper** control. Tapping it opens a *More
+like X* section, and the path you took is a **walkable trail** above it:
+`Following · Inception › Interstellar`, each step a button back to that point.
+Going deeper again extends the trail rather than replacing it, so the branch is
+a path rather than a destination that erases where you came from.
+
+Ranking edges come from the catalog itself — TMDB's own recommendations where
+they exist, then shared director, shared cast, shared genre, proximity in
+years — so *why* a film is being offered can always be said in three words
+(*"Also Nolan"*, *"With Cillian Murphy"*).
+
+The mind-map reading of this — seeing the whole branching structure at once —
+is **not built and is the open question**: it is a genuinely different screen,
+and the trail is the cheapest version that tests whether the branching itself
+is compelling. Revisit once Mischa has used the trail.
+
+### The add hand-off (2026-08-14, Mischa: *"very abrupt and unclear what's happening"*)
+
+Two halves, both taken from Stack's status-change motion and its rule that
+**acting on a row must not make the row leave**:
+
+- **The card stays exactly where it is** and shows its new state in place: a
+  check appears, and a gold ring **draws itself** around the poster (an SVG
+  rect stroked with a dash as long as its own perimeter, offset tweened to
+  zero). Fading a border reads as a flash; the travel is what makes it an act
+  rather than a repaint. Removal runs it backwards in `--m-retreat` on an
+  ease-out, because undoing should not look reluctant.
+- **A copy of the poster flies to the slot it just filled**, and the slot
+  lands with a short overshoot. This is the half that answers *where did it
+  go*, and it is why the Ten lives in the dock: the destination is always on
+  screen, so the travel never leaves the viewport.
+
+The rails **do not reshuffle** when a pick changes what would be suggested.
+Stack's rule names the two moments the held order lifts — leaving the screen,
+and changing the filter — and both are honoured; closing a filter sheet
+rebuilds the screen behind it.
+
+Reduced motion: no travel, no draw, same end state, same ring.
+
 ## Amendments from the M1.5 prototype (2026-08-14, Claude)
 
 Built and driven end to end in a browser at iPhone size. These are structure
