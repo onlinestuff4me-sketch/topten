@@ -144,6 +144,9 @@ CANON = [
     ("iplayer",   "BBC iPlayer",    r"bbc iplayer"),
     ("itvx",      "ITVX",           r"^itvx"),
     ("film4",     "Channel 4",      r"^channel 4|^film4"),
+    # Added round 3 (Mischa): a YouTube Premium subscription genuinely carries
+    # films, and leaving it out made a real subscription unrepresentable.
+    ("youtube",   "YouTube Premium", r"^youtube premium"),
 ]
 STOREFRONT = r"amazon channel|roku premium channel|apple tv channel|plus channel"
 

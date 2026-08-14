@@ -164,6 +164,10 @@ section { margin-top: var(--s8); }
 .showing .clause { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 10px; border-radius: 999px; background: var(--accent-muted); color: var(--accent); font-size: 0.8125rem; font-weight: 600; border: 1px solid var(--accent); }
 .showing .clause .x { opacity: .75; font-size: 0.9375rem; }
 .showing .count { color: var(--text-secondary); font-size: 0.8125rem; }
+.deadend { margin-top: var(--s3); color: var(--text-secondary); font-size: 0.875rem; }
+.deadend p { margin: 0 0 var(--s2); }
+.escapes { display: flex; flex-wrap: wrap; gap: 6px; }
+.escape { min-height: 40px; padding: 0 var(--s3); border-radius: 999px; border: 1px solid var(--accent); color: var(--accent); font-weight: 600; font-size: 0.8125rem; }
 .showing .mapbtn { margin-left: auto; color: var(--accent); font-weight: 700; font-size: 0.8125rem; min-height: 32px; display: inline-flex; align-items: center; gap: 4px; }
 
 /* The branch trail — where following one film led. Each step is walkable,
@@ -302,6 +306,12 @@ footer.notes .build { color: var(--text-disabled); margin-top: var(--s2); }
 .map-edge { fill: none; stroke: var(--border-subtle); stroke-width: 2; }
 .map-tick { fill: var(--accent-bright); }
 .map-empty { color: var(--text-secondary); padding: var(--s6) 0; }
+.map-context { padding: 0 var(--margin) var(--s3); color: var(--text-secondary); font-size: 0.8125rem; }
+.map-context strong { color: var(--accent); }
+.map-node.ghost .plate { stroke-dasharray: 4 3; stroke: var(--text-disabled); }
+.map-node.ghost image { opacity: .42; }
+.map-node.ghost text { fill: var(--text-disabled); font-style: italic; }
+.map-edge.ghost { stroke-dasharray: 4 4; opacity: .6; }
 
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 </style>
@@ -431,20 +441,45 @@ function facetValues(kind) {
    reason line ONLY when the section doesn't already give it — repeating
    "widely called great" under every poster is noise, not a reason.
    ─────────────────────────────────────────────────────────────────────── */
-function similarTo(seed, exclude) {
+/* Weights, and why they are in this order (round 3, Mischa: "More like
+   Interstellar starts with 2 films that are not Nolan films?").
+
+   A shared author is the strongest claim we can make — the same director, or
+   the same faces — because it is a reason a person would give. TMDB's
+   recommendation edge is crowd behaviour: useful, but it put Avengers above
+   Inception under "more like Interstellar", which reads as the app not
+   understanding the question. Genre alone is the weakest signal and is
+   deliberately worth less than one shared name. */
+const SIM = { director: 10, rec: 5, cast: 3, genre: 1.5, era: 1 };
+
+function similarTo(seed, exclude, limit = Infinity) {
   const scored = [];
   for (const f of pool()) {
     if (f.id === seed.id || exclude.has(f.id)) continue;
     let s = 0;
-    if ((seed.r || []).includes(f.id)) s += 6;          // TMDB's own edge
-    if (f.d && f.d === seed.d) s += 4;
-    const sharedCast = (f.ca || []).filter(c => (seed.ca || []).includes(c)).length;
-    s += sharedCast * 2;
-    s += f.g.filter(g => seed.g.includes(g)).length;
-    if (Math.abs(f.y - seed.y) <= 6) s += 1;
+    if (f.d && f.d === seed.d) s += SIM.director;
+    if ((seed.r || []).includes(f.id)) s += SIM.rec;
+    s += (f.ca || []).filter(c => (seed.ca || []).includes(c)).length * SIM.cast;
+    s += f.g.filter(g => seed.g.includes(g)).length * SIM.genre;
+    if (Math.abs(f.y - seed.y) <= 6) s += SIM.era;
     if (s > 0) scored.push([s, f]);
   }
-  return scored.sort((a, b) => b[0] - a[0] || b[1].v - a[1].v).slice(0, 12).map(x => x[1]);
+  scored.sort((a, b) => b[0] - a[0] || b[1].v - a[1].v);
+  return scored.slice(0, limit).map(x => x[1]);
+}
+
+/* Everything that satisfies the current query — the honest denominator for
+   the count in Now showing, independent of how many cards a rail renders. */
+function matching() {
+  if (S.q.trim()) {
+    const q = S.q.trim().toLowerCase();
+    return CAT.filter(f => inTopic(f) && passesFilters(f) && f.t.toLowerCase().includes(q));
+  }
+  if (S.graph.focus != null) {
+    const seed = byId.get(S.graph.focus);
+    if (seed) return similarTo(seed, new Set());
+  }
+  return pool();
 }
 
 /* A reason is a claim AND a control: tapping it narrows to that thing, so
@@ -466,7 +501,9 @@ function sections() {
   if (S.graph.focus != null) {
     const seed = byId.get(S.graph.focus);
     if (seed) {
-      const films = similarTo(seed, have).slice(0, 10);
+      // Show every match, not a truncated ten — a count of 2 above a single
+      // card is the app contradicting itself (round 3).
+      const films = similarTo(seed, new Set(), 24);
       if (films.length) out.push({
         id: 'branch', title: `More like ${seed.t}`, branch: true,
         cards: films.map(f => ({ f, why: whySimilar(f, seed) }))
@@ -479,7 +516,7 @@ function sections() {
   for (const id of [...S.tray].reverse().slice(0, 2)) {
     const seed = byId.get(id); if (!seed) continue;
     if (S.graph.focus === id) continue;
-    const films = similarTo(seed, have).slice(0, 10);
+    const films = similarTo(seed, have, 12);
     if (films.length >= 3) out.push({
       id: 'because' + id, title: `Because you picked ${seed.t}`, seed: id,
       cards: films.map(f => ({ f, why: whySimilar(f, seed) }))
@@ -555,7 +592,9 @@ function showingBar(q, results) {
   }
   if (q) clauses.push({ label: `“${q}”`, act: '', drop: 'data-act="clearq"' });
 
-  const n = q ? results.length : new Set(sections().flatMap(s => s.cards.map(c => c.f.id))).size;
+  // The count is of everything that matches, not of the cards a rail happened
+  // to render. Those were different numbers, which read as a bug (round 3).
+  const n = matching().length;
   const hasMap = Object.keys(S.graph.nodes).length > 0;
 
   return `<div class="showing">
@@ -563,10 +602,50 @@ function showingBar(q, results) {
     <div class="clauses">
       ${clauses.length
         ? clauses.map(c => `<span class="clause"><button ${c.act}>${esc(c.label)}</button><button class="x" ${c.drop} aria-label="Remove ${esc(c.label)}">×</button></span>`).join('')
-        : `<span class="count">Everything — ${n} films</span>`}
+        // "Everything" was a lie about a 600-film shelf (round 3). Say what
+        // the shelf actually is.
+        : `<span class="count">All ${CAT.length} films on the shelf</span>`}
       ${clauses.length ? `<span class="count">${n} film${n === 1 ? '' : 's'}</span>` : ''}
       ${hasMap ? `<button class="mapbtn" data-act="openmap">Map</button>` : ''}
     </div>
+    ${n === 0 ? deadEnd() : ''}
+  </div>`;
+}
+
+/* A dead end should hand you the way out, not just report the wall. For each
+   clause, how many films you would get back by dropping it — and only the
+   drops that actually help are offered. Round 3, Mischa: "When I got a dead
+   end (0 results), could we recommend related paths that have suggestions?" */
+function deadEnd() {
+  const escapes = [];
+  const F = S.filters, saved = JSON.parse(JSON.stringify(F)), savedFocus = S.graph.focus, savedQ = S.q;
+
+  const tryWithout = (label, mutate, restore, drop) => {
+    mutate();
+    const n = matching().length;
+    restore();
+    if (n > 0) escapes.push({ label, n, drop });
+  };
+
+  for (const k of ['genre', 'director', 'actor']) {
+    if (F[k]) tryWithout(F[k], () => { F[k] = null; }, () => { F[k] = saved[k]; }, `data-clear="${k}"`);
+  }
+  if (F.services.length) {
+    tryWithout('your services', () => { F.services = []; }, () => { F.services = saved.services.slice(); }, 'data-clear="services"');
+  }
+  if (S.graph.focus != null) {
+    const f = byId.get(S.graph.focus);
+    tryWithout(`“like ${f.t}”`, () => { S.graph.focus = node(savedFocus)?.parent ?? null; },
+      () => { S.graph.focus = savedFocus; }, `data-dropfocus="${savedFocus}"`);
+  }
+  if (S.q) tryWithout(`“${S.q}”`, () => { S.q = ''; }, () => { S.q = savedQ; }, 'data-act="clearq"');
+
+  escapes.sort((a, b) => b.n - a.n);
+  if (!escapes.length) return `<p class="deadend">Nothing on the shelf matches all of that.</p>`;
+  return `<div class="deadend">
+    <p>Nothing matches all of that. Dropping one gets you moving again:</p>
+    <div class="escapes">${escapes.map(e =>
+      `<button class="escape" ${e.drop}>Without ${esc(e.label)} · ${e.n} film${e.n === 1 ? '' : 's'}</button>`).join('')}</div>
   </div>`;
 }
 
@@ -599,7 +678,7 @@ function renderBuild() {
     body = secs.map(s => `<section>
         <div class="section-head"><h2 class="section-h">${esc(s.title)}</h2></div>
         <div class="rail">${s.cards.map(cardHTML).join('')}</div>
-      </section>`).join('') || `<section><p class="empty">Nothing matches all of that. Drop one of the chips above.</p></section>`;
+      </section>`).join('') || '';
   }
 
   app.innerHTML = `
@@ -821,21 +900,37 @@ const MAP = { w: 56, h: 84, gx: 26, gy: 58, pad: 14, originH: 44 };
 // about 4.6px a character, so a 56px node holds ~12 before it has to stop.
 const mapLabel = t => (t.length > 12 ? t.slice(0, 11) + '…' : t);
 
-function layoutMap() {
+/* Unexplored next steps, drawn faintly off whatever is focused. Without
+   these the map is a history log; with them it is somewhere you can actually
+   go (round 3: "no ways to drill more into anything"). */
+function ghostsFor(focusId) {
+  const seed = focusId == null ? null : byId.get(focusId);
+  const known = new Set(Object.keys(S.graph.nodes).map(Number));
+  const pick = seed ? similarTo(seed, known, 4) : pool().filter(f => !known.has(f.id)).slice(0, 4);
+  return pick.map(f => f.id);
+}
+
+function layoutMap(ghosts) {
   const placed = [];
   let cursor = 0;
   const walk = (id, depth) => {
-    const n = node(id), kids = n.kids.filter(k => node(k));
+    const n = node(id);
+    const kids = n.kids.filter(k => node(k)).concat(id === S.graph.focus ? ghosts : []);
     let slot;
     if (!kids.length) { slot = cursor++; }
     else {
       const xs = kids.map(k => walk(k, depth + 1));
       slot = (xs[0] + xs[xs.length - 1]) / 2;
     }
-    placed.push({ id, depth, slot });
+    placed.push({ id, depth, slot, ghost: !node(id) });
     return slot;
   };
-  const rootSlots = S.graph.roots.filter(r => node(r)).map(r => walk(r, 1));
+  // A ghost has no node of its own; give it a slot the same way.
+  const walkAny = (id, depth) => (node(id) ? walk(id, depth) : (placed.push({ id, depth, slot: cursor, ghost: true }), cursor++));
+  const rootIds = S.graph.roots.filter(r => node(r));
+  const rootSlots = rootIds.length
+    ? rootIds.map(r => walk(r, 1))
+    : ghosts.map(g => walkAny(g, 1));
   // A single origin so the whole thing reads as one map rather than several.
   const origin = { id: null, depth: 0, slot: rootSlots.length ? (rootSlots[0] + rootSlots[rootSlots.length - 1]) / 2 : 0 };
   placed.push(origin);
@@ -850,12 +945,14 @@ function layoutMap() {
 }
 
 function renderMap() {
-  const { placed, pos, width, height } = layoutMap();
+  const ghosts = ghostsFor(S.graph.focus);
+  const { placed, pos, width, height } = layoutMap(ghosts);
   const at = new Map(placed.map(p => [p.id, pos(p)]));
 
+  const ghostSet = new Set(ghosts);
   const edges = placed.filter(p => p.id != null).map(p => {
     const n = node(p.id);
-    const parentId = n.parent ?? null;
+    const parentId = n ? (n.parent ?? null) : S.graph.focus;
     const from = at.get(parentId), to = at.get(p.id);
     if (!from || !to) return '';
     // The origin's plate is shorter than a poster's, so its edges have to
@@ -863,7 +960,7 @@ function renderMap() {
     const fromBottom = from.cy + (parentId == null ? MAP.originH : MAP.h) / 2;
     const toTop = to.cy - MAP.h / 2;
     const midY = (fromBottom + toTop) / 2;
-    return `<path class="map-edge" d="M${from.cx} ${fromBottom} C${from.cx} ${midY}, ${to.cx} ${midY}, ${to.cx} ${toTop}"/>`;
+    return `<path class="map-edge ${ghostSet.has(p.id) ? 'ghost' : ''}" d="M${from.cx} ${fromBottom} C${from.cx} ${midY}, ${to.cx} ${midY}, ${to.cx} ${toTop}"/>`;
   }).join('');
 
   const nodes = placed.map(p => {
@@ -873,10 +970,11 @@ function renderMap() {
         <rect class="plate" x="${c.cx - MAP.w / 2}" y="${c.cy - MAP.originH / 2}" width="${MAP.w}" height="${MAP.originH}" rx="10"/>
         <text x="${c.cx}" y="${c.cy + 4}" text-anchor="middle">${esc(mapLabel(S.topic.title))}</text></g>`;
     }
-    const f = byId.get(p.id), picked = S.tray.includes(p.id);
+    const f = byId.get(p.id), picked = S.tray.includes(p.id), isGhost = ghostSet.has(p.id) && !node(p.id);
     const label = mapLabel(f.t);
-    return `<g class="map-node ${S.graph.focus === p.id ? 'focus' : ''} ${picked ? 'picked' : ''}"
-        data-mapnode="${p.id}" tabindex="0" role="button" aria-label="${esc(f.t)}${picked ? ', in your Ten' : ''}">
+    return `<g class="map-node ${S.graph.focus === p.id ? 'focus' : ''} ${picked ? 'picked' : ''} ${isGhost ? 'ghost' : ''}"
+        data-mapnode="${p.id}" ${isGhost ? 'data-mapghost="1"' : ''} tabindex="0" role="button"
+        aria-label="${esc(f.t)}${picked ? ', in your Ten' : isGhost ? ', not explored yet' : ''}">
       <rect class="plate" x="${c.cx - MAP.w / 2 - 2}" y="${c.cy - MAP.h / 2 - 2}" width="${MAP.w + 4}" height="${MAP.h + 4}" rx="8"/>
       <image href="${IMG}w185${f.p}" x="${c.cx - MAP.w / 2}" y="${c.cy - MAP.h / 2}" width="${MAP.w}" height="${MAP.h}"
         preserveAspectRatio="xMidYMid slice" style="clip-path:inset(0 round 6px)"/>
@@ -890,7 +988,8 @@ function renderMap() {
   v.className = 'mapview';
   v.innerHTML = `
     <div class="map-head"><h2>Where you have been</h2><button class="done" data-act="closemap">Done</button></div>
-    <p class="map-legend">Tap any film to pick the path back up there. Gold means it is in your Ten. Nothing here is lost by moving around.</p>
+    <p class="map-legend">Solid films are ones you followed or picked — tap to go back there. Faint ones are where you could go next; tap to follow one without leaving this map. Gold means it is in your Ten.</p>
+    ${mapContext()}
     <div class="map-scroll">
       ${placed.length > 1
         ? `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="group" aria-label="Your exploration map">${edges}${nodes}</svg>`
@@ -899,6 +998,16 @@ function renderMap() {
   document.body.appendChild(v);
   setBackgroundInert(true);
 }
+/* The map has to say what it is filtered by, or it looks like it has lost
+   your context (round 3: "doesn't have accurate breadcrumbs"). */
+function mapContext() {
+  const F = S.filters, bits = [];
+  if (F.services.length) bits.push('On ' + F.services.map(sid => (SERVICES.find(x => x[0] === sid) || [, sid])[1]).join(', '));
+  for (const k of ['genre', 'director', 'actor']) if (F[k]) bits.push(F[k]);
+  if (!bits.length) return '';
+  return `<p class="map-context">Next steps below are filtered by <strong>${esc(bits.join(' · '))}</strong></p>`;
+}
+
 function closeMap() {
   $$('.mapview').forEach(v => v.remove());
   setBackgroundInert(false);
@@ -1175,8 +1284,15 @@ document.addEventListener('click', e => {
     S.graph.focus = n ? n.parent : null; save(); renderBuild(); return;
   }
   if (t.dataset.mapnode) {
-    S.graph.focus = t.dataset.mapnode === 'home' ? null : +t.dataset.mapnode;
-    save(); closeMap(); renderBuild(); return;
+    if (t.dataset.mapnode === 'home') { S.graph.focus = null; save(); closeMap(); renderBuild(); return; }
+    const id = +t.dataset.mapnode;
+    if (t.dataset.mapghost) {
+      // Walking the map: following an unexplored step stays in the map, so a
+      // path can be built here rather than only reviewed here.
+      follow(id); renderBuild(); closeMap(); renderMap();
+      announce(`Following ${byId.get(id).t}`); return;
+    }
+    S.graph.focus = id; save(); closeMap(); renderBuild(); return;
   }
   if (t.dataset.trailto !== undefined) { S.branch = S.branch.slice(0, +t.dataset.trailto + 1); save(); renderBuild(); return; }
   if (t.dataset.remove) { removeFilm(+t.dataset.remove); refreshTenSheet(); return; }

@@ -75,6 +75,9 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   const bodyText = await page.locator('body').innerText();
   check(!/widely called great/i.test(bodyText), 'no "Widely called great" caption under every poster');
   check(!/keep going and make the cut/i.test(bodyText), 'the "or keep going and make the cut" line is gone');
+  // Round 3: "Everything" was a lie about a shelf of a few hundred films.
+  check(!/Everything —/.test(bodyText), 'the Now showing bar does not claim to show "Everything"');
+  check(/All \d+ films on the shelf/.test(bodyText), 'it states the size of the shelf instead');
 
   // ── One left edge: every section heading starts at the same x ────────────
   const xs = await page.evaluate(() => {
@@ -152,12 +155,26 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
     return false;
   });
   check(!collide, 'no two map labels overlap');
+  // Round 3: the map must be somewhere you can go, not just a log.
+  check(await page.locator('.map-node.ghost').count() > 0, 'the map offers unexplored next steps');
+  const ghostId = await page.locator('.map-node.ghost').first().getAttribute('data-mapnode');
+  const beforeWalk = await page.evaluate(() => Object.keys(window.S.graph.nodes).length);
+  await page.locator(`.map-node[data-mapnode="${ghostId}"]`).click();
+  await page.waitForTimeout(250);
+  check(await page.locator('.mapview').count() === 1, 'following a step from the map keeps you in the map');
+  check(await page.evaluate(() => Object.keys(window.S.graph.nodes).length) === beforeWalk + 1,
+    'the followed step joins the graph');
+  check(await page.evaluate(() => window.S.graph.focus) === +ghostId, 'and becomes the focus');
   await page.screenshot({ path: SHOTS + '/7-map.png' });
 
   // Re-entering the deep node from the map is how you get forward again.
   await page.locator(`.map-node[data-mapnode="${deepFocus}"]`).click();
   await page.waitForTimeout(200);
-  check(await page.evaluate(() => window.S.graph.focus) === deepFocus, 'tapping a map node re-enters the path there');
+  await page.locator('[data-act="openmap"]').click();
+  await page.waitForTimeout(200);
+  await page.locator(`.map-node[data-mapnode="${deepFocus}"]`).click();
+  await page.waitForTimeout(200);
+  check(await page.evaluate(() => window.S.graph.focus) === deepFocus, 'tapping a followed node re-enters the path there');
   check(await page.locator('.mapview').count() === 0, 'the map closes when you pick a node');
 
   // ── Services filter: the top-priority refinement ─────────────────────────
