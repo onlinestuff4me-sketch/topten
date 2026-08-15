@@ -5,12 +5,14 @@ function. Migrations are numbered and run **deliberately** — the Stack
 discipline, inherited via `specs/tech-stack.md`.
 
 ```
-migrations/0001_init.sql           the schema, its triggers, and every RLS policy
+migrations/0001_init.sql             the schema, its triggers, and every RLS policy
 migrations/0002_aggregate_stats.sql  aggregate-only analytics, as views
-tests/run.sh                       applies both to a throwaway Postgres and runs the suite
-tests/00_supabase_stub.sql         the parts of Supabase the migrations assume
-tests/01_grants.sql                role grants (need the tables to exist first)
-tests/rls_test.sql                 30 checks, executed as three different callers
+migrations/0003_grants.sql           table privileges for the anon/authenticated roles
+verify.sql                           paste into Supabase after migrating: did it land, whole?
+tests/run.sh                         applies all three to a throwaway Postgres and runs the suite
+tests/00_supabase_stub.sql           the parts of Supabase the migrations assume
+tests/01_grants.sql                  the little the local stub needs on top of 0003
+tests/rls_test.sql                   30 checks, executed as three different callers
 ```
 
 ## Running the tests
@@ -85,30 +87,87 @@ structural — every view in `public` must carry it.
   invitation. `topics.title` and `topics.prompt` are a *derived cache* written
   from the criteria, and regenerated if the namer changes.
 
-## What Claude needs from you to go live
+## Setting up the project — the steps, in order
 
 Mischa creates the project; Claude writes the client (decided 2026-08-15).
-Three things, in this order:
+Roughly ten minutes.
 
-1. **A new Supabase project** — not Stack's. The `EXPO_PUBLIC_SUPABASE_*`
-   variables in cloud sessions belong to Stack, and pointing this at that
-   database would put Top Ten's tables in someone else's project.
-2. **Paste two values into the session**: the project URL
-   (`https://<ref>.supabase.co`) and the **anon** key. The anon key is designed
-   to be public — it is what ships in a web page — and every table it can reach
-   is governed by the policies in `migrations/`, which is why those are tested
-   the way they are. **Do not paste the service-role key**; it bypasses RLS
-   entirely and nothing here needs it.
-3. **Run the migrations**, either from the dashboard's SQL editor (paste each
-   file in order) or with `supabase db push` if you have the CLI linked.
+### 1. Make a new project
 
-Then Claude wires the prototype's publish and read paths to the real database
-and verifies against it — which is the first point at which "a Ten published
-from the app is live on a real URL" can actually be checked.
+app.supabase.com → **New project**.
 
-**Until then the schema is tested but unapplied**, and that is stated plainly
-rather than rounded up: 30 checks pass against a local Postgres, and no row has
-ever been written to a real project.
+- **Not Stack's project.** The `EXPO_PUBLIC_SUPABASE_*` variables in cloud
+  sessions belong to Stack; putting Top Ten's tables in that database mixes two
+  products in one place forever.
+- Name: `topten`. Region: closest to you. Save the database password somewhere
+  — it is not needed for any of this, but it is not shown again.
+- Wait for provisioning (~2 minutes).
+
+### 2. Run the migrations
+
+Left sidebar → **SQL Editor** → **New query**. Paste each file's whole contents
+and run it, **in this order**, checking each says Success before the next:
+
+| Order | File | What it does |
+|---|---|---|
+| 1 | `supabase/migrations/0001_init.sql` | Tables, triggers, consensus functions, every RLS policy |
+| 2 | `supabase/migrations/0002_aggregate_stats.sql` | The aggregate-only analytics views |
+| 3 | `supabase/migrations/0003_grants.sql` | Table privileges for the `anon` and `authenticated` roles |
+
+They are ordered because each depends on the last. If one errors, stop and send
+me the message rather than running the next.
+
+*(If you have the Supabase CLI linked instead, `supabase db push` does all
+three and is equivalent.)*
+
+### 3. Check it landed
+
+New query → paste **`supabase/verify.sql`** → run. It changes nothing and
+prints ten lines. Every one should start `ok`:
+
+```
+  ok    tables                                  7 of 7
+  ok    row level security enabled              7 of 7
+  ok    policies                                15 of 15
+  ok    aggregate views                         4 of 4
+  ok    views run as caller (security_invoker)  4 of 4
+  ok    functions                               5 of 5
+  ok    the "a Ten is ten" trigger              1 of 1
+  ok    anon can read the tables                7 of 7
+  ok    authenticated can write                 7 of 7
+  ok    tables are empty (a fresh project)      0 tens
+```
+
+A `FAIL` line names what is missing — a missing policy is printed by name, not
+as a count. Send me the whole output if any line fails.
+
+### 4. Turn on email sign-in
+
+**Authentication → Providers → Email.** Enable it, and leave "Confirm email"
+on. Sign-in is only ever required to *publish*; anonymous local use stays
+first-class (PRD Req 10), so nothing else here needs changing.
+
+### 5. Send me two values
+
+**Project Settings → API**:
+
+- **Project URL** — `https://<something>.supabase.co`
+- **anon / public** key — the long one labelled `anon`
+
+**Do not send the `service_role` key.** It bypasses every policy in this
+directory and nothing in this product needs it. The anon key is designed to be
+public — it ships inside a web page — which is exactly why the policies are
+tested the way they are.
+
+Then I wire the prototype's publish and read paths to the real database and
+verify against it. That is the first moment "a Ten published from the app is
+live on a real URL" can actually be checked, rather than asserted.
+
+## Until then
+
+**The schema is tested but unapplied**, and that is stated plainly rather than
+rounded up: 30 checks pass against a local Postgres in CI, and no row has ever
+been written to a real project.
 
 ## Applying it for real
 

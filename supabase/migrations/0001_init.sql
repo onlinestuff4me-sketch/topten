@@ -16,7 +16,11 @@
 --      or description, because there is no such field in the product (PRD Req
 --      12 amendment, 2026-08-15) and a nullable column is an invitation.
 
-create extension if not exists "pgcrypto";
+-- No `create extension pgcrypto` here: `gen_random_uuid()` has been a core
+-- function since PostgreSQL 13 and Supabase runs 15 or later. Requiring the
+-- extension would be a dependency this schema does not have, and one that
+-- behaves differently on a project where pgcrypto lives in the `extensions`
+-- schema than it does on a plain local Postgres.
 
 -- ── Profiles ────────────────────────────────────────────────────────────────
 -- One row per account. Handles are generated, not chosen, until the identity
