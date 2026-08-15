@@ -1,0 +1,57 @@
+/* Laurel's tokens — the design system's values, and the only place they live.
+ *
+ * Shared by the app prototype and the public share pages. A second copy would
+ * drift, and the surface where it showed would be the one a stranger sees
+ * first: someone arrives from a shared link, and the badge they see is not the
+ * badge the phone drew.
+ *
+ * Light is "Gallery", dark is "Vault" (specs/design.md).
+ */
+:root {
+  --bg-base: #FAF8F4;
+  --bg-surface: #FFFFFF;
+  --bg-recessed: #F1EDE6;
+  --border-subtle: #E4DED3;
+  --text-primary: #1C1A17;
+  --text-secondary: #6E675D;
+  --text-disabled: #A8A196;
+  --accent: #8A6D1F;
+  --accent-bright: #C9A227;
+  --accent-muted: #EFE6CC;
+  /* status.locked, design.md. It had no value here, so `background:
+     var(--locked)` resolved to nothing and every locked badge rendered as an
+     empty box — the gate's own object was invisible. */
+  --locked: #8B8578;
+  --error: #B3402E;
+  --vault-bg: #121110;
+  --vault-text: #F4F1EA;
+
+  --serif: "New York", ui-serif, Georgia, "Times New Roman", serif;
+  --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
+
+  /* 4pt scale — design.md. Nothing gets a bespoke gap. */
+  --s1: 4px; --s2: 8px; --s3: 12px; --s4: 16px; --s6: 24px; --s8: 32px;
+  --margin: 20px;
+  --r-card: 10px; --r-sheet: 16px; --r-art: 6px;
+  /* Ten minis plus nine gaps must fit the screen. The count is the product,
+     and a slot you have to scroll to reach is not visible. */
+  --mini-w: clamp(24px, calc((100vw - (var(--margin) * 2) - 54px) / 10), 40px);
+
+  /* Motion tokens. Never type a duration inline — that is how four surfaces
+     drift into four feels (Stack law). */
+  --m-press: 120ms;
+  --m-travel: 380ms;
+  --m-ring: 480ms;
+  --m-glimmer: 760ms;
+  --m-retreat: 340ms;
+  --m-settle: 260ms;
+  --ease-out: cubic-bezier(.2,.8,.3,1);
+}
+@media (prefers-color-scheme: dark) {
+  :root {
+    --bg-base: #121110; --bg-surface: #1C1A18; --bg-recessed: #0C0B0A;
+    --border-subtle: #2E2B27; --text-primary: #F4F1EA; --text-secondary: #A79F92;
+    --text-disabled: #6E675D; --accent: #D9B23A; --accent-bright: #D9B23A;
+    --accent-muted: #3A311A; --locked: #6E675D;
+  }
+}

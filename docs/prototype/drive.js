@@ -8,12 +8,19 @@
 const { chromium, devices } = require('playwright');
 const fs = require('fs');
 
+/* Chromium: an explicit CHROMIUM wins, then this machine's pre-installed
+   browser, then Playwright's own download. The path was hard-coded once and
+   worked only on the box it was written on — CI has its browser somewhere
+   else. */
+const CHROME = process.env.CHROMIUM
+  || (fs.existsSync('/opt/pw-browsers/chromium') ? '/opt/pw-browsers/chromium' : undefined);
+
 const BASE = process.argv[2] || 'http://127.0.0.1:8788';
 const SHOTS = process.env.SHOTS || './shots';
 const MIRROR = process.env.POSTER_MIRROR || './posters';
 
 (async () => {
-  const browser = await chromium.launch({ executablePath: process.env.CHROMIUM || '/opt/pw-browsers/chromium' });
+  const browser = await chromium.launch({ executablePath: CHROME });
   const ctx = await browser.newContext({ ...devices['iPhone 15 Pro'], isMobile: true, hasTouch: true });
   const page = await ctx.newPage();
 
@@ -868,6 +875,32 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   const finishedText = await page.locator('body').innerText();
   check(/or a different kind of list/i.test(finishedText), 'finishing offers other kinds of list, not just more films');
   check(/Top 10 Shows of All Time/i.test(finishedText), 'TV shows is offered as the next domain');
+
+  // ── Sharing: the app produces the link its own web page reads ───────────
+  // M5. The two directions live in one module (share.js) precisely so they
+  // cannot drift; this proves the app end actually calls it.
+  const shareable = await page.evaluate(() => {
+    const url = Share.link({
+      title: window.S.topic.title, author: 'you', topicId: window.S.topic.id,
+      items: window.S.ranked, badge: window.S.badge, unlocked: true,
+    }, 'https://example.test');
+    const parsed = Share.fromLocation(new URL(url));
+    return {
+      url,
+      title: parsed.title === window.S.topic.title,
+      items: parsed.items.map(f => f.id).join() === window.S.ranked.join(),
+      unlocked: parsed.unlocked === true,
+      // The reader's own picks are the comparison, not the sender's.
+      noSenderPicks: parsed.mine.length === 0,
+    };
+  });
+  check(await page.locator('[data-act="share"]').count() === 1,
+    'the finished screen offers a share action');
+  check(/\/ten\?/.test(shareable.url), `and it builds a link to the public page (${shareable.url.slice(0, 60)}…)`);
+  check(shareable.title && shareable.items && shareable.unlocked,
+    'that round-trips the list, its name and its badge state');
+  check(shareable.noSenderPicks,
+    'and does not carry the sender\'s own ten — the comparison is the reader\'s');
   check(/coming next/i.test(finishedText), 'and the unbuilt domains are named rather than hidden');
   check(!/see other people/i.test(finishedText), 'discovery is NOT offered after the first list');
 

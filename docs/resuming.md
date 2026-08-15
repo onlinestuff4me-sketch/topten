@@ -3,8 +3,8 @@
 *Session-handoff file, rewritten at the end of each session (Stack
 convention). Read this first, then `AGENTS.md`, then `specs/`.*
 
-**Last written:** 2026-08-15 · cloud session (Linux, no Xcode) · **M0 and M1
-done, M1.5 prototype through eight rounds of feedback, three domains live**
+**Last written:** 2026-08-15 · cloud session (Linux, no Xcode) · **M0, M1 and
+M5's web half done; M1.5 prototype through eight rounds, three domains live**
 
 ---
 
@@ -40,7 +40,8 @@ before a line of Swift was written against it.
   4 tests, green. Falsified once on a throwaway branch to prove the gate can
   go red.
 - **Browser (Chromium, iPhone 15 Pro viewport, `docs/prototype/drive.js`):**
-  the prototype driven end to end — 308 assertions, zero page errors.
+  the prototype driven end to end — 312 assertions in `drive.js`, plus 45 in
+  `drive_share.js` for the public pages, zero page errors. Both now run in CI.
   Playwright is installed globally here, so the suite needs
   `NODE_PATH=/opt/node22/lib/node_modules` and a static server on 8788
   (`python3 -m http.server 8788` from `docs/prototype`). These now
@@ -126,6 +127,56 @@ state that broke it.
 
 **Anything that rebuilds `catalog.js` must assume someone is holding a draft
 against the old one.**
+
+## M5 — the web half (2026-08-15)
+
+The pieces of M5 that can be verified from a cloud session, which is most of
+them. Live at **https://topten-three.vercel.app** alongside the app prototype.
+
+**Supabase schema, RLS and consensus** — `supabase/`. Tables for the object
+model, `consensus_ten()` and `shared_with_consensus()` as Postgres functions,
+and a trigger that refuses to publish anything that is not exactly ten items
+in positions 1–10.
+
+**RLS is executed, not reviewed.** `supabase/tests/run.sh` applies the
+migration to a throwaway Postgres and runs every policy as three callers: an
+anonymous visitor, the author, and a different signed-in user. Both roles are
+`NOBYPASSRLS` — a suite run as superuser passes whatever the policies say. 24
+checks, and **falsified**: weakening `tens_read_published_or_own` to
+`using (true)` turns two red.
+
+The schema is *not* applied to a real Supabase project. The dashboard and
+management API are blocked at this environment's proxy, so that is a Mac-side
+step — and Top Ten needs its **own** project, not Stack's.
+
+**Three public web surfaces** — `docs/prototype/ten.html`, `topic.html`,
+`card.html`, all built from `share.js`. 45 browser assertions in
+`drive_share.js`.
+
+**Data travels in the link** rather than from a database, so the pages are real
+and shareable with no backend standing up. `Share.fromLocation` is the only
+thing that knows about URLs; swapping the source for Supabase is a change to
+one function, and the field names already match the schema's.
+
+**One badge renderer.** `badge.js` and `tokens.css` were extracted from
+`index.html` so the app screen, the share page and the OG card draw from the
+same file. A test asserts the app and the share page produce byte-identical
+SVG from one composition. Two extractions, both verified by the existing suite
+staying green.
+
+Three defects the work turned up, all now guarded:
+
+1. `badgeSVG` referenced an `esc` that lived in `index.html`, so it worked on
+   the app page and threw on the share page. It has its own now.
+2. A top-level `function` attaches to `window` in a classic script and a
+   top-level `const` does not — so `badgeSVG` was reachable from the share
+   page and `lockedBadge` was not, and only the *locked* half of the gate
+   broke. Both are exported explicitly now.
+3. A composition with missing fields rendered as a black rectangle. `badgeSVG`
+   fills defaults at the door.
+
+**CI grew two jobs**: the Postgres policy suite, and a Chromium job running
+both browser suites against the directory Vercel publishes.
 
 ## M1 — the brain (2026-08-15)
 

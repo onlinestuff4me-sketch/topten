@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Share card</title>
+<link rel="stylesheet" href="tokens.css">
+<!--
+  The OG share card — 1200 x 630, the image that appears when a Top 10 link is
+  pasted into a message.
+
+  It is a PAGE rather than a drawing, and rendered at the real size, because
+  that is what makes it verifiable: a screenshot of this at 1200x630 is the
+  artifact, and the same Playwright run that checks the Ten page can check
+  that the badge on the card is the badge on the page. In the shipping product
+  a renderer screenshots this same markup server-side; here the browser does
+  it, which is the same operation with a different driver.
+
+  The badge comes from badge.js — the file the app screen and the Ten page
+  both use. That is the whole reason it was extracted: a share card drawing
+  its own badge would be a fourth renderer, and the one people see first.
+-->
+<style>
+  * { box-sizing: border-box; margin: 0; }
+  html, body { width: 1200px; height: 630px; overflow: hidden; }
+  body { background: var(--bg-base); color: var(--text-primary);
+    font: 22px/1.35 var(--sans); -webkit-font-smoothing: antialiased; }
+  ol { list-style: none; padding: 0; }
+
+  .card { width: 1200px; height: 630px; display: grid;
+    grid-template-columns: 1fr 380px; gap: 48px; padding: 56px 64px;
+    /* A hairline of the badge's own accent along the top: the card has to read
+       as this product at thumbnail size, where the type is illegible. */
+    border-top: 10px solid var(--accent-bright); }
+
+  .masthead { display: flex; align-items: center; gap: 10px;
+    font-size: 18px; font-weight: 700; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--text-secondary); }
+  .masthead .dot { width: 10px; height: 10px; border-radius: 50%; background: var(--accent-bright); }
+
+  h1 { font-family: var(--serif); font-weight: 600; letter-spacing: -0.02em;
+    line-height: 1.02; margin: 20px 0 0;
+    /* Clamped rather than shrink-to-fit: this renders headless with no chance
+       to measure and re-lay-out, so the size has to be right the first time.
+       Three lines of the longest realistic name still clears the picks. */
+    font-size: clamp(40px, 4.4vw, 60px); }
+  .byline { color: var(--text-secondary); margin-top: 14px; font-size: 22px; }
+  .byline b { color: var(--text-primary); font-weight: 600; }
+
+  .picks { display: flex; gap: 14px; margin-top: 34px; }
+  .pick { width: 104px; }
+  .pick .art { width: 104px; height: 156px; border-radius: 8px; overflow: hidden;
+    background: var(--bg-recessed); position: relative; }
+  .pick .art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .pick .n { position: absolute; left: 0; bottom: 0; width: 30px; height: 30px;
+    display: grid; place-items: center; font-family: var(--serif); font-weight: 800;
+    font-size: 17px; color: #17140B; background: var(--accent-bright);
+    border-radius: 0 8px 0 8px; }
+  .pick .t { font-size: 14px; line-height: 1.25; margin-top: 8px; color: var(--text-secondary);
+    display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+  .right { display: flex; flex-direction: column; align-items: center;
+    justify-content: center; gap: 18px; text-align: center; }
+  .right .state { font-size: 15px; font-weight: 700; letter-spacing: .1em;
+    text-transform: uppercase; color: var(--text-secondary); }
+  .right .insc { font-family: var(--serif); font-size: 26px; line-height: 1.2; }
+  .lockedbadge .plate { fill: var(--locked); opacity: .22; }
+  .lockedbadge .shackle, .lockedbadge .body { fill: none; stroke: var(--locked); stroke-width: 3; }
+  .lockedbadge .body { fill: var(--locked); opacity: .55; }
+</style>
+</head>
+<body>
+<div id="card"></div>
+<script src="catalog.js"></script>
+<script src="badge.js"></script>
+<script src="share.js"></script>
+<script>
+const ten = Share.fromLocation(location);
+document.getElementById('card').innerHTML = ten ? Share.card(ten) : Share.cardFallback();
+</script>
+</body>
+</html>

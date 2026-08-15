@@ -9,8 +9,8 @@ name: CI
 #   * Postgres — applies the migrations to a throwaway database and executes
 #              every RLS policy as three different callers. Runs on the plain
 #              runner, which ships PostgreSQL 16.
-# The web/Playwright job joins when the prototype's own suite moves out of a
-# scratch runner and into the repo.
+#   * Chromium — the prototype's own two suites, served from the same static
+#              directory Vercel publishes.
 
 on:
   push:
@@ -61,6 +61,40 @@ jobs:
 
       - name: Apply migrations and run the policy suite
         run: supabase/tests/run.sh
+
+  web-prototype:
+    name: Prototype and share pages (Chromium)
+    runs-on: ubuntu-latest
+    # The two browser suites. `drive.js` drives the app someone builds a Ten
+    # in; `drive_share.js` drives the pages a stranger lands on. Both run
+    # against the same static directory Vercel publishes, so what CI exercises
+    # is what ships. Posters are stubbed by the suites — nothing here reaches
+    # the network for content.
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+
+      - name: Install Playwright and its browser
+        run: |
+          npm install --no-save playwright@1
+          npx playwright install --with-deps chromium
+
+      - name: Serve the prototype
+        run: |
+          python3 -m http.server 8788 --directory docs/prototype &
+          for _ in $(seq 1 30); do
+            curl -sf http://127.0.0.1:8788/index.html >/dev/null && break
+            sleep 1
+          done
+
+      - name: The app prototype
+        run: node docs/prototype/drive.js
+
+      - name: The share pages
+        run: node docs/prototype/drive_share.js
 
   probe-app:
     name: Detect app target

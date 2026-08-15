@@ -610,6 +610,56 @@ never destroys a node, tapping a real node re-enters the path there, following
 an unexplored step stays inside the map, the active filters are stated, it
 opens centred on where you are, and no two labels overlap.
 
+### M5 (2026-08-15) — the pages a stranger lands on
+
+Three surfaces, all built from one module (`share.js`) because they render the
+same few things and the point of M5 is that a stranger sees what the phone saw.
+
+**The public Ten page.** The front door: somebody shares a link and this page
+has to make the list worth reading and the badge worth earning, with no account
+and no app (PRD Req 11). One column on a phone, two above 800px — a share page
+is read on a laptop as often as a phone, and a 400px column centred in a 1400px
+window looks like a mistake.
+
+**The list is never gated; only the badge is** (Req 12), and the tests assert
+exactly that: with the badge locked, all ten titles are still readable. The
+lock names its key — *"Make your own Top 10 Crime Movies of the 90s and this
+badge opens"* — because a lock with no key on it is just a wall.
+
+**The comparison overlay is the list, annotated.** Shared picks are marked
+*your #2* in place and the row is tinted; the count is stated once above the
+fold. Making it a separate screen would mean reading the list twice to find the
+disagreement, which is the interesting part. Zero in common gets the better
+sentence rather than an empty state: *"Not one pick in common. Someone is
+wrong."*
+
+**The topic page** is where the argument lives, because a topic is the social
+object and a Ten is a take on it. It leads with the consensus, then lists every
+take under it.
+
+**The share card** is a page at `/card`, laid out at 1200 × 630 and
+screenshotted — not a drawing. That is what makes it verifiable: the same
+browser run that checks the Ten page checks that the card's badge is the page's
+badge. It shows five picks rather than ten and gives the badge a third of the
+frame, because at thumbnail size the badge is the only legible thing and it is
+what is being sold.
+
+**One badge renderer, not three.** `badge.js` was extracted from the app
+prototype so the app screen, the share page and the card all draw from it. A
+badge is *data rendered live* (badges.md), and that decision is worth nothing
+the moment a second renderer exists — the two would agree only for as long as
+somebody kept them in step. A test asserts the app and the share page produce
+byte-identical SVG from one composition.
+
+`tokens.css` came out for the same reason, and the surface where a drifted
+token would show is the one a stranger sees first.
+
+**A composition arriving from outside is not trusted.** `badgeSVG` fills
+missing fields at the door rather than at six interpolations: a missing colour
+renders as a black void, which is the worst kind of failure because it looks
+deliberate. Found by hand-writing a test composition with the wrong field
+names and getting a black rectangle.
+
 ### Round 8 (2026-08-15, Mischa) — two card anatomies, and one line means five lines
 
 **A browse card is a poster and a title. Nothing else.** Round 2 put both verbs

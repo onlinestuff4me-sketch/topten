@@ -1,0 +1,155 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>A Top 10</title>
+<meta name="theme-color" content="#FAF8F4" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#121110" media="(prefers-color-scheme: dark)">
+<link rel="stylesheet" href="tokens.css">
+<!-- Filled in by the script below, because the page's identity is in the URL.
+     A crawler that does not run JavaScript sees these defaults, which is the
+     honest failure: a generic-but-correct preview rather than a preview of
+     somebody else's list. The shipping product renders these server-side from
+     the Supabase row, which is the whole reason the schema stores
+     title_at_publish. -->
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Top Ten">
+<meta property="og:title" id="og-title" content="A Top 10">
+<meta property="og:description" id="og-desc" content="Ten and only ten. The limit is the point.">
+<meta property="og:image" id="og-image" content="">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta name="twitter:card" content="summary_large_image">
+<!--
+  The public Ten page — M5's front door.
+
+  This is the surface a stranger meets first: somebody shares a link, and this
+  page has to make the list worth reading and the badge worth earning, with no
+  account and no app. PRD Req 11.
+
+  Three rules it is built around, all of them from the specs rather than from
+  taste:
+
+    * THE LIST IS NEVER GATED, only the badge (Req 12). Every pick is visible
+      to everyone. The lock is on the object you earn, and it says what opens
+      it.
+    * The name IS the criteria (Req 12 amendment), so it needs no explaining
+      and no description line beneath it.
+    * The badge is drawn from `badge.js`, the same renderer the app screen
+      uses. Not a copy — the same file. Two renderers agree only for as long
+      as somebody keeps them in step.
+
+  In the shipping product the data comes from Supabase (see
+  supabase/migrations/0001_init.sql, which this page's shape is the client
+  half of). Here it is read from the URL, so the page is a real, linkable,
+  shareable artifact without a backend to stand up.
+-->
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0; background: var(--bg-base); color: var(--text-primary);
+    font: 16px/1.4 var(--sans); -webkit-font-smoothing: antialiased;
+  }
+  ol, ul { list-style: none; margin: 0; padding: 0; }
+  button, a.btn { font: inherit; color: inherit; background: none; border: 0; cursor: pointer; }
+  a { color: inherit; }
+
+  /* One column on a phone, two on anything wide enough to hold the badge
+     beside the list — a share page is read on a laptop as often as a phone,
+     and a 400px column centred in a 1400px window looks like a mistake. */
+  .page { max-width: 1080px; margin-inline: auto;
+    padding: calc(env(safe-area-inset-top) + var(--s8)) var(--margin) var(--s8); }
+
+  .masthead { display: flex; align-items: baseline; gap: var(--s2);
+    font-size: 0.8125rem; font-weight: 700; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--text-secondary); margin-bottom: var(--s6); }
+  .masthead .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent-bright); }
+
+  .hero { display: grid; gap: var(--s6); }
+  @media (min-width: 800px) { .hero { grid-template-columns: 1fr 300px; align-items: start; } }
+
+  h1 { font-family: var(--serif); font-weight: 600; letter-spacing: -0.02em;
+    font-size: clamp(1.75rem, 5.6vw, 2.75rem); line-height: 1.08; margin: 0; }
+  .byline { color: var(--text-secondary); margin: var(--s3) 0 0; font-size: 0.9375rem; }
+  .byline b { color: var(--text-primary); font-weight: 600; }
+
+  /* The badge column. On a phone it sits under the title; on a laptop beside
+     it, because the badge is the thing the page is selling. */
+  .badgecol { display: flex; flex-direction: column; align-items: center;
+    gap: var(--s3); padding: var(--s6) var(--s4);
+    background: var(--bg-surface); border: 1px solid var(--border-subtle);
+    border-radius: var(--r-card); }
+  .badgecol .state { font-size: 0.6875rem; font-weight: 700; letter-spacing: .08em;
+    text-transform: uppercase; color: var(--text-secondary); }
+  .badgecol .insc { font-family: var(--serif); font-size: 1.0625rem; text-align: center;
+    line-height: 1.25; }
+  .badgecol .how { font-size: 0.8125rem; color: var(--text-secondary); text-align: center;
+    line-height: 1.35; max-width: 24em; }
+  .lockedbadge .plate { fill: var(--locked); opacity: .22; }
+  .lockedbadge .shackle, .lockedbadge .body { fill: none; stroke: var(--locked); stroke-width: 3; }
+  .lockedbadge .body { fill: var(--locked); opacity: .55; }
+
+  .cta { display: inline-flex; align-items: center; justify-content: center;
+    min-height: 48px; padding: 0 var(--s6); border-radius: 999px;
+    background: var(--accent); color: #fff; font-weight: 700; text-decoration: none;
+    width: 100%; }
+  .cta.ghost { background: none; color: var(--accent); border: 1px solid var(--accent); }
+
+  section { margin-top: var(--s8); }
+  .section-h { font-size: 0.75rem; font-weight: 700; letter-spacing: .04em;
+    text-transform: uppercase; color: var(--text-secondary); margin: 0 0 var(--s3); }
+
+  .ten li + li { margin-top: var(--s2); }
+  .row { display: grid; grid-template-columns: 34px 56px 1fr auto; gap: var(--s3);
+    align-items: center; padding: var(--s2) 0; border-bottom: 1px solid var(--border-subtle); }
+  .row .num { font-family: var(--serif); font-weight: 700; font-size: 1.25rem;
+    text-align: right; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+  .row.one .num { color: var(--accent-bright); font-size: 1.625rem; }
+  .row .thumb { width: 56px; height: 84px; border-radius: var(--r-art); overflow: hidden;
+    background: var(--bg-recessed); }
+  .row .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .row .t { font-weight: 600; }
+  .row .s { display: block; color: var(--text-secondary); font-size: 0.8125rem; margin-top: 2px; }
+  /* A pick you also have. The comparison overlay is not a separate screen —
+     it is this list, annotated. */
+  .row .mine { font-size: 0.75rem; font-weight: 700; color: var(--accent);
+    background: var(--accent-muted); border-radius: 999px; padding: 4px 10px; white-space: nowrap; }
+  .row.shared { background: color-mix(in srgb, var(--accent-muted) 45%, transparent); }
+
+  .compare { display: flex; align-items: baseline; gap: var(--s3); flex-wrap: wrap;
+    padding: var(--s4); border-radius: var(--r-card);
+    background: var(--accent-muted); color: var(--accent); }
+  .compare .n { font-family: var(--serif); font-size: 1.75rem; font-weight: 700; }
+
+  .consensus li { display: grid; grid-template-columns: 28px 1fr auto; gap: var(--s3);
+    align-items: center; padding: var(--s2) 0; border-bottom: 1px solid var(--border-subtle); }
+  .consensus .pts { color: var(--text-secondary); font-size: 0.8125rem;
+    font-variant-numeric: tabular-nums; }
+
+  footer { margin-top: var(--s8); padding-top: var(--s6);
+    border-top: 1px solid var(--border-subtle);
+    color: var(--text-disabled); font-size: 0.75rem; line-height: 1.5; }
+  .empty { padding: var(--s8) 0; color: var(--text-secondary); }
+</style>
+</head>
+<body>
+<div class="page" id="page"></div>
+
+<script src="catalog.js"></script>
+<script src="badge.js"></script>
+<script src="share.js"></script>
+<script>
+/* The page is `share.js` plus this: read the link, render, and nothing else.
+   Kept apart so the same rendering can be reused by the OG card, which needs
+   the data and none of the chrome. */
+const ten = Share.fromLocation(location);
+document.getElementById('page').innerHTML = ten ? Share.tenPage(ten) : Share.missing();
+if (ten) {
+  document.title = `${ten.title} — a Top 10 by ${ten.author}`;
+  Share.applyPreviewTags(ten, document, location);
+}
+</script>
+</body>
+</html>

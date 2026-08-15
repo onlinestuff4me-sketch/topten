@@ -1,0 +1,82 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>A topic</title>
+<link rel="stylesheet" href="tokens.css">
+<!--
+  The topic page — the other half of M5's web surface.
+
+  A topic is the social object and a Ten is a take on it (PRD object model),
+  which means this page, not the Ten page, is where the argument lives: what
+  everybody together thinks, and who disagreed.
+
+  The consensus arithmetic is Borda — position 1 scores 10, position 10 scores
+  1, so every complete Ten contributes exactly 55 whatever its picks are, and
+  no Ten can buy influence by being unusual. That sum exists in three places
+  now (TopTenKit's ConsensusTally, the migration's consensus_ten(), and
+  share.js) and the tests hold all three level.
+-->
+<style>
+  * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+  body { margin: 0; background: var(--bg-base); color: var(--text-primary);
+    font: 16px/1.4 var(--sans); -webkit-font-smoothing: antialiased; }
+  ol, ul { list-style: none; margin: 0; padding: 0; }
+  a { color: inherit; }
+  .page { max-width: 720px; margin-inline: auto;
+    padding: calc(env(safe-area-inset-top) + var(--s8)) var(--margin) var(--s8); }
+  .masthead { display: flex; align-items: baseline; gap: var(--s2);
+    font-size: 0.8125rem; font-weight: 700; letter-spacing: .06em;
+    text-transform: uppercase; color: var(--text-secondary); margin-bottom: var(--s6); }
+  .masthead .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--accent-bright); }
+  h1 { font-family: var(--serif); font-weight: 600; letter-spacing: -0.02em;
+    font-size: clamp(1.75rem, 5.6vw, 2.5rem); line-height: 1.08; margin: 0; }
+  .byline { color: var(--text-secondary); margin: var(--s3) 0 0; font-size: 0.9375rem; }
+  section { margin-top: var(--s8); }
+  .section-h { font-size: 0.75rem; font-weight: 700; letter-spacing: .04em;
+    text-transform: uppercase; color: var(--text-secondary); margin: 0 0 var(--s3); }
+  .consensus li, .ten .row { display: grid; grid-template-columns: 28px 1fr auto;
+    gap: var(--s3); align-items: center; padding: var(--s3) 0;
+    border-bottom: 1px solid var(--border-subtle); }
+  .ten .row { grid-template-columns: 28px 56px 1fr auto; }
+  .num { font-family: var(--serif); font-weight: 700; font-size: 1.125rem;
+    text-align: right; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+  .consensus li:first-child .num { color: var(--accent-bright); font-size: 1.375rem; }
+  .t { font-weight: 600; }
+  .s { display: block; color: var(--text-secondary); font-size: 0.8125rem; margin-top: 2px; }
+  .pts { color: var(--text-secondary); font-size: 0.8125rem; font-variant-numeric: tabular-nums;
+    white-space: nowrap; }
+  .thumb { width: 56px; height: 84px; border-radius: var(--r-art); overflow: hidden;
+    background: var(--bg-recessed); }
+  .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .cta { display: inline-flex; align-items: center; justify-content: center;
+    min-height: 48px; padding: 0 var(--s6); border-radius: 999px;
+    background: var(--accent); color: #fff; font-weight: 700; text-decoration: none; width: 100%; }
+  .empty { padding: var(--s6) 0; color: var(--text-secondary); }
+  footer { margin-top: var(--s8); padding-top: var(--s6);
+    border-top: 1px solid var(--border-subtle);
+    color: var(--text-disabled); font-size: 0.75rem; line-height: 1.5; }
+</style>
+</head>
+<body>
+<div class="page" id="page"></div>
+<script src="catalog.js"></script>
+<script src="badge.js"></script>
+<script src="share.js"></script>
+<script>
+/* Takes arrive as `?t=<title>&tens=<by>:<ids>|<by>:<ids>` — the same "data in
+   the link" trick the Ten page uses, for the same reason: the page is a real
+   artifact without a backend to stand up. */
+const q = new URLSearchParams(location.search);
+const tens = (q.get('tens') || '').split('|').filter(Boolean).map(part => {
+  const [author, ids] = part.split(':');
+  return { author, items: (ids || '').split(',').map(Number).filter(Boolean)
+    .map(id => Share.byId.get(id) || { id, t: 'Unavailable' }) };
+});
+const topic = { title: q.get('t') || 'A topic' };
+document.getElementById('page').innerHTML = Share.topicPage(topic, tens);
+document.title = `${topic.title} — Top Ten`;
+</script>
+</body>
+</html>
