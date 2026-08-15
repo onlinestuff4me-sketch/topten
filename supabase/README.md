@@ -5,14 +5,15 @@ function. Migrations are numbered and run **deliberately** — the Stack
 discipline, inherited via `specs/tech-stack.md`.
 
 ```
-migrations/0001_init.sql             the schema, its triggers, and every RLS policy
-migrations/0002_aggregate_stats.sql  aggregate-only analytics, as views
-migrations/0003_grants.sql           table privileges for the anon/authenticated roles
-verify.sql                           paste into Supabase after migrating: did it land, whole?
-tests/run.sh                         applies all three to a throwaway Postgres and runs the suite
-tests/00_supabase_stub.sql           the parts of Supabase the migrations assume
-tests/01_grants.sql                  the little the local stub needs on top of 0003
-tests/rls_test.sql                   30 checks, executed as three different callers
+migrations/0001_init.sql               the schema, its triggers, and every RLS policy
+migrations/0002_aggregate_stats.sql    aggregate-only analytics, as views
+migrations/0003_grants.sql             table privileges for the anon/authenticated roles
+migrations/0004_profile_on_signup.sql  every account gets a profile the instant it exists
+verify.sql                             paste into Supabase after migrating: did it land, whole?
+tests/run.sh                           applies all four, runs verify.sql, then the suite
+tests/00_supabase_stub.sql             the parts of Supabase the migrations assume
+tests/01_grants.sql                    the little the local stub needs on top of 0003
+tests/rls_test.sql                     37 checks, executed as three different callers
 ```
 
 ## Running the tests
@@ -41,9 +42,11 @@ Both roles are `NOBYPASSRLS`. That matters more than it looks: a superuser
 ignores every policy in the file, and a suite run as one passes no matter what
 the policies say.
 
-The suite has been **falsified twice**, which is the only reason to trust it.
-Weakening `tens_read_published_or_own` to `using (true)` turns two checks red;
-dropping `security_invoker` from the aggregate views turns another red.
+The suite has been **falsified three times**, which is the only reason to
+trust it. Weakening `tens_read_published_or_own` to `using (true)` turns two
+checks red; dropping `security_invoker` from the aggregate views turns another
+red; removing `0004`'s trigger turns five red and fails `verify.sql` on a
+separate line.
 
 The second falsification is the more useful story. The first version of that
 check asserted "a draft must not raise the published count", and it passed with
@@ -74,11 +77,14 @@ structural — every view in `public` must carry it.
 - **One take per person per topic.** A second take is an edit of the first.
   Otherwise consensus counts one person twice and "you and Sam share 6" has to
   ask which Sam.
-- **Handles are generated, not chosen** (2026-08-15). `TopTenKit/Handle.swift`
-  mints them and its validity rule is character-for-character the database's
-  `handle_shape` constraint — a client that can mint a handle the database
-  refuses is a client that fails at publish time, on the one action that
-  matters.
+- **Handles are generated, not chosen** (2026-08-15), and once an account
+  exists the *database* is what mints one — `0004`, inside the same
+  transaction as the signup. A client-supplied handle would make it
+  chosen-at-signup for anyone calling the API directly, so the trigger ignores
+  `raw_user_meta_data` and a check in the suite says so.
+  `TopTenKit/Handle.swift` keeps the same wordlists for the half of the
+  product that has no account yet, and its validity rule is
+  character-for-character the `handle_shape` constraint.
 - **Analytics are aggregate only** (2026-08-15), and implemented as views over
   rows that already exist rather than counters fed by triggers. A counter
   column is a second copy of a number, and second copies are wrong eventually.
@@ -113,39 +119,88 @@ and run it, **in this order**, checking each says Success before the next:
 | 1 | `supabase/migrations/0001_init.sql` | Tables, triggers, consensus functions, every RLS policy |
 | 2 | `supabase/migrations/0002_aggregate_stats.sql` | The aggregate-only analytics views |
 | 3 | `supabase/migrations/0003_grants.sql` | Table privileges for the `anon` and `authenticated` roles |
+| 4 | `supabase/migrations/0004_profile_on_signup.sql` | Gives every account a profile the moment it exists |
+
+`0004` is the one magic link makes non-optional. Signing in creates a row in
+`auth.users` and nothing else; `tens.author_id` points at `public.profiles`.
+Without the trigger in `0004`, the first publish after the first sign-in fails
+on a foreign key — at the exact moment the product is for. If it does not
+apply, stop: nothing downstream is worth testing.
 
 They are ordered because each depends on the last. If one errors, stop and send
 me the message rather than running the next.
 
 *(If you have the Supabase CLI linked instead, `supabase db push` does all
-three and is equivalent.)*
+four and is equivalent.)*
 
 ### 3. Check it landed
 
 New query → paste **`supabase/verify.sql`** → run. It changes nothing and
-prints ten lines. Every one should start `ok`:
+prints eleven lines. Every one should start `ok`:
 
 ```
-  ok    tables                                  7 of 7
-  ok    row level security enabled              7 of 7
-  ok    policies                                15 of 15
-  ok    aggregate views                         4 of 4
-  ok    views run as caller (security_invoker)  4 of 4
-  ok    functions                               5 of 5
-  ok    the "a Ten is ten" trigger              1 of 1
-  ok    anon can read the tables                7 of 7
-  ok    authenticated can write                 7 of 7
-  ok    tables are empty (a fresh project)      0 tens
+  ok    tables                                          7 of 7
+  ok    row level security enabled                      7 of 7
+  ok    policies                                        15 of 15
+  ok    aggregate views                                 4 of 4
+  ok    views run as caller (security_invoker)          4 of 4
+  ok    functions                                       8 of 8
+  ok    the "a Ten is ten" trigger                      1 of 1
+  ok    the "signing in gives you a profile" trigger    1 of 1
+  ok    anon can read the tables                        7 of 7
+  ok    authenticated can write                         7 of 7
+  ok    tables are empty (a fresh project)              0 tens
 ```
 
 A `FAIL` line names what is missing — a missing policy is printed by name, not
 as a count. Send me the whole output if any line fails.
 
-### 4. Turn on email sign-in
+### 4. Turn on magic-link sign-in
 
-**Authentication → Providers → Email.** Enable it, and leave "Confirm email"
-on. Sign-in is only ever required to *publish*; anonymous local use stays
-first-class (PRD Req 10), so nothing else here needs changing.
+Sign-in is only ever required to *publish*; anonymous local use stays
+first-class (PRD Req 10). Magic link, like Stack — no passwords anywhere in
+this product.
+
+There is **no "Magic Link" provider** to switch on. A magic link *is* the
+email provider: the client calls `signInWithOtp({ email })` and Supabase sends
+the link. So what follows is mostly about the three settings that make the
+link work, each of which fails in a way that looks like something else.
+
+**a. Authentication → Providers → Email** — make sure it is enabled. Leave the
+rest alone.
+
+**b. Authentication → URL Configuration** — this is the one that bites.
+
+| Field | Set it to |
+|---|---|
+| Site URL | `https://topten-three.vercel.app` |
+| Redirect URLs | `https://topten-three.vercel.app/**`, and `http://localhost:*/**` if you ever open the prototype from a file server |
+
+The default Site URL on a new project is `http://localhost:3000`. Leave it and
+every magic link you send lands on a page that does not exist — on your phone,
+where there is no localhost at all. The symptom reads like a broken email, and
+the cause is one field.
+
+**c. Authentication → Rate Limits** — read the "emails per hour" figure and
+tell me what it says.
+
+Supabase's built-in email sender is a shared, throttled one meant for testing,
+and the allowance is small — single digits per hour. That is fine for you
+signing in once. It is not fine for a TestFlight round, and when it runs out
+the failure is a silent non-delivery rather than an error. Before we put this
+in front of anyone else we add custom SMTP (**Project Settings → Auth → SMTP
+Settings**; Resend's free tier is enough). Not needed today.
+
+*(I could not check the current default from this session — supabase.com is
+blocked at the environment's egress proxy, so the number above is "small"
+rather than a figure I would have you rely on. The dashboard is authoritative.)*
+
+**What you should NOT do:**
+
+- Don't turn off "Confirm email". It does not gate magic links, and off it
+  weakens the signup path we might add later.
+- Don't add a password provider "just in case". A second way in is a second
+  thing to secure and a second thing to explain.
 
 ### 5. Send me two values
 
@@ -166,7 +221,7 @@ live on a real URL" can actually be checked, rather than asserted.
 ## Until then
 
 **The schema is tested but unapplied**, and that is stated plainly rather than
-rounded up: 30 checks pass against a local Postgres in CI, and no row has ever
+rounded up: 37 checks pass against a local Postgres in CI, and no row has ever
 been written to a real project.
 
 ## Applying it for real

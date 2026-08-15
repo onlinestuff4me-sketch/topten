@@ -10,6 +10,20 @@ import Foundation
 /// generated one costs nothing then, and renaming is a settings screen
 /// somebody can want later.
 ///
+/// **Who mints which handle.** Once an account exists, the *database* mints it
+/// — `supabase/migrations/0004_profile_on_signup.sql` creates the profile row
+/// inside the same transaction as the signup, because magic-link sign-in
+/// creates an `auth.users` row and nothing else, and the first publish after
+/// that would otherwise fail on a foreign key. The wordlists there are these
+/// wordlists.
+///
+/// This generator is for the half of the product that has no account: PRD Req
+/// 10 makes anonymous local use first-class, and a local Ten still needs a
+/// byline. It is deliberately *not* sent to the server at signup — a
+/// client-supplied handle in `raw_user_meta_data` would turn "generated" into
+/// "chosen by anyone calling the API directly", and the RLS suite has a check
+/// that says so.
+///
 /// Two properties the generator has to have, and both are tested:
 ///
 /// - **Safe by construction.** The words are a curated list, so there is no

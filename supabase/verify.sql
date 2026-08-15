@@ -27,7 +27,8 @@ expected_policies(name) as (
 ),
 expected_functions(name) as (
   values ('consensus_ten'), ('shared_with_consensus'),
-         ('assert_ten_is_complete'), ('grant_unlock_on_publish'), ('touch_updated_at')
+         ('assert_ten_is_complete'), ('grant_unlock_on_publish'), ('touch_updated_at'),
+         ('handle_new_user'), ('generate_handle'), ('handle_pick')
 ),
 checks as (
 
@@ -83,26 +84,46 @@ checks as (
   join pg_namespace n on n.oid = c.relnamespace and n.nspname = 'public'
 
   union all
-  select 6, 'functions', count(*) || ' of 5', count(*) = 5
-  from expected_functions e
-  join pg_proc p on p.proname = e.name
-  join pg_namespace n on n.oid = p.pronamespace and n.nspname = 'public'
+  select 6, 'functions',
+         coalesce('missing: ' || (
+           select string_agg(e.name, ', ')
+           from expected_functions e
+           where not exists (select 1 from pg_proc p
+                             join pg_namespace n on n.oid = p.pronamespace
+                             where n.nspname = 'public' and p.proname = e.name)
+         ), (select count(*)::text from expected_functions) || ' of ' ||
+            (select count(*)::text from expected_functions)),
+         not exists (
+           select 1 from expected_functions e
+           where not exists (select 1 from pg_proc p
+                             join pg_namespace n on n.oid = p.pronamespace
+                             where n.nspname = 'public' and p.proname = e.name)
+         )
 
   -- The trigger that refuses to publish a list that is not ten.
   union all
   select 7, 'the "a Ten is ten" trigger', count(*) || ' of 1', count(*) = 1
   from pg_trigger where tgname = 'tens_complete_on_publish' and not tgisinternal
 
+  -- The trigger that gives every account a profile. This one is easy to lose:
+  -- it is the only object in the schema that hangs off a table Supabase owns,
+  -- so a project where 0004 half-applied looks completely healthy right up to
+  -- the first publish after the first sign-in.
+  union all
+  select 8, 'the "signing in gives you a profile" trigger',
+         count(*) || ' of 1', count(*) = 1
+  from pg_trigger where tgname = 'on_auth_user_created' and not tgisinternal
+
   -- Grants. Without these every query returns zero rows and every policy looks
   -- like the culprit.
   union all
-  select 8, 'anon can read the tables',
+  select 9, 'anon can read the tables',
          count(*) || ' of 7', count(*) = 7
   from expected_tables e
   where has_table_privilege('anon', 'public.' || quote_ident(e.name), 'SELECT')
 
   union all
-  select 9, 'authenticated can write',
+  select 10, 'authenticated can write',
          count(*) || ' of 7', count(*) = 7
   from expected_tables e
   where has_table_privilege('authenticated', 'public.' || quote_ident(e.name), 'INSERT')
@@ -110,9 +131,10 @@ checks as (
   -- Nothing should be in here yet, and if something is, that is worth knowing
   -- before the client starts writing.
   union all
-  select 10, 'tables are empty (a fresh project)',
+  select 11, 'tables are empty (a fresh project)',
          (select count(*) from public.tens)::text || ' tens',
          (select count(*) from public.tens) = 0
 )
-select case when ok then '  ok    ' else '  FAIL  ' end || rpad(what, 40) || detail as result
+-- 48, because `rpad` truncates as well as pads and the longest label is 43.
+select case when ok then '  ok    ' else '  FAIL  ' end || rpad(what, 48) || detail as result
 from checks order by ord;

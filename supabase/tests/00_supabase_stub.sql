@@ -20,9 +20,14 @@ create extension if not exists "pgcrypto";
 create schema if not exists auth;
 create schema if not exists test;
 
+-- `raw_user_meta_data` is here because the real table has it: a client can
+-- attach arbitrary JSON to a signup. 0004 deliberately ignores it, and a stub
+-- without the column would make that decision untestable — the trigger would
+-- pass by virtue of the column not existing.
 create table if not exists auth.users (
-  id    uuid primary key default gen_random_uuid(),
-  email text unique
+  id                  uuid primary key default gen_random_uuid(),
+  email               text unique,
+  raw_user_meta_data  jsonb
 );
 
 create or replace function auth.uid()

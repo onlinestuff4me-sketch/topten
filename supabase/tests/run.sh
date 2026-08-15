@@ -52,6 +52,19 @@ for m in "$HERE"/../migrations/*.sql; do
 done
 $PSQL -d topten_test -f "$HERE/01_grants.sql" >/dev/null
 
+# The arrival check, run here for the same reason it exists at all: it is the
+# file Mischa pastes into a real project, and a check nothing executes is a
+# check that rots. Run BEFORE the RLS fixtures, because one of its lines is
+# "this project is empty" and the fixtures are about to make that false.
+echo "verify.sql:"
+VERIFY_OUT="$($PGBIN/psql -h "$PGROOT/run" -p "$PORT" -U postgres -d topten_test \
+  -v ON_ERROR_STOP=1 -t -A -f "$HERE/../verify.sql")"
+echo "$VERIFY_OUT"
+if grep -q 'FAIL' <<<"$VERIFY_OUT"; then
+  echo "run.sh: verify.sql reported a failure" >&2
+  exit 1
+fi
+
 # -q suppresses the notices, and the report is the point, so this one is loud.
 "$PGBIN/psql" -h "$PGROOT/run" -p "$PORT" -U postgres -d topten_test \
   -v ON_ERROR_STOP=1 -t -A -f "$HERE/rls_test.sql"

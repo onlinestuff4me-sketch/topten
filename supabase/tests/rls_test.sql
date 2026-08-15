@@ -20,9 +20,15 @@ insert into auth.users (id, email) values
   ('11111111-1111-1111-1111-111111111111', 'ada@example.com'),
   ('22222222-2222-2222-2222-222222222222', 'grace@example.com');
 
+-- An upsert, not an insert, because 0004's trigger has already created both
+-- of these profiles with generated handles. The suite renames them to `ada`
+-- and `grace` so the rest of the file reads as sentences about people rather
+-- than about `quiet_lantern_04`.
 insert into public.profiles (id, handle, display_name) values
   ('11111111-1111-1111-1111-111111111111', 'ada',   'Ada'),
-  ('22222222-2222-2222-2222-222222222222', 'grace', 'Grace');
+  ('22222222-2222-2222-2222-222222222222', 'grace', 'Grace')
+on conflict (id) do update
+  set handle = excluded.handle, display_name = excluded.display_name;
 
 insert into public.topics (id, criteria_id, slug, domain, genre, decade, title, prompt) values
   ('aaaaaaaa-0000-0000-0000-000000000001', 'movie:genre:Crime:decade:1990',
@@ -451,6 +457,115 @@ begin
   call test.as_owner();
   call test.check(rows_n >= 1, 'topic_stats has a row per topic anybody has published on',
     'rows=' || rows_n);
+end $$;
+
+-- ── Signing in gives you a profile (0004) ───────────────────────────────────
+-- Magic-link sign-in creates an `auth.users` row and nothing else. Without the
+-- trigger, the first publish after sign-in fails on a foreign key — at the one
+-- moment the whole product is for. These checks are that failure, prevented.
+
+do $$
+declare n int; h text;
+begin
+  call test.as_owner();
+  insert into auth.users (id, email)
+    values ('33333333-3333-3333-3333-333333333333', 'newcomer@example.com');
+  select count(*) into n from public.profiles
+   where id = '33333333-3333-3333-3333-333333333333';
+  call test.check(n = 1, 'signing in creates a profile, with no client involved', 'rows=' || n);
+
+  select handle into h from public.profiles
+   where id = '33333333-3333-3333-3333-333333333333';
+  call test.check(h ~ '^[a-z0-9_]{3,24}$',
+    'the generated handle satisfies handle_shape', 'handle=' || coalesce(h, '<null>'));
+end $$;
+
+-- The decision was "generated, changeable later" — not "chosen at signup by
+-- anyone who calls the API directly". `raw_user_meta_data` is client-supplied
+-- and 0004 ignores it on purpose; this is the check that says so.
+do $$
+declare h text;
+begin
+  call test.as_owner();
+  insert into auth.users (id, email, raw_user_meta_data)
+    values ('77777777-7777-7777-7777-777777777777', 'sneaky@example.com',
+            '{"handle":"admin_topten"}'::jsonb);
+  select handle into h from public.profiles
+   where id = '77777777-7777-7777-7777-777777777777';
+  call test.check(h = public.generate_handle('77777777-7777-7777-7777-777777777777', 0),
+    'a client cannot choose its own handle by attaching JSON to the signup',
+    'handle=' || coalesce(h, '<null>'));
+end $$;
+
+-- The retry loop, exercised rather than asserted: squat on the handle attempt
+-- 0 would produce, then sign the user up anyway.
+do $$
+declare h text; taken text;
+begin
+  call test.as_owner();
+  taken := public.generate_handle('44444444-4444-4444-4444-444444444444', 0);
+  insert into auth.users (id, email) values
+    ('66666666-6666-6666-6666-666666666666', 'squatter@example.com');
+  update public.profiles set handle = taken
+   where id = '66666666-6666-6666-6666-666666666666';
+
+  insert into auth.users (id, email) values
+    ('44444444-4444-4444-4444-444444444444', 'collide@example.com');
+  select handle into h from public.profiles
+   where id = '44444444-4444-4444-4444-444444444444';
+  call test.check(h is not null and h <> taken and h ~ '^[a-z0-9_]{3,24}$',
+    'a handle collision retries instead of leaving the account profile-less',
+    'wanted=' || taken || ' got=' || coalesce(h, '<null>'));
+end $$;
+
+-- And the thing all of the above is actually for.
+do $$
+declare ok_publish boolean := false;
+begin
+  call test.as_owner();
+  insert into auth.users (id, email) values
+    ('55555555-5555-5555-5555-555555555555', 'publisher@example.com');
+  call test.as_user('55555555-5555-5555-5555-555555555555');
+  begin
+    insert into public.tens (author_id, topic_id) values
+      ('55555555-5555-5555-5555-555555555555', 'aaaaaaaa-0000-0000-0000-000000000003');
+    ok_publish := true;
+  exception when others then
+    ok_publish := false;
+  end;
+  call test.as_owner();
+  call test.check(ok_publish,
+    'a freshly signed-in account can immediately start a Ten (no FK violation)');
+end $$;
+
+do $$
+declare a text; b text; c text;
+begin
+  call test.as_owner();
+  a := public.generate_handle('11111111-1111-1111-1111-111111111111', 0);
+  b := public.generate_handle('11111111-1111-1111-1111-111111111111', 0);
+  c := public.generate_handle('11111111-1111-1111-1111-111111111111', 1);
+  call test.check(a = b and a <> c,
+    'generate_handle is deterministic, and a retry is a different handle',
+    a || ' / ' || c);
+end $$;
+
+-- The retry loop is only cheap if collisions are rare, so the space has to be
+-- genuinely wide rather than nominally wide. 48 x 48 x 100 = 230,400; the
+-- birthday estimate for 2,000 draws is ~9 duplicates. The same bar as
+-- TopTenKit's HandleTests, against the other implementation.
+--
+-- This also stands in for a correlation check. A hash that moved predictably
+-- with its input would cluster here long before it showed up as a duplicate.
+do $$
+declare n int;
+begin
+  call test.as_owner();
+  select count(distinct public.generate_handle(u, 0)) into n
+  from (select gen_random_uuid() as u from generate_series(1, 2000)) s;
+  call test.check(n >= 1980,
+    'the handle space is wide enough that retrying is the exception',
+    'distinct=' || n || ' of 2000');
 end $$;
 
 -- ── Report ──────────────────────────────────────────────────────────────────
