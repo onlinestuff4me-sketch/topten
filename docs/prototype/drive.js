@@ -29,7 +29,32 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   page.on('console', m => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
   const check = (cond, msg) => { if (!cond) throw new Error('FAILED: ' + msg); console.log('  ok — ' + msg); };
 
+  // Stack's splash rule, inherited: the first screen must be instant, so it
+  // may not depend on a third party being up.
+  const apiCalls = [];
+  page.on('request', r => { if (/api\.themoviedb\.org/.test(r.url())) apiCalls.push(r.url()); });
+
   await page.goto(BASE, { waitUntil: 'networkidle' });
+
+  // ── Intro ───────────────────────────────────────────────────────────────
+  check(await page.locator('.intro').count() === 1, 'a new user lands on the intro, not on a form');
+  check(await page.locator('.intro .marquee').count() === 2, 'it shows the product — two drifting rows of real artwork');
+  check(await page.locator('.intro .tile .rank').count() > 0, 'wearing the app\'s own rank numerals');
+  const introText = await page.locator('.intro').innerText();
+  check(/free/i.test(introText), 'it answers what this costs before asking for anything');
+  check(await page.locator('.intro [data-act="begin"]').count() === 1, 'one CTA');
+  check(!/\bskip\b/i.test(introText), 'and no Skip — this screen only tells, so a Skip would compete with the CTA');
+  check(apiCalls.length === 0, `the intro makes no API calls (${apiCalls.length})`);
+  // The one action on the screen must be reachable without scrolling for it.
+  const ctaVisible = await page.evaluate(() => {
+    const b = document.querySelector('.intro [data-act="begin"]');
+    const r = b.getBoundingClientRect();
+    return r.bottom <= window.innerHeight + 1 && r.top >= 0;
+  });
+  check(ctaVisible, 'the CTA is on screen without scrolling');
+
+  await page.locator('[data-act="begin"]').click();
+  await page.waitForTimeout(200);
 
   // ── One screen: search, filters, suggestions, and the ten slots ──────────
   check(await page.locator('#q').count() === 1, 'search field is on the build screen, not a separate tab');
@@ -331,6 +356,14 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   await page.waitForSelector('.after.on', { timeout: 5000 });
   await page.locator('[data-act="done"]').click();
 
+  // ── After a finished Ten: closer in, or a different kind of list ────────
+  await page.waitForSelector('.sug-topic', { timeout: 5000 });
+  const finishedText = await page.locator('body').innerText();
+  check(/or a different kind of list/i.test(finishedText), 'finishing offers other kinds of list, not just more films');
+  check(/Your top ten shows/i.test(finishedText), 'TV shows is offered as the next domain');
+  check(/coming next/i.test(finishedText), 'and the unbuilt domains are named rather than hidden');
+  check(!/see other people/i.test(finishedText), 'discovery is NOT offered after the first list');
+
   // ── Rabbit hole ─────────────────────────────────────────────────────────
   check((await page.locator('.sug-topic').count()) >= 5, 'at least five topic suggestions after completion');
   const picks = await page.evaluate(() => window.S.ranked.map(id => window.byId.get(id)));
@@ -353,6 +386,68 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   await page.locator('.rail .card').first().locator('.art').click();
   await page.reload({ waitUntil: 'networkidle' });
   check((await page.locator('.dock-top .n').innerText()) === '1 of 10', 'the draft survives a reload');
+
+  // ── A second list unlocks discovery, and TV is a real shelf ─────────────
+  await page.evaluate(() => {
+    const tv = { id: 'tv', domain: 'tv', title: 'TV shows', prompt: 'Your ten favourite TV shows of all time.' };
+    window.S.topic = tv; window.S.tray = []; window.S.q = '';
+    window.S.graph = { nodes: {}, roots: [], focus: null };
+    window.S.filters = { services: [], genre: null, director: null, actor: null };
+  });
+  await page.locator('.chip[data-sheet="genre"]').click();
+  await page.waitForTimeout(150);
+  await page.locator('.sheet [data-act="closesheet"]').click();
+  await page.waitForTimeout(350);
+  const tvOnly = await page.evaluate(() => [...document.querySelectorAll('.rail .card')]
+    .every(c => (window.byId.get(+c.dataset.card) || {}).dm === 'tv'));
+  check(tvOnly, 'the TV topic offers only shows — a Ten never mixes domains');
+  check(await page.locator('.rail .card').count() > 0, 'and the TV shelf is populated');
+
+  while (await page.evaluate(() => window.S.tray.length) < 10) {
+    const free = page.locator('.rail .card[data-in="0"]').first();
+    if (!(await free.count())) break;
+    await free.locator('.art').click();
+    await page.waitForTimeout(25);
+  }
+  await page.locator('[data-act="arrange"]').click();
+  await page.waitForTimeout(300);
+  await page.locator('[data-act="finish"]').click();
+  await page.waitForSelector('.vault', { timeout: 5000 });
+  await page.locator('[data-act="skip"]').click();
+  await page.waitForSelector('.after.on', { timeout: 5000 });
+  await page.locator('[data-act="done"]').click();
+  await page.waitForTimeout(200);
+  check(await page.evaluate(() => window.S.done.length) === 2, 'two finished Tens are remembered');
+  check(/See other people/i.test(await page.locator('body').innerText()),
+    'discovery IS offered after the second list');
+
+  // ── Discovery, and the reveal gate ──────────────────────────────────────
+  await page.locator('[data-act="discover"]').click();
+  await page.waitForTimeout(250);
+  check(await page.locator('.other-ten').count() >= 5, 'other people have Tens to look at');
+  // Each of them has their own TOPIC, so a Movies take does not open a Crime
+  // badge — the gate is per topic, which is what makes it worth crossing.
+  const lockedOnList = await page.locator('.lockedbadge').count();
+  check(lockedOnList > 0, `their badges are locked until you take on their topic (${lockedOnList} locked)`);
+  await page.screenshot({ path: SHOTS + '/9-discover.png', fullPage: true });
+  await page.locator('.other-ten').first().click();
+  await page.waitForTimeout(250);
+  check(/locked/i.test(await page.locator('body').innerText()), 'their Ten is fully readable, only the badge is gated');
+  check(await page.locator('.tenrow').count() === 10, 'and the list itself is never hidden');
+
+  // A take on ONE topic opens every badge on that topic and no others.
+  const firstTopic = await page.evaluate(() => window.PEOPLE[0].topic);
+  await page.evaluate(t => {
+    window.S.done.push({ topicId: t.id, title: t.title, domain: t.domain,
+      ranked: window.S.done[0].ranked, badge: window.S.done[0].badge });
+  }, firstTopic);
+  // We are on a person's page; its Back returns to Discover and re-renders.
+  await page.locator('[data-act="discover"]').click();
+  await page.waitForTimeout(300);
+  const lockedAfter = await page.locator('.lockedbadge').count();
+  check(lockedAfter === lockedOnList - 1,
+    `a take unlocks its own topic and only that one (${lockedOnList} locked → ${lockedAfter})`);
+  await page.screenshot({ path: SHOTS + '/10-unlocked.png', fullPage: true });
 
   // ── A draft saved by an earlier build must survive a rebuilt shelf ──────
   // The catalog is regenerated from TMDB, so ids can vanish between builds.

@@ -19,7 +19,7 @@ M1.5 prototype built and deployed, awaiting Mischa's first rounds**
   ten slots pinned in the dock, reorderable in place. Then the cut (only on overflow), the badge
   reveal, and the post-completion rabbit hole. 620-film catalog baked from
   TMDB with per-film streaming availability, cast, and recommendation edges.
-  **Round 5 is pending Mischa's next pass.**
+  **Round 6 is pending Mischa's next pass.**
 - **M1 — the brain: not started.** Deliberately resequenced after the
   prototype (see below).
 
@@ -38,7 +38,7 @@ before a line of Swift was written against it.
   4 tests, green. Falsified once on a throwaway branch to prove the gate can
   go red.
 - **Browser (Chromium, iPhone 15 Pro viewport, `docs/prototype/drive.js`):**
-  the prototype driven end to end — 65 assertions, zero page errors. These now
+  the prototype driven end to end — 84 assertions, zero page errors. These now
   include layout invariants Mischa reported by eye: every block shares one
   left edge, rails align to it, all ten slots fit without scrolling, and
   nothing is trapped behind the dock. Screenshots from the same run judge the
@@ -121,6 +121,21 @@ state that broke it.
 
 **Anything that rebuilds `catalog.js` must assume someone is holding a draft
 against the old one.**
+
+## Round 5 (2026-08-15) — onboarding, domains, discovery
+
+| Ask | Outcome |
+|---|---|
+| Splash screen like Stack's first screen | `renderIntro` — curated artwork, three value props, cost answered, one CTA, no Skip, zero API calls (asserted) |
+| Straight into the first Ten | Intro → Movies build screen, no questions first |
+| Then related lists AND other list types | Finished screen offers both, side by side |
+| TV shows next, then books/games/restaurants/travel | TV is real (320 shows, creators + networks + cast + recs); the rest are named as "Coming next" rather than hidden |
+| Discovery after the 2nd list | Gated on `S.done.length >= 2`; six fixture people, each with their own topic |
+| — | Reveal gate is real: lists readable, badges locked per topic, unlocking retroactively |
+
+TV ids are offset by 10,000,000 — TMDB numbers films and shows separately and
+1399 is both Game of Thrones and a film. One id space in the app, arranged in
+one place (`build_tv.py`).
 
 ## What the prototype changed in the specs
 

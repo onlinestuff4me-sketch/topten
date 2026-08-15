@@ -109,6 +109,45 @@ user subscribes to, purely to seed relevant suggestions in the Gather tray.
   without typing a search query (suggestion taps alone suffice); services
   question is skippable; no sign-in wall before the first badge reveal.
 
+**Amendment 2026-08-15 (Mischa, round 5) — the shape of a session, and the
+domains beyond film.**
+
+*"The onboarding should be a splash screen to introduce the app and its major
+value props… then jump you straight into making your first top 10 list…
+Discovering lists from other users should be introduced to them after their
+2nd list."*
+
+**The order of the first session is now a decision, not an accident:**
+
+1. **Intro.** One screen that shows the product rather than describing it —
+   two drifting rows of hand-picked, widely-known artwork wearing the app's own
+   rank numerals — the three things the app is for, and what it costs (nothing).
+   The artwork is baked in: this is the first screen, often on a cold cache, and
+   a screen whose whole job is to look finished is the worst place in the app
+   for a loading state. Stack learned this the same way (`stack/specs/onboarding.md`).
+   **Deliberately not skippable** — it only tells, so a Skip would be a second
+   CTA competing with the real one.
+2. **Straight into the first Ten**, on Movies. No account, no questions first.
+3. **On finishing**, two offers side by side: *more films, closer in* (the
+   rabbit hole, unchanged) and *a different kind of list* (the other domains).
+4. **After the second finished Ten, and not before,** discovery appears. Other
+   people's lists are interesting once the mechanic is understood and merely
+   confusing before it is — at list one the user has not yet made the thing
+   they would be comparing against.
+
+**Domains (Mischa's order):** movies, **TV shows**, books, video games,
+restaurants, travel destinations. Movies and TV are built and share every
+mechanic — a Ten never mixes domains, and each domain's authorship axis is its
+own (a film's director and studio; a show's creator and network). The unbuilt
+domains are **named in the picker rather than hidden**: a list showing only
+what exists tells the user the app is smaller than it is going to be.
+
+**The reveal gate, now real (Req 12).** Discovery shows six people, each with a
+Ten on their own topic. Every list is fully readable; only the badge is locked,
+and it opens for **all** takes on that topic the moment you finish your own —
+per topic, retroactively. A Movies Ten does not open a Crime films badge, which
+is what makes crossing the gate worth anything.
+
 **2. Gather.** Building a Ten is two phases; phase one is *gathering* — an
 unordered tray of up to 10 candidates. Sources: search (catalog-backed with
 artwork) and a suggestion rail (popular/classic/acclaimed for the topic,

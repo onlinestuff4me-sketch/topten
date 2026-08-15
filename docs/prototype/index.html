@@ -267,6 +267,21 @@ section { margin-top: var(--s8); }
 .sug-topic { display: block; width: 100%; text-align: left; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--r-card); padding: var(--s3) var(--s4); margin-bottom: var(--s2); }
 .sug-topic .t { font-family: var(--serif); font-weight: 600; font-size: 1.0625rem; }
 .sug-topic .lvl { font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 700; color: var(--text-disabled); margin-bottom: var(--s1); }
+.other-ten { display: block; width: 100%; text-align: left; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--r-card); padding: var(--s3) var(--s4); margin-bottom: var(--s2); }
+.other-ten .who { display: flex; flex-direction: column; gap: 2px; }
+.other-ten .nm { font-family: var(--serif); font-weight: 600; font-size: 1.0625rem; }
+.other-ten .ln { color: var(--text-secondary); font-size: 0.8125rem; }
+.other-ten .strip { display: flex; gap: 4px; margin: var(--s3) 0; }
+.other-ten .mini { position: relative; width: 40px; height: 60px; border-radius: 4px; overflow: hidden; flex: 0 0 40px; background: var(--bg-recessed); }
+.other-ten .mini img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.other-ten .mini b { position: absolute; left: 0; bottom: 0; font-family: var(--serif); font-size: 0.625rem; background: rgba(18,17,16,.72); color: #F4F1EA; padding: 0 4px; border-radius: 0 4px 0 4px; }
+.other-ten .badgecell { display: flex; align-items: center; gap: var(--s3); color: var(--text-secondary); font-size: 0.8125rem; }
+.other-ten .badgecell svg { width: 44px; height: 44px; }
+.lockedbadge { width: 44px; height: 44px; border-radius: 10px; background: var(--locked); opacity: .35;
+  -webkit-mask: radial-gradient(circle at 50% 42%, #000 42%, transparent 43%), linear-gradient(#000, #000) bottom/100% 40% no-repeat;
+  mask: radial-gradient(circle at 50% 42%, #000 42%, transparent 43%), linear-gradient(#000, #000) bottom/100% 40% no-repeat; }
+.lockedbadge.big { width: 128px; height: 128px; border-radius: 24px; }
+.tenrow.shared { box-shadow: inset 0 0 0 1px var(--accent-muted); border-radius: var(--r-card); }
 .sug-topic .why { font-style: italic; font-size: 0.875rem; color: var(--text-secondary); margin-top: 2px; }
 
 /* ── Duel (optional ranking help) ───────────────────────────────────────── */
@@ -289,6 +304,38 @@ section { margin-top: var(--s8); }
 
 footer.notes { margin-top: var(--s8); padding-top: var(--s4); border-top: 1px solid var(--border-subtle); color: var(--text-secondary); font-size: 0.8125rem; }
 footer.notes .build { color: var(--text-disabled); margin-top: var(--s2); }
+/* ── Intro ────────────────────────────────────────────────────────────────
+   Stack's splash rules, inherited wholesale: show the product rather than
+   describe it, bake the artwork in so the first screen never waits on an API,
+   answer "what will this cost me" before asking for anything, and no Skip —
+   this screen only tells, so a Skip would be a second CTA competing with the
+   real one. */
+.intro { min-height: 100svh; display: flex; flex-direction: column; justify-content: center; gap: var(--s4);
+  padding: calc(env(safe-area-inset-top) + var(--s3)) 0 calc(env(safe-area-inset-bottom) + var(--s3)); }
+.intro-copy { padding: 0 var(--margin); max-width: 560px; margin-inline: auto; width: 100%; }
+.intro h1 { font-family: var(--serif); font-weight: 600; font-size: clamp(1.75rem, 8vw, 2.25rem); line-height: 1.05; letter-spacing: -0.02em; margin: 0; }
+.intro .pitch { font-size: 0.9375rem; line-height: 1.4; color: var(--text-secondary); margin: var(--s2) 0 0; max-width: 30em; }
+.intro ul { margin: var(--s4) 0 0; display: grid; gap: var(--s2); }
+.intro li { display: grid; grid-template-columns: 22px 1fr; gap: var(--s3); align-items: start; font-size: 0.8125rem; line-height: 1.3; }
+.intro li b { font-weight: 700; }
+.intro li .m { font-family: var(--serif); font-weight: 700; color: var(--accent-bright); text-align: center; line-height: 1.2; }
+.intro .cta { padding: 0 var(--margin); max-width: 560px; margin-inline: auto; width: 100%; }
+.intro .cta .btn { width: 100%; min-height: 54px; font-size: 1.0625rem; }
+.intro .cost { text-align: center; color: var(--text-disabled); font-size: 0.8125rem; margin: var(--s3) 0 0; }
+
+/* Two rows drifting in opposite directions. Each strip is rendered twice and
+   translated by exactly one copy's width, so the wrap has no seam. */
+.marquee { overflow: hidden; -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
+.marquee + .marquee { margin-top: var(--s2); }
+.marquee .strip { display: flex; gap: var(--s2); width: max-content; animation: drift 46s linear infinite; }
+.marquee.back .strip { animation-direction: reverse; animation-duration: 58s; }
+.marquee .tile { position: relative; width: 64px; height: 96px; border-radius: var(--r-art); overflow: hidden; background: var(--bg-recessed); flex: 0 0 64px; }
+.marquee .tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.marquee .tile .rank { position: absolute; left: 0; bottom: 0; width: 26px; height: 26px; display: grid; place-items: center;
+  font-family: var(--serif); font-weight: 800; font-size: 0.9375rem; color: #17140B; background: var(--accent-bright); border-radius: 0 var(--r-art) 0 var(--r-art); }
+@keyframes drift { from { transform: translate3d(0,0,0); } to { transform: translate3d(-50%,0,0); } }
+@media (prefers-reduced-motion: reduce) { .marquee .strip { animation: none; } }
+
 /* ── The map — the whole path you have explored, all at once ─────────────
    Round 2's headline: moving back in a branch used to erase everything ahead
    of it. The graph is now permanent; the map is how you see and re-enter it. */
@@ -346,7 +393,22 @@ const announce = m => { live.textContent = m; };
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
 const KEY = 'topten.proto.v4';
-const TOPIC_ALL = { id: 'movies', title: 'Movies', prompt: 'Your ten favourite films of all time.' };
+/* The domains, in the order Mischa set them (2026-08-15). Two are built; the
+   rest are named rather than hidden, because a picker that shows only what
+   exists tells the user the app is smaller than it is going to be — and a
+   greyed row with a date is a promise, while an absent row is nothing. */
+const DOMAINS = [
+  { id: 'movie', label: 'Movies', noun: 'films', ready: true,
+    topic: { id: 'movies', domain: 'movie', title: 'Movies', prompt: 'Your ten favourite films of all time.' } },
+  { id: 'tv', label: 'TV shows', noun: 'shows', ready: true,
+    topic: { id: 'tv', domain: 'tv', title: 'TV shows', prompt: 'Your ten favourite TV shows of all time.' } },
+  { id: 'books', label: 'Books', noun: 'books', ready: false },
+  { id: 'games', label: 'Video games', noun: 'games', ready: false },
+  { id: 'restaurants', label: 'Restaurants', noun: 'places', ready: false },
+  { id: 'travel', label: 'Travel destinations', noun: 'places', ready: false },
+];
+const domainOf = t => (t && t.domain) || 'movie';
+const TOPIC_ALL = DOMAINS[0].topic;
 
 /* Region decides which subscriptions are on offer. Guessed, never asked —
    a question at the door costs more than a wrong guess you can change. */
@@ -367,7 +429,7 @@ function fresh(topic = TOPIC_ALL) {
     graph: { nodes: {}, roots: [], focus: null },
     filters: { services: [], genre: null, director: null, actor: null },
     region: guessRegion(), keep: [], ranked: [], rank: null, comparisons: 0, badge: null,
-    seenTip: false
+    done: []          // every Ten finished this session, in order
   };
 }
 
@@ -393,11 +455,12 @@ function trail() {
   for (let id = S.graph.focus; id != null; id = node(id)?.parent ?? null) out.unshift(id);
   return out;
 }
-let S = load() || fresh();
+let S = load() || (() => { const st = fresh(); st.scene = 'intro'; return st; })();
 function load() {
   try {
     const r = JSON.parse(localStorage.getItem(KEY));
     if (!r || !r.topic || !Array.isArray(r.tray)) return null;
+    r.done = Array.isArray(r.done) ? r.done : [];
     // Normalise anything an older build may not have written. A saved draft
     // that predates a field must not be able to crash the app that reads it.
     const base = fresh(r.topic);
@@ -449,6 +512,7 @@ function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e
 
 /* ── Scope and filters ────────────────────────────────────────────────────── */
 function inTopic(f, t = S.topic) {
+  if ((f.dm || 'movie') !== domainOf(t)) return false;
   if (t.director && f.d !== t.director) return false;
   if (t.actor && !(f.ca || []).includes(t.actor)) return false;
   if (t.genre && !f.g.includes(t.genre)) return false;
@@ -825,7 +889,7 @@ function notes() {
   return `<footer class="notes">
     <p>Structure prototype. Glass, haptics, and final motion are judged on
     device, not here. Judge the flow, the anatomy, and the words.</p>
-    <p class="build">build 0008 · why-aware suggestions · stale drafts survive</p>
+    <p class="build">build 0009 · intro · TV shows · other people's Tens</p>
   </footer>`;
 }
 
@@ -1109,6 +1173,141 @@ function closeMap() {
   setBackgroundInert(false);
 }
 
+/* ── Intro ────────────────────────────────────────────────────────────────
+   The artwork is chosen from the baked catalog, so this screen makes no API
+   call of its own and cannot show a loading state — Stack's rule, and its
+   reasoning holds harder here: this is the first screen, often on a cold
+   cache, and a screen whose whole job is to look finished is the worst place
+   in the app to wait for anything. */
+/* Hand-picked, not whatever the shelf happens to rank highest — Stack keeps a
+   curated `splashTitles` for exactly this reason. The first screen is a claim
+   about what the app is for, and "widely known" is the property that matters
+   there, not "well rated". Titles missing from the catalog are skipped rather
+   than replaced by something arbitrary. */
+const SPLASH = [
+  'The Godfather', 'Pulp Fiction', 'Spirited Away', 'Jaws', 'Alien',
+  'The Dark Knight', 'Parasite', 'GoodFellas', 'Blade Runner', 'Casablanca',
+  'Interstellar', 'The Matrix', 'Toy Story', 'Jurassic Park', 'Whiplash',
+  'Mad Max: Fury Road', 'The Shining', 'Back to the Future', 'Fight Club', 'Heat',
+];
+function introTiles(n, offset) {
+  const byTitle = new Map(CAT.filter(f => f.dm === 'movie').map(f => [f.t, f]));
+  const pool = SPLASH.map(t => byTitle.get(t)).filter(Boolean).slice(offset, offset + n);
+  return pool.map((f, i) => `<div class="tile">
+      <img src="${IMG}w185${f.p}" alt="" loading="eager" decoding="async">
+      ${i % 4 === 0 ? `<span class="rank">${(i % 10) + 1}</span>` : ''}
+    </div>`).join('');
+}
+function renderIntro() {
+  const rowA = introTiles(10, 0), rowB = introTiles(10, 10);
+  app.innerHTML = `<div class="intro">
+    <div>
+      <div class="marquee"><div class="strip">${rowA}${rowA}</div></div>
+      <div class="marquee back"><div class="strip">${rowB}${rowB}</div></div>
+    </div>
+    <div class="intro-copy">
+      <h1>What's your Ten?</h1>
+      <p class="pitch">Ten films, ranked — the list you would defend at a dinner
+        party, finally written down.</p>
+      <ul>
+        <li><span class="m">10</span><span><b>Exactly ten, in order.</b> The limit is the point — it turns a shrug into a decision.</span></li>
+        <li><span class="m">★</span><span><b>Finish it and earn a badge</b> made from your own picks, inscribed with a line only your list explains.</span></li>
+        <li><span class="m">→</span><span><b>One list leads to the next.</b> Follow a film you love and see where it goes.</span></li>
+      </ul>
+    </div>
+    <div class="cta">
+      <button class="btn" data-act="begin">Make your first Ten</button>
+      <p class="cost">Free. No account needed to make one.</p>
+    </div>
+  </div>`;
+  dockEl.innerHTML = '';
+}
+
+/* ── Discover ─────────────────────────────────────────────────────────────
+   Introduced after the second finished Ten (Mischa, 2026-08-15): by then the
+   mechanic is understood and other people's lists are interesting rather than
+   confusing. Earlier, they are just someone else's opinions about a thing you
+   have not done yet.
+
+   The badges here are LOCKED — PRD Req 12. You see the whole list; the badge
+   is the part you earn by making your own take on the same topic, and it
+   unlocks retroactively for every take on that topic at once. */
+const PEOPLE = [
+  { name: 'Sam', bias: 'Crime', line: 'Argues about endings.' },
+  { name: 'Priya', bias: 'Science Fiction', line: 'Will die on the hill of practical effects.' },
+  { name: 'Marcus', bias: 'Animation', line: 'Cries at Pixar. Admits it.' },
+  { name: 'Nour', bias: 'Thriller', line: 'Watches everything twice.' },
+  { name: 'Eddie', bias: 'Comedy', line: 'Quotes films at you.' },
+  { name: 'Rae', bias: 'Drama', line: 'Reads the credits.' },
+].map(p => ({ ...p, topic: { id: `movie:genre:${p.bias}`, domain: 'movie', genre: p.bias,
+  title: `${p.bias} films`, prompt: `Your ten favourite ${p.bias.toLowerCase()} films.` } }));
+
+function theirTen(person) {
+  const domain = person.topic.domain;
+  const seed = hash(person.name + domain);
+  const shelf = CAT.filter(f => (f.dm || 'movie') === domain && f.g.includes(person.bias));
+  const ranked = shelf
+    .map((f, i) => [((hash(f.t + person.name) % 1000) / 1000) + f.v, f])
+    .sort((a, b) => b[0] - a[0]).slice(0, 10).map(x => x[1]);
+  return { person, domain, ranked, seed };
+}
+
+// Every topic you have finished. A locked badge opens the moment you have a
+// take on its topic — and every other badge on that topic opens with it.
+const unlockedTopics = () => new Set((S.done || []).map(d => d.topicId));
+
+function renderDiscover() {
+  const unlocked = unlockedTopics();
+  const tens = PEOPLE.map(theirTen).filter(t => t.ranked.length === 10);
+  app.innerHTML = `
+    <div class="topbar"><h1 class="display-lg">Other Tens</h1><button class="link" data-act="backhome">Done</button></div>
+    <p class="prompt">Six people, six topics. You can read every list — the badge is the part you earn by making your own take on that topic.</p>
+    ${tens.map(t => {
+      const open = unlocked.has(t.person.topic.id);
+      return `<button class="other-ten" data-other="${esc(t.person.name)}">
+        <div class="who"><span class="nm">${esc(t.person.name)} · ${esc(t.person.topic.title)}</span><span class="ln">${esc(t.person.line)}</span></div>
+        <div class="strip">${t.ranked.slice(0, 6).map((f, i) =>
+          `<span class="mini"><img src="${IMG}w185${f.p}" alt=""><b>${i + 1}</b></span>`).join('')}</div>
+        <div class="badgecell ${open ? 'open' : 'locked'}">
+          ${open ? badgeSVG(compose(t.ranked.map(f => f.id), t.person.topic), 200).replace(/class="layer"/g, 'class="layer on"')
+                 : `<div class="lockedbadge" aria-label="Badge, locked"></div>`}
+          <span>${open ? 'Unlocked' : `Make your Ten on ${esc(t.person.topic.title)} to reveal`}</span>
+        </div>
+      </button>`;
+    }).join('')}
+    ${notes()}`;
+  dockEl.innerHTML = '';
+}
+
+function renderOther(name) {
+  const p = PEOPLE.find(x => x.name === name); if (!p) return renderDiscover();
+  const t = theirTen(p);
+  const open = unlockedTopics().has(p.topic.id);
+  const mine = (S.done || []).find(d => d.topicId === p.topic.id);
+  const mineIds = new Set((mine || {}).ranked || []);
+  const shared = t.ranked.filter(f => mineIds.has(f.id));
+  app.innerHTML = `
+    <div class="topbar"><h1 class="display-lg">${esc(p.name)}'s Ten</h1><button class="link" data-act="discover">Back</button></div>
+    <p class="prompt">${esc(p.topic.title)} · ${esc(p.line)}</p>
+    ${mine ? `<p class="prompt"><b>You share ${shared.length} of 10.</b>${shared.length === 0 ? ' Not one film in common. Incredible.' : ''}</p>` : ''}
+    <section><ol>${t.ranked.map((f, i) => {
+      const yours = mine ? (mine.ranked || []).indexOf(f.id) : -1;
+      return `<li><div class="tenrow ${i === 0 ? 'one' : ''} ${yours >= 0 ? 'shared' : ''}">
+        <span class="num">${i + 1}</span><span class="thumb"><img src="${IMG}w185${f.p}" alt=""></span>
+        <span class="meta"><span class="t">${esc(f.t)}</span><span class="s">${f.y}${yours >= 0 ? ` · your #${yours + 1}` : ''}</span></span>
+      </div></li>`; }).join('')}</ol></section>
+    <section style="text-align:center">
+      <div class="badge-inline">${open
+        ? badgeSVG(compose(t.ranked.map(f => f.id), p.topic), 200).replace(/class="layer"/g, 'class="layer on"')
+        : `<div class="lockedbadge big" aria-label="Badge, locked"></div>`}</div>
+      <p class="prompt">${open ? 'Unlocked, because you made your own take on this.'
+        : `Badge, locked. Make your Ten on ${esc(p.topic.title)} to reveal.`}</p>
+      ${open ? '' : `<button class="btn" data-topic='${esc(JSON.stringify(p.topic))}'>Make your Ten on ${esc(p.topic.title)}</button>`}
+    </section>
+    ${notes()}`;
+  dockEl.innerHTML = '';
+}
+
 /* ── The Cut ──────────────────────────────────────────────────────────────── */
 function renderCut() {
   const keep = new Set(S.keep);
@@ -1310,10 +1509,21 @@ function renderFinished() {
       <span class="meta"><span class="t">${esc(f.t)}</span><span class="s">${f.y}${f.d ? ' · ' + esc(f.d) : ''}</span></span>
     </div></li>`; }).join('')}</ol></section>
     <section>
-      <div class="section-head"><h2 class="section-h">Where to next</h2></div>
+      <div class="section-head"><h2 class="section-h">More ${esc((DOMAINS.find(d => d.id === domainOf(S.topic)) || DOMAINS[0]).noun)}, closer in</h2></div>
       ${rabbitHole().map(t => `<button class="sug-topic" data-topic='${esc(JSON.stringify(t))}'>
         <div class="lvl">${t.level}</div><div class="t">${esc(t.title)}</div><div class="why">${esc(t.why)}</div></button>`).join('')}
     </section>
+
+    <section>
+      <div class="section-head"><h2 class="section-h">Or a different kind of list</h2></div>
+      ${otherDomains()}
+    </section>
+
+    ${(S.done || []).length >= 2 ? `<section>
+      <div class="section-head"><h2 class="section-h">What everyone else picked</h2></div>
+      <p class="prompt" style="margin:0 0 var(--s3)">That is ${(S.done || []).length} of your own. Now the interesting part — other people's, and where you disagree.</p>
+      <button class="btn" data-act="discover">See other people's Tens</button>
+    </section>` : ''}
     <section style="display:flex;gap:var(--s2)">
       <button class="btn ghost" data-act="replayfull">Watch the reveal again</button>
       <button class="btn ghost" data-act="restart">Start over</button>
@@ -1321,6 +1531,32 @@ function renderFinished() {
     ${notes()}`;
   dockEl.innerHTML = '';
 }
+/* The other domains, in Mischa's order. The ones that are not built say so
+   rather than being hidden: a picker that shows only what exists tells the
+   user the app is smaller than it is going to be. */
+function otherDomains() {
+  const doneDomains = new Set((S.done || []).map(d => d.domain));
+  return DOMAINS.filter(d => d.id !== domainOf(S.topic)).map(d => {
+    if (!d.ready) return `<button class="sug-topic" data-act="notyet" data-label="${esc(d.label)}" style="opacity:.55">
+      <div class="lvl">Coming next</div><div class="t">${esc(d.label)}</div>
+      <div class="why">The flow is the same; this shelf is not written yet.</div></button>`;
+    const already = doneDomains.has(d.id);
+    return `<button class="sug-topic" data-topic='${esc(JSON.stringify(d.topic))}'>
+      <div class="lvl">${already ? 'Another one' : 'A new kind of list'}</div>
+      <div class="t">Your top ten ${esc(d.noun)}</div>
+      <div class="why">${already ? 'You have done one of these. Do another.' : 'Same ten slots, different shelf.'}</div></button>`;
+  }).join('');
+}
+
+function topicId(t) {
+  if (t.director) return `${domainOf(t)}:director:${t.director}`;
+  if (t.actor) return `${domainOf(t)}:actor:${t.actor}`;
+  if (t.genre && t.decade) return `${domainOf(t)}:genre:${t.genre}:${t.decade}`;
+  if (t.genre) return `${domainOf(t)}:genre:${t.genre}`;
+  if (t.decade) return `${domainOf(t)}:decade:${t.decade}`;
+  return t.id || domainOf(t);
+}
+
 function rabbitHole() {
   const F = facts(S.ranked), out = [];
   const [g, gn] = F.genre, [d, dn] = F.director, [dec, decn] = F.decade;
@@ -1336,7 +1572,10 @@ function rabbitHole() {
   if (absent) out.push({ level: 'Specific', title: `${absent} films`, genre: absent, prompt: `Your ten favourite ${absent.toLowerCase()} films.`, why: `Not one ${absent.toLowerCase()} film made your ten. Suspicious.` });
   if (dec) out.push({ level: 'Broad', title: `The ${dec}s`, decade: dec, prompt: `Your ten favourite films of the ${dec}s.`, why: `${decn} of your ten came from the ${dec}s.` });
   out.push({ level: 'Broad', title: 'Movies, again', prompt: 'Your ten favourite films of all time.', why: 'Taste moves. Re-rank from scratch and see.' });
-  return out.slice(0, 6);
+  // Stable ids and a domain on every generated topic: the reveal gate asks
+  // "have you made a take on THIS topic", which needs the same topic to have
+  // the same name twice.
+  return out.slice(0, 6).map(t => ({ ...t, domain: domainOf(S.topic), id: topicId({ ...t, domain: domainOf(S.topic) }) }));
 }
 
 /* ── Routing ──────────────────────────────────────────────────────────────── */
@@ -1347,7 +1586,10 @@ function render() {
   $$('.vault').forEach(v => v.remove());
   closeMap();
   setBackgroundInert(false);
-  if (S.scene === 'build') renderBuild();
+  if (S.scene === 'intro') renderIntro();
+  else if (S.scene === 'discover') renderDiscover();
+  else if (S.scene === 'other') renderOther(S.other);
+  else if (S.scene === 'build') renderBuild();
   else if (S.scene === 'cut') renderCut();
   else if (S.scene === 'rank') { if (!S.rank) startDuel(); else renderDuel(); }
   else if (S.scene === 'reveal') renderReveal();
@@ -1355,7 +1597,7 @@ function render() {
 }
 
 document.addEventListener('click', e => {
-  const t = e.target.closest('[data-add],[data-deeper],[data-remove],[data-move],[data-toggle],[data-toggle-service],[data-facet],[data-facetjump],[data-higher],[data-sheet],[data-clear],[data-act],[data-topic],[data-focusnode],[data-dropfocus],[data-mapnode]');
+  const t = e.target.closest('[data-add],[data-deeper],[data-remove],[data-move],[data-toggle],[data-toggle-service],[data-facet],[data-facetjump],[data-higher],[data-sheet],[data-clear],[data-act],[data-topic],[data-focusnode],[data-dropfocus],[data-mapnode],[data-other]');
   if (!t) return;
 
   if (t.dataset.clear) { e.stopPropagation(); const k = t.dataset.clear; S.filters[k] = k === 'services' ? [] : null; save(); renderBuild(); return; }
@@ -1379,6 +1621,7 @@ document.addEventListener('click', e => {
     const n = node(+t.dataset.dropfocus);
     S.graph.focus = n ? n.parent : null; save(); renderBuild(); return;
   }
+  if (t.dataset.other) { S.other = t.dataset.other; S.scene = 'other'; save(); render(); return; }
   if (t.dataset.mapnode) {
     if (t.dataset.mapnode === 'home') { S.graph.focus = null; save(); closeMap(); renderBuild(); return; }
     const id = +t.dataset.mapnode;
@@ -1410,14 +1653,26 @@ document.addEventListener('click', e => {
   }
   if (t.dataset.sheet) { openSheet(t.dataset.sheet); return; }
   if (t.dataset.higher !== undefined) { answer(t.dataset.higher === '1'); return; }
-  if (t.dataset.topic) { S = fresh(JSON.parse(t.dataset.topic)); save(); render(); return; }
+  if (t.dataset.topic) { const done = S.done || []; S = fresh(JSON.parse(t.dataset.topic)); S.done = done; save(); render(); return; }
 
   switch (t.dataset.act) {
+    case 'begin': S.scene = 'build'; save(); render(); break;
+    case 'discover': S.scene = 'discover'; save(); render(); break;
+    case 'backhome': S.scene = (S.done || []).length ? 'done' : 'build'; save(); render(); break;
+    case 'notyet': announce(`${t.dataset.label} is not built yet`); break;
     case 'clearq': S.q = ''; save(); renderBuild(); break;
     case 'openten': case 'arrange': openSheet('ten'); break;
     case 'closesheet': closeSheet(); break;
     case 'duel': startDuel(); break;
-    case 'finish': closeSheet(); S.ranked = S.tray.slice(0, 10); S.scene = 'reveal'; save(); renderReveal(); break;
+    case 'finish': {
+      closeSheet();
+      S.ranked = S.tray.slice(0, 10);
+      S.badge = compose(S.ranked, S.topic);
+      S.done = [...(S.done || []).filter(d => d.topicId !== S.topic.id),
+                { topicId: S.topic.id, title: S.topic.title, domain: domainOf(S.topic),
+                  ranked: S.ranked.slice(), badge: S.badge }];
+      S.scene = 'reveal'; save(); renderReveal(); break;
+    }
     case 'cut': S.scene = 'cut'; S.keep = []; save(); renderCut(); break;
     case 'cutdone': S.tray = S.keep.slice(); S.scene = 'build'; save(); renderBuild(); openSheet('ten'); break;
     case 'openmap': renderMap(); break;
@@ -1429,7 +1684,7 @@ document.addEventListener('click', e => {
       $('.after', v).classList.remove('on'); $('.skip', v).classList.remove('on'); runReveal(v); break; }
     case 'done': t.closest('.vault').remove(); setBackgroundInert(false); S.scene = 'done'; save(); renderFinished(); break;
     case 'replayfull': S.scene = 'reveal'; save(); renderReveal(); break;
-    case 'restart': S = fresh(); save(); render(); break;
+    case 'restart': { const done = S.done || []; S = fresh(); S.done = done; save(); render(); break; }
   }
 });
 
@@ -1446,7 +1701,7 @@ document.addEventListener('click', e => {
 // restart and on entering a new topic, and a stale copy would make the tests
 // assert against a state the app has already left.
 Object.defineProperty(window, 'S', { get: () => S });
-window.byId = byId;
+window.byId = byId; window.PEOPLE = PEOPLE;
 render();
 </script>
 </body>
