@@ -47,6 +47,12 @@ nothing catches it.
   iPhone layout acceptably).
 - **No follower feeds, comments, DMs, or notifications** in P0 (see P1).
 - **No freeform/off-catalog topics** in P0 (see Requirement 6 and P1).
+- **No user-entered list names or descriptions** (2026-08-15, Mischa). A list's
+  name is generated from its own contents; there is no field to type one in,
+  and no blurb under it. Free text on a social surface is a moderation and
+  safety surface, and the app already knows more about a list than its author
+  would type. See the Requirement 12 amendment for the generator and for where
+  Foundation Models fit.
 - **No monetisation.** Recorded as a *licensing* decision, inherited from
   Stack: TMDB's free tier is non-commercial. If monetisation is ever
   revisited, every API licence must be re-audited first.
@@ -63,6 +69,10 @@ nothing catches it.
   normalized against existing topics before creating near-duplicates.
 - **Ten** — one user's ranked take on a Topic: exactly 10 items, positions
   1–10, position 1 sacred. Draft until complete; publishable once complete.
+  Its **name is derived, not stored as input**: computed from the ten items'
+  own metadata (see the Req 12 amendment, 2026-08-15), so re-ranking or
+  swapping an item can rename the list — the name is a view of the contents,
+  not a field beside them.
 - **Item** — a catalog entity (TMDB movie/TV title in v1) with artwork.
 - **Badge** — the generated emblem for a completed Ten (see `specs/badges.md`).
 - **Remix edge** — Ten B was created from Ten A's topic via A's page. Remix
@@ -142,11 +152,18 @@ own (a film's director and studio; a show's creator and network). The unbuilt
 domains are **named in the picker rather than hidden**: a list showing only
 what exists tells the user the app is smaller than it is going to be.
 
-**The reveal gate, now real (Req 12).** Discovery shows six people, each with a
-Ten on their own topic. Every list is fully readable; only the badge is locked,
-and it opens for **all** takes on that topic the moment you finish your own —
-per topic, retroactively. A Movies Ten does not open a Crime films badge, which
-is what makes crossing the gate worth anything.
+**The reveal gate, now real (Req 12).** Discovery shows other people's lists,
+each on a topic. Every list is fully readable; only the badge is locked, and it
+opens for **all** takes on that topic the moment you finish your own — per
+topic, retroactively. A Movies Ten does not open a Crime films badge, which is
+what makes crossing the gate worth anything.
+
+*Amended 2026-08-15 (round 5 build): the prototype now shows **seven lists on
+six topics** — two people have both taken on Crime films. It was six lists on
+six topics, and with one list per topic the retroactive half of the promise was
+literally unobservable: unlocking "every take on that topic" and unlocking "the
+one take on that topic" look identical. Two lists on one topic make the
+simultaneous open visible on screen and assertable in the harness.*
 
 **2. Gather.** Building a Ten is two phases; phase one is *gathering* — an
 unordered tray of up to 10 candidates. Sources: search (catalog-backed with
@@ -339,6 +356,72 @@ the original's remix lineage.
   completing a remix unlocks the original's badge immediately and
   retroactively (all previously-locked badges on that topic unlock at once);
   the gate never blocks viewing the *list itself* — only the badge.
+
+**Amendment 2026-08-15 (Mischa, round 5 on the prototype) — discovery leads
+with the LIST, and a list's name is generated, never typed.**
+
+The discovery screen is called **"Other Top 10 Lists"** and carries no
+explanatory line under its title: the cards below it already show what the
+screen is, and a paragraph that describes them only pushes the first one down
+the page.
+
+**1. The list name is the card.** A card led with *"Sam · Crime films"* — a
+person and a category, in that order, in one undifferentiated line. A list is
+the artifact here (design.md's core insight), so the **name is the only
+display-size type on the card** (22pt serif); the topic sits above it as an
+11pt label and the creator below it as a 12pt byline. You should be able to
+read a screen of these and know which lists you want before you have read a
+single name of a person.
+
+**2. Names are derived from the list's own metadata. User-entered free text is
+deliberately excluded.** Mischa's reasoning, and it is a product decision
+rather than a technical one: a free text field on a social surface is a
+moderation and safety surface — it invites the work of policing names, images
+and abuse, and it buys nothing this product needs, because the app already
+knows more about the list than the author would bother to type.
+
+So a name is a **template plus the fact that licenses it**, counted off the ten
+items: a concentrated director or creator, a studio whose name is a promise, a
+recurring billed face, a run of films that belong to series, a dominant decade,
+a list with nothing recent in it, and — as the floor — a genre the whole list
+shares. Facts are ranked by how much they **distinguish** the list, so on a
+genre topic the genre itself scores lowest: it only restates the topic. The
+register is a name a person would give a list, not a caption: *"Everything
+Hitchcock touched"*, *"The 90s did it better"*, *"Nothing stands alone"*.
+
+**No name may assert anything not in the data.** A template is only offered
+when its fact clears a threshold (an author in ≥3 of 10, a decade that beats
+the runner-up by ≥2, and so on), and the harness re-counts every shown name's
+fact against that list's ten films.
+
+**Where Foundation Models fit — the same shape as the badge inscription.** The
+deterministic generator produces the *candidate set*, ranked. On device, the
+`@Generable` pass **chooses among exactly those candidates** (an id-constrained
+choice, plus the relevancy and safety checks in `specs/badges.md`) — it never
+writes a name freehand, so its failure mode is a duller choice, never a false
+or unsafe claim. The deterministic ordering is the fallback whenever the model
+is unavailable or its choice fails a check, and it is what ships first.
+
+**3. Nothing on a card is a description.** The hand-written character lines
+("Argues about endings.") are gone from the prototype entirely — they were the
+only user-shaped text on the surface and they modelled a field that will not
+exist.
+
+**4. One CTA per card, and it says what it does.** The action was a floating
+line of grey text between the posters and the card's edge, reading as neither
+label nor button. Each card now carries exactly one control — a full-width
+48pt pill, *"Read Sam's Top 10"* — and the gate is stated separately as a
+**status**, not a second verb: the badge's plate in `status.locked` wearing a
+lock, "BADGE LOCKED", and the one sentence that opens it ("Unlocks when you
+make your own Crime films Ten"). Unlocked, the same row shows the real badge
+and says so. A status and an action competing as two verbs on one card is what
+made the old one unreadable.
+
+- Acceptance (added): every discovery card's list name renders larger than its
+  creator's name; no card carries a description line or any user-entered text;
+  each card has exactly one action, ≥44pt, fully inside the card, whose label
+  states the action; every generated name's supporting fact is true of that
+  list's ten items; the locked state names both the lock and its key.
 
 **13. Accessibility & platform quality.** Dynamic Type through accessibility
 sizes, VoiceOver-complete (including a non-drag ranking path and meaningful

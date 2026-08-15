@@ -67,6 +67,7 @@ first-class; system-following by default. Semantic dot-namespaced tokens;
 | `text.secondary` | `#A79F92` | |
 | `accent.laurel` | `#D9B23A` | Gold reads brighter in the vault |
 | `accent.laurelMuted` | `#3A311A` | |
+| `status.locked` | `#6E675D` | Added 2026-08-15: the light value disappears against `bg.surface` in the vault |
 
 Rules: **color follows meaning, never emphasis** (Stack law). Gold is
 reserved for rank-1, completion, and interactive accent — never decorative
@@ -138,8 +139,14 @@ points. Inputs never render below 16pt-equivalent (inherited Stack rule).
 - **Numeral One Moment** — placing the final order runs the last beat: the
   #1 slot fills last with `numeral.hero` treatment and a single deep haptic.
 - **Badge** (rendered per badges.md) and **Locked Badge** — locked state is
-  the badge's silhouette in `status.locked` under frosted glass with a
-  keyhole-free lock glyph and the line "Make your Ten on this to reveal."
+  the badge's plate in `status.locked` under frosted glass, wearing a
+  keyhole-free lock glyph, with the state ("Badge locked") and the condition
+  that lifts it ("Unlocks when you make your own Crime films Ten") beside it.
+  The condition is phrased as a **condition**, never as an imperative: it sits
+  next to a real CTA and must not read as a competing one.
+- **List Card** — the discovery unit: topic label, generated list name at
+  `display.md`, creator byline, ranked poster strip, badge state, and exactly
+  one 48pt CTA. Nothing on it is user-entered text (PRD Req 12 amendment).
 - **Badge Case** — profile hero: a wall grid of badges, drafts as ghost
   outlines (own profile only).
 - **Consensus Bar** — on topic pages: ten tiny artwork tiles composing "the
@@ -599,6 +606,58 @@ Everything the map already got right is asserted and unchanged: navigating
 never destroys a node, tapping a real node re-enters the path there, following
 an unexplored step stays inside the map, the active filters are stated, it
 opens centred on where you are, and no two labels overlap.
+
+### Round 5 (2026-08-15, Mischa) — the discovery card is a list, not a person
+
+*"Other Tens" → **"Other Top 10 Lists"**, and the blurb under it is gone.* A
+paragraph explaining a screen made of self-explaining cards costs the first
+card its place on screen and tells the reader nothing the cards do not.
+
+**The list name is the card's only display type.** It was `Sam · Crime films`
+in one 17pt line, so the two facts on the card competed at the same weight and
+the person won by being first. The anatomy is now a hierarchy, top to bottom:
+
+| Part | Token | Why |
+|---|---|---|
+| Topic | `label.sm` (11pt, uppercase, `text.disabled`) | Scope, read at a glance |
+| **List name** | `display.md` (22pt New York Semibold) | The artifact — the reason to tap |
+| Creator | 12pt `text.secondary`, *"A Ten by Sam"* | Attribution, subordinate |
+| Six-poster strip | 40 × 60 minis, ranked | What the list actually contains |
+| Badge state | 44pt badge or lock + `label.sm` + one line | The gate, stated |
+| **One CTA** | 48pt full-width pill, accent outline | The single action |
+
+The name comes from the list's contents — nothing on the card is typed by a
+person (PRD Req 12 amendment). **Names for a design pass to look at:** *"The
+90s did it better"*, *"Nothing stands alone"*, *"Miyazaki keeps showing up"*,
+*"Everything Hitchcock touched"*, *"Whatever Al Pacino is in"*, *"Comedy, and
+nothing but"*, *"Nothing here is new"*. They run 3–5 words; the 22pt line is
+sized to hold two lines of that without the card changing shape.
+
+**A card has one action, and the gate is not it.** The call to action was a
+line of secondary text sitting in the middle of the card with air on both
+sides of it — a label where a button belonged. Two rules now:
+
+- **One control per card**, full width, 48pt (over the 44pt floor), labelled
+  with the verb and its object: *"Read Sam's Top 10"*. The card itself is no
+  longer a tap target, because a card that is a button containing a button has
+  two actions and the user must guess which one they hit.
+- **The gate is a status line, never a second verb.** `BADGE LOCKED` plus
+  *"Unlocks when you make your own Crime films Ten"*. It reads as a condition,
+  so it cannot compete with the CTA; the gate-crossing action lives on the
+  list's own page, where it is that page's single action.
+
+**Two defects found while rebuilding it:**
+
+- `status.locked` **had no value in the prototype's tokens**, so
+  `background: var(--locked)` resolved to nothing and every locked badge
+  rendered as an empty box. The gate's own object — the thing the whole
+  mechanic is about — had been invisible since it was built. Screenshots judge
+  layout, and this is exactly the class of bug they catch and tests do not.
+- The locked silhouette was a circle above a bar, which at 44pt reads as an
+  **avatar** — the single glyph it must not resemble on a screen full of other
+  people. It is now the badge's plate in `status.locked` wearing a lock glyph,
+  per the Locked Badge component above.
+
 
 ## Amendments from the M1.5 prototype (2026-08-14, Claude)
 

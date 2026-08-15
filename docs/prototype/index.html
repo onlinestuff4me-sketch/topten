@@ -31,6 +31,10 @@
   --accent: #8A6D1F;
   --accent-bright: #C9A227;
   --accent-muted: #EFE6CC;
+  /* status.locked, design.md. It had no value here, so `background:
+     var(--locked)` resolved to nothing and every locked badge rendered as an
+     empty box — the gate's own object was invisible. */
+  --locked: #8B8578;
   --error: #B3402E;
   --vault-bg: #121110;
   --vault-text: #F4F1EA;
@@ -61,7 +65,7 @@
     --bg-base: #121110; --bg-surface: #1C1A18; --bg-recessed: #0C0B0A;
     --border-subtle: #2E2B27; --text-primary: #F4F1EA; --text-secondary: #A79F92;
     --text-disabled: #6E675D; --accent: #D9B23A; --accent-bright: #D9B23A;
-    --accent-muted: #3A311A;
+    --accent-muted: #3A311A; --locked: #6E675D;
   }
 }
 
@@ -267,20 +271,45 @@ section { margin-top: var(--s8); }
 .sug-topic { display: block; width: 100%; text-align: left; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--r-card); padding: var(--s3) var(--s4); margin-bottom: var(--s2); }
 .sug-topic .t { font-family: var(--serif); font-weight: 600; font-size: 1.0625rem; }
 .sug-topic .lvl { font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 700; color: var(--text-disabled); margin-bottom: var(--s1); }
-.other-ten { display: block; width: 100%; text-align: left; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--r-card); padding: var(--s3) var(--s4); margin-bottom: var(--s2); }
-.other-ten .who { display: flex; flex-direction: column; gap: 2px; }
-.other-ten .nm { font-family: var(--serif); font-weight: 600; font-size: 1.0625rem; }
-.other-ten .ln { color: var(--text-secondary); font-size: 0.8125rem; }
-.other-ten .strip { display: flex; gap: 4px; margin: var(--s3) 0; }
+/* The card leads with the LIST NAME (Mischa, 2026-08-15). The name is the
+   only display-size type on the card; the topic sits above it as a label and
+   the creator below it as a byline, both far smaller — a card is a list first
+   and a person second. Nothing on it is free text. */
+.other-ten { position: relative; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--r-card); padding: var(--s4); margin-bottom: var(--s3); }
+.other-ten .topic { display: block; font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-disabled); }
+.other-ten .listname { font-family: var(--serif); font-weight: 600; font-size: 1.375rem; line-height: 1.18; letter-spacing: -0.012em; margin: var(--s1) 0 0; }
+.other-ten .creator { display: block; font-size: 0.75rem; color: var(--text-secondary); margin-top: var(--s1); }
+.other-ten .strip { display: flex; gap: 4px; margin: var(--s3) 0 0; }
 .other-ten .mini { position: relative; width: 40px; height: 60px; border-radius: 4px; overflow: hidden; flex: 0 0 40px; background: var(--bg-recessed); }
 .other-ten .mini img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .other-ten .mini b { position: absolute; left: 0; bottom: 0; font-family: var(--serif); font-size: 0.625rem; background: rgba(18,17,16,.72); color: #F4F1EA; padding: 0 4px; border-radius: 0 4px 0 4px; }
-.other-ten .badgecell { display: flex; align-items: center; gap: var(--s3); color: var(--text-secondary); font-size: 0.8125rem; }
-.other-ten .badgecell svg { width: 44px; height: 44px; }
-.lockedbadge { width: 44px; height: 44px; border-radius: 10px; background: var(--locked); opacity: .35;
-  -webkit-mask: radial-gradient(circle at 50% 42%, #000 42%, transparent 43%), linear-gradient(#000, #000) bottom/100% 40% no-repeat;
-  mask: radial-gradient(circle at 50% 42%, #000 42%, transparent 43%), linear-gradient(#000, #000) bottom/100% 40% no-repeat; }
-.lockedbadge.big { width: 128px; height: 128px; border-radius: 24px; }
+/* The gate, stated: what the badge is, and the one thing that opens it. It is
+   a status, never a second verb competing with the card's action. */
+.other-ten .badgecell { display: flex; align-items: center; gap: var(--s3); margin-top: var(--s3); padding-top: var(--s3); border-top: 1px solid var(--border-subtle); }
+.other-ten .badgecell svg { width: 44px; height: 44px; flex: 0 0 44px; }
+.other-ten .badgecell .lockedbadge { flex: 0 0 44px; }
+.other-ten .badgecell .state { display: block; font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-secondary); }
+.other-ten .badgecell.open .state { color: var(--accent); }
+.other-ten .badgecell .how { display: block; font-size: 0.8125rem; color: var(--text-secondary); margin-top: 2px; }
+/* One action per card, full width, 48pt tall, saying what it does. It was a
+   line of grey text floating in the middle of the card. */
+.other-ten .cta { display: flex; width: 100%; min-height: 48px; align-items: center; justify-content: center;
+  margin-top: var(--s4); padding: var(--s2) var(--s4); border-radius: 999px;
+  border: 1.5px solid var(--accent); background: var(--bg-surface); color: var(--accent);
+  font-weight: 600; font-size: 0.9375rem; text-align: center;
+  transition: transform var(--m-press) var(--ease-out); }
+.other-ten .cta:active { transform: scale(.985); }
+/* The gate-crossing action on a person's page: the same 48pt pill, and never
+   welded to the sentence above it. */
+.gate-cta { margin-top: var(--s4); }
+/* The locked badge: the badge's plate in status.locked, wearing a lock. It
+   was a circle over a bar, which at 44pt reads as an avatar — the one thing it
+   must not be mistaken for on a screen full of other people. */
+.lockedbadge { width: 44px; height: 44px; display: block; }
+.lockedbadge .plate { fill: var(--locked); opacity: .22; }
+.lockedbadge .shackle { stroke: var(--locked); fill: none; stroke-width: 3; stroke-linecap: round; opacity: .75; }
+.lockedbadge .body { fill: var(--locked); opacity: .75; }
+.lockedbadge.big { width: 128px; height: 128px; margin: 0 auto; }
 .tenrow.shared { box-shadow: inset 0 0 0 1px var(--accent-muted); border-radius: var(--r-card); }
 .sug-topic .why { font-style: italic; font-size: 0.875rem; color: var(--text-secondary); margin-top: 2px; }
 
@@ -927,7 +956,7 @@ function notes() {
   return `<footer class="notes">
     <p>Structure prototype. Glass, haptics, and final motion are judged on
     device, not here. Judge the flow, the anatomy, and the words.</p>
-    <p class="build">build 0010 · intro copy · US spelling</p>
+    <p class="build">build 0010 · intro copy · US voice · other Top 10 lists</p>
   </footer>`;
 }
 
@@ -1367,16 +1396,103 @@ function renderIntro() {
 
    The badges here are LOCKED — PRD Req 12. You see the whole list; the badge
    is the part you earn by making your own take on the same topic, and it
-   unlocks retroactively for every take on that topic at once. */
+   unlocks retroactively for every take on that topic at once.
+
+   Two of these seven share a topic (Sam and Theo, both on Crime). That is not
+   filler: Req 12 promises a take unlocks EVERY list on that topic at once, and
+   with one list per topic that promise is unobservable and untestable. */
 const PEOPLE = [
-  { name: 'Sam', bias: 'Crime', line: 'Argues about endings.' },
-  { name: 'Priya', bias: 'Science Fiction', line: 'Will die on the hill of practical effects.' },
-  { name: 'Marcus', bias: 'Animation', line: 'Cries at Pixar. Admits it.' },
-  { name: 'Nour', bias: 'Thriller', line: 'Watches everything twice.' },
-  { name: 'Eddie', bias: 'Comedy', line: 'Quotes movies at you.' },
-  { name: 'Rae', bias: 'Drama', line: 'Reads the credits.' },
+  { name: 'Sam', bias: 'Crime' },
+  { name: 'Priya', bias: 'Science Fiction' },
+  { name: 'Marcus', bias: 'Animation' },
+  { name: 'Nour', bias: 'Thriller' },
+  { name: 'Theo', bias: 'Crime' },
+  { name: 'Eddie', bias: 'Comedy' },
+  { name: 'Rae', bias: 'Drama' },
 ].map(p => ({ ...p, topic: { id: `movie:genre:${p.bias}`, domain: 'movie', genre: p.bias,
   title: `${p.bias} movies`, prompt: `Your 10 favorite ${p.bias.toLowerCase()} movies.` } }));
+
+/* ── Naming a list, from the list itself ──────────────────────────────────
+   A list's name is GENERATED from its contents. Nobody types it (PRD Req 12
+   amendment, 2026-08-15): free text on a social surface is a moderation and
+   safety surface, and this product does not need one to say what a list is.
+
+   Every candidate below is a template plus the fact that licenses it, and the
+   fact is counted off the ten films themselves — so a name can be bland but
+   never wrong. `listNameCandidates` returns the whole ranked set; on device
+   the Foundation Models pass picks among exactly these candidates under the
+   badge-inscription rules in badges.md (id-constrained choice, relevancy and
+   safety checks, no free generation), and this deterministic ordering is the
+   fallback when the model is unavailable or its choice fails a check.
+
+   Ranking is by how much the fact DISTINGUISHES the list. A shared author is
+   the strongest claim a list can make (design.md, round 3: a shared name is a
+   reason a person would give out loud); genre purity is the floor, because on
+   a genre topic it only restates the topic. */
+const census = arr => { const m = new Map();
+  for (const x of arr) m.set(x, (m.get(x) || 0) + 1);
+  return [...m.entries()].sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0]))); };
+const commonest = arr => { const c = census(arr);
+  return { value: c.length ? c[0][0] : null, n: c.length ? c[0][1] : 0, runnerUp: c[1] ? c[1][1] : 0 }; };
+// "Alfred Hitchcock" -> Hitchcock, but "Bong Joon Ho" stays whole: a two-letter
+// tail is a given name's second half, not a surname.
+const surname = name => { const p = String(name).split(/\s+/).filter(Boolean);
+  return p.length > 1 && p[p.length - 1].length > 3 ? p[p.length - 1] : String(name); };
+const shortBrand = b => String(b).replace(/^(Studio|Walt)\s+/, '').replace(/\s+(Animation|Pictures|Studios|Entertainment)$/, '');
+const shortGenre = g => (g === 'Science Fiction' ? 'Sci-fi' : g);
+const decadeName = d => (d >= 2000 ? `${d}s` : `${String(d).slice(2)}s`);
+const THIS_YEAR = new Date().getFullYear();
+
+function listNameCandidates(films, topic) {
+  const out = [], push = (score, name, fact) => out.push({ score, name, fact });
+  if (!films || films.length < 2) return out;
+
+  const author = commonest(films.map(f => f.d).filter(Boolean));
+  if (author.n >= 3) push(60 + 4 * author.n,
+    author.n >= 4 ? `Everything ${surname(author.value)} touched` : `${surname(author.value)} keeps showing up`,
+    { kind: 'author', value: author.value, n: author.n });
+
+  const brand = commonest(films.flatMap(f => f.br || []));
+  if (brand.n >= 3) push(55 + 4 * brand.n, `Raised by ${shortBrand(brand.value)}`,
+    { kind: 'brand', value: brand.value, n: brand.n });
+
+  // Billed cast only: a face you would recognise on the poster, not the
+  // fourteenth name in the credits.
+  const face = commonest(films.flatMap(f => (f.ca || []).slice(0, 3)));
+  if (face.n >= 3) push(50 + 4 * face.n, `Whatever ${face.value} is in`,
+    { kind: 'cast', value: face.value, n: face.n });
+
+  const series = films.filter(f => f.col).length;
+  if (series >= 7) push(45, 'Nothing stands alone', { kind: 'series', value: null, n: series });
+
+  // A decade only "stands out" if it beats the next one by more than a nose.
+  const dec = commonest(films.map(f => Math.floor(f.y / 10) * 10));
+  if (dec.n >= 4 && dec.n - dec.runnerUp >= 2) push(40,
+    dec.value < 2000 ? `The ${decadeName(dec.value)} did it better` : `A very ${decadeName(dec.value)} list`,
+    { kind: 'era', value: dec.value, n: dec.n });
+
+  const old = films.filter(f => THIS_YEAR - f.y >= 25).length;
+  if (old >= 7) push(30, 'Nothing here is new', { kind: 'vintage', value: THIS_YEAR - 25, n: old });
+
+  const gen = commonest(films.flatMap(f => f.g || []));
+  if (gen.n === films.length) push(20, `${shortGenre(gen.value)}, and nothing but`,
+    { kind: 'purity', value: gen.value, n: gen.n });
+
+  return out.sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
+}
+// The chosen name. No candidate qualifying means no fact was strong enough to
+// claim anything, and the topic is the honest answer.
+function listName(films, topic) {
+  const c = listNameCandidates(films, topic);
+  return c.length ? c[0].name : (topic && topic.title) || 'A Top 10';
+}
+
+const lockedBadge = (big) => `<svg class="lockedbadge${big ? ' big' : ''}" viewBox="0 0 44 44"
+  role="img" aria-label="Badge, locked">
+  <rect class="plate" x="1" y="1" width="42" height="42" rx="11"/>
+  <path class="shackle" d="M16.5 21v-4a5.5 5.5 0 0 1 11 0v4"/>
+  <rect class="body" x="13" y="20.5" width="18" height="13.5" rx="3.5"/>
+</svg>`;
 
 function theirTen(person) {
   const domain = person.topic.domain;
@@ -1396,20 +1512,24 @@ function renderDiscover() {
   const unlocked = unlockedTopics();
   const tens = PEOPLE.map(theirTen).filter(t => t.ranked.length === 10);
   app.innerHTML = `
-    <div class="topbar"><h1 class="display-lg">Other Tens</h1><button class="link" data-act="backhome">Done</button></div>
-    <p class="prompt">Six people, six topics. You can read every list — the badge is the part you earn by making your own take on that topic.</p>
-    ${tens.map(t => {
+    <div class="topbar"><h1 class="display-lg">Other Top 10 Lists</h1><button class="link" data-act="backhome">Done</button></div>
+    ${tens.map((t, i) => {
       const open = unlocked.has(t.person.topic.id);
-      return `<button class="other-ten" data-other="${esc(t.person.name)}">
-        <div class="who"><span class="nm">${esc(t.person.name)} · ${esc(t.person.topic.title)}</span><span class="ln">${esc(t.person.line)}</span></div>
-        <div class="strip">${t.ranked.slice(0, 6).map((f, i) =>
-          `<span class="mini"><img src="${IMG}w185${f.p}" alt=""><b>${i + 1}</b></span>`).join('')}</div>
+      const who = esc(t.person.name), topic = esc(t.person.topic.title);
+      return `<article class="other-ten" data-who="${who}" aria-labelledby="ln${i}">
+        <span class="topic">${topic}</span>
+        <h2 class="listname" id="ln${i}">${esc(listName(t.ranked, t.person.topic))}</h2>
+        <span class="creator">A Ten by ${who}</span>
+        <div class="strip">${t.ranked.slice(0, 6).map((f, j) =>
+          `<span class="mini"><img src="${IMG}w185${f.p}" alt=""><b>${j + 1}</b></span>`).join('')}</div>
         <div class="badgecell ${open ? 'open' : 'locked'}">
           ${open ? badgeSVG(compose(t.ranked.map(f => f.id), t.person.topic), 200).replace(/class="layer"/g, 'class="layer on"')
-                 : `<div class="lockedbadge" aria-label="Badge, locked"></div>`}
-          <span>${open ? 'Unlocked' : `Make your Ten on ${esc(t.person.topic.title)} to reveal`}</span>
+                 : lockedBadge(false)}
+          <span class="gate"><span class="state">${open ? 'Badge unlocked' : 'Badge locked'}</span>
+            <span class="how">${open ? `You have your own ${topic} Ten` : `Unlocks when you make your own ${topic} Ten`}</span></span>
         </div>
-      </button>`;
+        <button class="cta" data-other="${who}">Read ${who}&rsquo;s Top 10</button>
+      </article>`;
     }).join('')}
     ${notes()}`;
   dockEl.innerHTML = '';
@@ -1423,8 +1543,8 @@ function renderOther(name) {
   const mineIds = new Set((mine || {}).ranked || []);
   const shared = t.ranked.filter(f => mineIds.has(f.id));
   app.innerHTML = `
-    <div class="topbar"><h1 class="display-lg">${esc(p.name)}'s Ten</h1><button class="link" data-act="discover">Back</button></div>
-    <p class="prompt">${esc(p.topic.title)} · ${esc(p.line)}</p>
+    <div class="topbar"><h1 class="display-lg">${esc(listName(t.ranked, p.topic))}</h1><button class="link" data-act="discover">Back</button></div>
+    <p class="prompt">${esc(p.topic.title)} · a Ten by ${esc(p.name)}</p>
     ${mine ? `<p class="prompt"><b>You share ${shared.length} of 10.</b>${shared.length === 0 ? ` Not one ${domainMeta(p.topic).one} in common. Incredible.` : ''}</p>` : ''}
     <section><ol>${t.ranked.map((f, i) => {
       const yours = mine ? (mine.ranked || []).indexOf(f.id) : -1;
@@ -1435,10 +1555,10 @@ function renderOther(name) {
     <section style="text-align:center">
       <div class="badge-inline">${open
         ? badgeSVG(compose(t.ranked.map(f => f.id), p.topic), 200).replace(/class="layer"/g, 'class="layer on"')
-        : `<div class="lockedbadge big" aria-label="Badge, locked"></div>`}</div>
-      <p class="prompt">${open ? 'Unlocked, because you made your own take on this.'
-        : `Badge, locked. Make your Ten on ${esc(p.topic.title)} to reveal.`}</p>
-      ${open ? '' : `<button class="btn" data-topic='${esc(JSON.stringify(p.topic))}'>Make your Ten on ${esc(p.topic.title)}</button>`}
+        : lockedBadge(true)}</div>
+      <p class="prompt">${open ? `Badge unlocked, because you made your own ${esc(p.topic.title)} Ten.`
+        : `Badge locked. It opens for every ${esc(p.topic.title)} list at once when you make your own.`}</p>
+      ${open ? '' : `<button class="btn gate-cta" data-topic='${esc(JSON.stringify(p.topic))}'>Make your ${esc(p.topic.title)} Ten</button>`}
     </section>
     ${notes()}`;
   dockEl.innerHTML = '';
@@ -1659,7 +1779,7 @@ function renderFinished() {
     ${(S.done || []).length >= 2 ? `<section>
       <div class="section-head"><h2 class="section-h">What everyone else picked</h2></div>
       <p class="prompt" style="margin:0 0 var(--s3)">That is ${(S.done || []).length} of your own. Now the interesting part — other people's, and where you disagree.</p>
-      <button class="btn" data-act="discover">See other people's Tens</button>
+      <button class="btn" data-act="discover">See other people's Top 10 lists</button>
     </section>` : ''}
     <section style="display:flex;gap:var(--s2)">
       <button class="btn ghost" data-act="replayfull">Watch the reveal again</button>
@@ -1840,6 +1960,7 @@ document.addEventListener('click', e => {
 // assert against a state the app has already left.
 Object.defineProperty(window, 'S', { get: () => S });
 window.byId = byId; window.PEOPLE = PEOPLE;
+window.theirTen = theirTen; window.listName = listName; window.listNameCandidates = listNameCandidates;
 render();
 </script>
 </body>
