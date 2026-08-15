@@ -321,7 +321,6 @@ footer.notes .build { color: var(--text-disabled); margin-top: var(--s2); }
 .intro li .m { font-family: var(--serif); font-weight: 700; color: var(--accent-bright); text-align: center; line-height: 1.2; }
 .intro .cta { padding: 0 var(--margin); max-width: 560px; margin-inline: auto; width: 100%; }
 .intro .cta .btn { width: 100%; min-height: 54px; font-size: 1.0625rem; }
-.intro .cost { text-align: center; color: var(--text-disabled); font-size: 0.8125rem; margin: var(--s3) 0 0; }
 
 /* Two rows drifting in opposite directions. Each strip is rendered twice and
    translated by exactly one copy's width, so the wrap has no seam. */
@@ -398,16 +397,23 @@ const KEY = 'topten.proto.v4';
    exists tells the user the app is smaller than it is going to be — and a
    greyed row with a date is a promise, while an absent row is nothing. */
 const DOMAINS = [
-  { id: 'movie', label: 'Movies', noun: 'films', ready: true,
-    topic: { id: 'movies', domain: 'movie', title: 'Movies', prompt: 'Your ten favourite films of all time.' } },
-  { id: 'tv', label: 'TV shows', noun: 'shows', ready: true,
-    topic: { id: 'tv', domain: 'tv', title: 'TV shows', prompt: 'Your ten favourite TV shows of all time.' } },
-  { id: 'books', label: 'Books', noun: 'books', ready: false },
-  { id: 'games', label: 'Video games', noun: 'games', ready: false },
-  { id: 'restaurants', label: 'Restaurants', noun: 'places', ready: false },
-  { id: 'travel', label: 'Travel destinations', noun: 'places', ready: false },
+  { id: 'movie', label: 'Movies', noun: 'movies', one: 'movie', ready: true,
+    topic: { id: 'movies', domain: 'movie', title: 'Movies', prompt: 'Your 10 favorite movies of all time.' } },
+  { id: 'tv', label: 'TV shows', noun: 'shows', one: 'show', ready: true,
+    topic: { id: 'tv', domain: 'tv', title: 'TV shows', prompt: 'Your 10 favorite TV shows of all time.' } },
+  { id: 'books', label: 'Books', noun: 'books', one: 'book', ready: false },
+  { id: 'games', label: 'Video games', noun: 'games', one: 'game', ready: false },
+  { id: 'restaurants', label: 'Restaurants', noun: 'places', one: 'place', ready: false },
+  { id: 'travel', label: 'Travel destinations', noun: 'places', one: 'place', ready: false },
 ];
 const domainOf = t => (t && t.domain) || 'movie';
+/* One vocabulary per domain, never a word hard-coded into a string both
+   domains reach. A movie Ten says "movies", a TV Ten says "shows" — the
+   catalog nouns are the only place either word is written down. US spelling
+   throughout, per specs/design.md "Voice and spelling" (2026-08-15, Mischa). */
+const domainMeta = (t = S.topic) => DOMAINS.find(d => d.id === domainOf(t)) || DOMAINS[0];
+const nounFor = (t = S.topic) => domainMeta(t).noun;
+const countNoun = (n, t = S.topic) => `${n} ${n === 1 ? domainMeta(t).one : domainMeta(t).noun}`;
 const TOPIC_ALL = DOMAINS[0].topic;
 
 /* Region decides which subscriptions are on offer. Guessed, never asked —
@@ -696,7 +702,7 @@ function cardHTML(c) {
         : `<div class="why"><span class="static">${esc(c.why.label)}</span></div>`) : ''}
     <div class="acts">
       <button class="do-add" data-add="${c.f.id}">${inTen ? '✓ Added' : '+ Add'}</button>
-      <button class="do-similar" data-deeper="${c.f.id}" aria-label="Show films like ${esc(c.f.t)}">Similar ${svgIcon('deeper')}</button>
+      <button class="do-similar" data-deeper="${c.f.id}" aria-label="Show ${nounFor()} like ${esc(c.f.t)}">Similar ${svgIcon('deeper')}</button>
     </div>
   </div>`;
 }
@@ -707,7 +713,7 @@ function rowHTML(f) {
     <span class="thumb"><img src="${IMG}w185${f.p}" alt="" loading="lazy"></span>
     <span class="meta"><span class="t">${esc(f.t)}</span><span class="s">${f.y}${f.d ? ' · ' + esc(f.d) : ''}</span></span>
     <button class="add" data-add="${f.id}" aria-label="${inTen ? 'Remove' : 'Add'} ${esc(f.t)}" aria-pressed="${inTen}">${inTen ? '✓' : '+'}</button>
-    <button class="add" data-deeper="${f.id}" aria-label="More films like ${esc(f.t)}">${svgIcon('deeper')}</button>
+    <button class="add" data-deeper="${f.id}" aria-label="More ${nounFor()} like ${esc(f.t)}">${svgIcon('deeper')}</button>
   </div></li>`;
 }
 
@@ -743,10 +749,10 @@ function showingBar(q, results) {
     <div class="clauses">
       ${clauses.length
         ? clauses.map(c => `<span class="clause"><button ${c.act}>${esc(c.label)}</button><button class="x" ${c.drop} aria-label="Remove ${esc(c.label)}">×</button></span>`).join('')
-        // "Everything" was a lie about a 600-film shelf (round 3). Say what
-        // the shelf actually is.
-        : `<span class="count">All ${CAT.length} films on the shelf</span>`}
-      ${clauses.length ? `<span class="count">${n} film${n === 1 ? '' : 's'}</span>` : ''}
+        // "Everything" was a lie about a 600-title catalog (round 3). Say
+        // what is actually there.
+        : `<span class="count">All ${CAT.length} ${nounFor()} in our collection</span>`}
+      ${clauses.length ? `<span class="count">${countNoun(n)}</span>` : ''}
       ${hasMap ? `<button class="mapbtn" data-act="openmap">Map</button>` : ''}
     </div>
     ${n === 0 ? deadEnd() : ''}
@@ -782,11 +788,11 @@ function deadEnd() {
   if (S.q) tryWithout(`“${S.q}”`, () => { S.q = ''; }, () => { S.q = savedQ; }, 'data-act="clearq"');
 
   escapes.sort((a, b) => b.n - a.n);
-  if (!escapes.length) return `<p class="deadend">Nothing on the shelf matches all of that.</p>`;
+  if (!escapes.length) return `<p class="deadend">Nothing in our collection matches all of that.</p>`;
   return `<div class="deadend">
     <p>Nothing matches all of that. Dropping one gets you moving again:</p>
     <div class="escapes">${escapes.map(e =>
-      `<button class="escape" ${e.drop}>Without ${esc(e.label)} · ${e.n} film${e.n === 1 ? '' : 's'}</button>`).join('')}</div>
+      `<button class="escape" ${e.drop}>Without ${esc(e.label)} · ${countNoun(e.n)}</button>`).join('')}</div>
   </div>`;
 }
 
@@ -809,7 +815,7 @@ function renderBuild() {
   let body;
   if (q) {
     body = `<section><ol>${results.map(rowHTML).join('') ||
-      `<li class="empty">No match in this prototype's shelf of ${pool().length} films.</li>`}</ol></section>`;
+      `<li class="empty">No match in this prototype's collection of ${countNoun(pool().length)}.</li>`}</ol></section>`;
   } else {
     const secs = sections();
     // No per-section navigation verbs. "Back" and "Go deeper" sat next to
@@ -831,7 +837,7 @@ function renderBuild() {
 
     <div class="search">
       ${svgIcon('search')}
-      <input id="q" type="search" autocomplete="off" placeholder="Search films" value="${esc(S.q)}" aria-label="Search films">
+      <input id="q" type="search" autocomplete="off" placeholder="Search ${nounFor()}" value="${esc(S.q)}" aria-label="Search ${nounFor()}">
       ${S.q ? '<button class="clear" data-act="clearq" aria-label="Clear search">×</button>' : ''}
     </div>
     ${filterChips()}
@@ -889,7 +895,7 @@ function notes() {
   return `<footer class="notes">
     <p>Structure prototype. Glass, haptics, and final motion are judged on
     device, not here. Judge the flow, the anatomy, and the words.</p>
-    <p class="build">build 0009 · intro · TV shows · other people's Tens</p>
+    <p class="build">build 0010 · intro copy · US spelling</p>
   </footer>`;
 }
 
@@ -983,7 +989,7 @@ function openSheet(kind) {
     const group = free => SERVICES.filter(row => Boolean(row[2]) === free)
       .map(([id, label]) => `<button class="chip ${S.filters.services.includes(id) ? 'on' : ''}" data-toggle-service="${id}" aria-pressed="${S.filters.services.includes(id)}">${esc(label)}</button>`).join('');
     inner = `<div class="sheet-head"><h2>Where you can watch</h2><button class="done" data-act="closesheet">Done</button></div>
-      <p class="prompt" style="margin:0 0 var(--s4)">Pick what you have and the suggestions lean towards what you could actually watch tonight.</p>
+      <p class="prompt" style="margin:0 0 var(--s4)">Pick what you have and the suggestions lean toward what you could actually watch tonight.</p>
       <p class="section-h">Subscriptions</p>
       <div class="chips" style="flex-wrap:wrap;overflow:visible;margin:var(--s2) 0 var(--s6);padding:0;gap:var(--s2)">${group(false)}</div>
       <p class="section-h">Free with ads</p>
@@ -993,7 +999,7 @@ function openSheet(kind) {
     const cur = S.filters[kind];
     inner = `<div class="sheet-head"><h2>${kind[0].toUpperCase() + kind.slice(1)}</h2><button class="done" data-act="closesheet">Done</button></div>
       <ol>${vals.slice(0, 60).map(([v, n]) => `<li><button class="row" data-facet="${kind}" data-value="${esc(v)}" style="border-bottom:1px solid var(--border-subtle);min-height:52px">
-        <span class="meta"><span class="t">${esc(v)}</span><span class="s">${n} film${n === 1 ? '' : 's'}</span></span>
+        <span class="meta"><span class="t">${esc(v)}</span><span class="s">${countNoun(n)}</span></span>
         <span class="add" aria-hidden="true">${cur === v ? '✓' : '+'}</span></button></li>`).join('')}</ol>`;
   }
 
@@ -1139,7 +1145,7 @@ function renderMap() {
     <div class="map-scroll">
       ${placed.length > 1
         ? `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="group" aria-label="Your exploration map">${edges}${nodes}</svg>`
-        : `<p class="map-empty">Nothing followed yet. Tap “Similar” on a film and it will appear here.</p>`}
+        : `<p class="map-empty">Nothing followed yet. Tap “Similar” on a ${domainMeta().one} and it will appear here.</p>`}
     </div>`;
   document.body.appendChild(v);
   setBackgroundInert(true);
@@ -1206,18 +1212,16 @@ function renderIntro() {
       <div class="marquee back"><div class="strip">${rowB}${rowB}</div></div>
     </div>
     <div class="intro-copy">
-      <h1>What's your Ten?</h1>
-      <p class="pitch">Ten films, ranked — the list you would defend at a dinner
-        party, finally written down.</p>
+      <h1>What's your Top 10?</h1>
+      <p class="pitch">The list you would defend to the death</p>
       <ul>
-        <li><span class="m">10</span><span><b>Exactly ten, in order.</b> The limit is the point — it turns a shrug into a decision.</span></li>
-        <li><span class="m">★</span><span><b>Finish it and earn a badge</b> made from your own picks, inscribed with a line only your list explains.</span></li>
-        <li><span class="m">→</span><span><b>One list leads to the next.</b> Follow a film you love and see where it goes.</span></li>
+        <li><span class="m">10</span><span>Ten and only ten. The limit is the point.</span></li>
+        <li><span class="m">★</span><span>Finish it and earn a secret badge.</span></li>
+        <li><span class="m">0</span><span>Free. No ads. No subscription. Ever.</span></li>
       </ul>
     </div>
     <div class="cta">
       <button class="btn" data-act="begin">Make your first Ten</button>
-      <p class="cost">Free. No account needed to make one.</p>
     </div>
   </div>`;
   dockEl.innerHTML = '';
@@ -1237,10 +1241,10 @@ const PEOPLE = [
   { name: 'Priya', bias: 'Science Fiction', line: 'Will die on the hill of practical effects.' },
   { name: 'Marcus', bias: 'Animation', line: 'Cries at Pixar. Admits it.' },
   { name: 'Nour', bias: 'Thriller', line: 'Watches everything twice.' },
-  { name: 'Eddie', bias: 'Comedy', line: 'Quotes films at you.' },
+  { name: 'Eddie', bias: 'Comedy', line: 'Quotes movies at you.' },
   { name: 'Rae', bias: 'Drama', line: 'Reads the credits.' },
 ].map(p => ({ ...p, topic: { id: `movie:genre:${p.bias}`, domain: 'movie', genre: p.bias,
-  title: `${p.bias} films`, prompt: `Your ten favourite ${p.bias.toLowerCase()} films.` } }));
+  title: `${p.bias} movies`, prompt: `Your 10 favorite ${p.bias.toLowerCase()} movies.` } }));
 
 function theirTen(person) {
   const domain = person.topic.domain;
@@ -1289,7 +1293,7 @@ function renderOther(name) {
   app.innerHTML = `
     <div class="topbar"><h1 class="display-lg">${esc(p.name)}'s Ten</h1><button class="link" data-act="discover">Back</button></div>
     <p class="prompt">${esc(p.topic.title)} · ${esc(p.line)}</p>
-    ${mine ? `<p class="prompt"><b>You share ${shared.length} of 10.</b>${shared.length === 0 ? ' Not one film in common. Incredible.' : ''}</p>` : ''}
+    ${mine ? `<p class="prompt"><b>You share ${shared.length} of 10.</b>${shared.length === 0 ? ` Not one ${domainMeta(p.topic).one} in common. Incredible.` : ''}</p>` : ''}
     <section><ol>${t.ranked.map((f, i) => {
       const yours = mine ? (mine.ranked || []).indexOf(f.id) : -1;
       return `<li><div class="tenrow ${i === 0 ? 'one' : ''} ${yours >= 0 ? 'shared' : ''}">
@@ -1397,15 +1401,16 @@ function compose(ids, topic) {
   const pal = F.films.slice(0, 3).map(f => f.c);
   return { shape: SHAPES[seed % SHAPES.length], motif: MOTIFS[F.genre[0]] || 'laurel', seed,
     primary: pal[0] || '#6E675D', secondary: pal[1] || pal[0] || '#3A311A', metal: '#C9A227',
-    inscription: inscribe(F, seed) };
+    inscription: inscribe(F, seed, topic) };
 }
-function inscribe(F, seed) {
+function inscribe(F, seed, topic) {
   const [g, gn] = F.genre, [d, dn] = F.director, [dec, decn] = F.decade;
   const second = F.films[1];
   const short = t => t.split(/[:—–-]/)[0].trim();
   const c = [];
-  if (dn >= 3) c.push(`${dn} ${d.split(' ').pop()} films, no apologies`);
-  if (gn >= 4) c.push(`${gn} ${g.toLowerCase()} films, zero regrets`);
+  const N = nounFor(topic);
+  if (dn >= 3) c.push(`${dn} ${d.split(' ').pop()} ${N}, no apologies`);
+  if (gn >= 4) c.push(`${gn} ${g.toLowerCase()} ${N}, zero regrets`);
   if (decn >= 4) c.push(`The ${dec}s never let go`);
   if (F.span >= 45) c.push(`${F.span} years, one taste`);
   if (second) c.push(`Everything after ${short(second.t)}`);
@@ -1509,7 +1514,7 @@ function renderFinished() {
       <span class="meta"><span class="t">${esc(f.t)}</span><span class="s">${f.y}${f.d ? ' · ' + esc(f.d) : ''}</span></span>
     </div></li>`; }).join('')}</ol></section>
     <section>
-      <div class="section-head"><h2 class="section-h">More ${esc((DOMAINS.find(d => d.id === domainOf(S.topic)) || DOMAINS[0]).noun)}, closer in</h2></div>
+      <div class="section-head"><h2 class="section-h">More ${esc(nounFor(S.topic))}, closer in</h2></div>
       ${rabbitHole().map(t => `<button class="sug-topic" data-topic='${esc(JSON.stringify(t))}'>
         <div class="lvl">${t.level}</div><div class="t">${esc(t.title)}</div><div class="why">${esc(t.why)}</div></button>`).join('')}
     </section>
@@ -1539,12 +1544,12 @@ function otherDomains() {
   return DOMAINS.filter(d => d.id !== domainOf(S.topic)).map(d => {
     if (!d.ready) return `<button class="sug-topic" data-act="notyet" data-label="${esc(d.label)}" style="opacity:.55">
       <div class="lvl">Coming next</div><div class="t">${esc(d.label)}</div>
-      <div class="why">The flow is the same; this shelf is not written yet.</div></button>`;
+      <div class="why">The flow is the same; this collection is not built yet.</div></button>`;
     const already = doneDomains.has(d.id);
     return `<button class="sug-topic" data-topic='${esc(JSON.stringify(d.topic))}'>
       <div class="lvl">${already ? 'Another one' : 'A new kind of list'}</div>
       <div class="t">Your top ten ${esc(d.noun)}</div>
-      <div class="why">${already ? 'You have done one of these. Do another.' : 'Same ten slots, different shelf.'}</div></button>`;
+      <div class="why">${already ? 'You have done one of these. Do another.' : 'Same ten slots, a different collection.'}</div></button>`;
   }).join('');
 }
 
@@ -1560,18 +1565,19 @@ function topicId(t) {
 function rabbitHole() {
   const F = facts(S.ranked), out = [];
   const [g, gn] = F.genre, [d, dn] = F.director, [dec, decn] = F.decade;
-  if (d && dn >= 2) out.push({ level: 'Very specific', title: `${d} films`, director: d, prompt: `Your ten favourite ${d} films.`, why: `${dn} of your ten are ${d}. Prove it.` });
+  const N = nounFor(S.topic), N1 = domainMeta(S.topic).one;
+  if (d && dn >= 2) out.push({ level: 'Very specific', title: `${d} ${N}`, director: d, prompt: `Your 10 favorite ${d} ${N}.`, why: `${dn} of your ten are ${d}. Prove it.` });
   const actorCounts = {};
   for (const f of F.films) for (const a of (f.ca || [])) actorCounts[a] = (actorCounts[a] || 0) + 1;
   const [actor, an] = Object.entries(actorCounts).sort((a, b) => b[1] - a[1])[0] || [null, 0];
-  if (actor && an >= 2) out.push({ level: 'Very specific', title: `${actor} films`, actor, prompt: `Your ten favourite ${actor} films.`, why: `${actor} turns up ${an} times in your ten.` });
-  if (g && dec) out.push({ level: 'Very specific', title: `${g} of the ${dec}s`, genre: g, decade: dec, prompt: `Your ten favourite ${g.toLowerCase()} films of the ${dec}s.`, why: 'You keep going back to one decade.' });
-  if (g) out.push({ level: 'Specific', title: `${g} films`, genre: g, prompt: `Your ten favourite ${g.toLowerCase()} films.`, why: `${gn} of your ten are ${g.toLowerCase()}. Commit.` });
+  if (actor && an >= 2) out.push({ level: 'Very specific', title: `${actor} ${N}`, actor, prompt: `Your 10 favorite ${actor} ${N}.`, why: `${actor} turns up ${an} times in your ten.` });
+  if (g && dec) out.push({ level: 'Very specific', title: `${g} of the ${dec}s`, genre: g, decade: dec, prompt: `Your 10 favorite ${g.toLowerCase()} ${N} of the ${dec}s.`, why: 'You keep going back to one decade.' });
+  if (g) out.push({ level: 'Specific', title: `${g} ${N}`, genre: g, prompt: `Your 10 favorite ${g.toLowerCase()} ${N}.`, why: `${gn} of your ten are ${g.toLowerCase()}. Commit.` });
   const present = new Set(F.films.flatMap(f => f.g));
   const absent = Object.keys(MOTIFS).find(x => !present.has(x) && CAT.filter(f => f.g.includes(x)).length > 12);
-  if (absent) out.push({ level: 'Specific', title: `${absent} films`, genre: absent, prompt: `Your ten favourite ${absent.toLowerCase()} films.`, why: `Not one ${absent.toLowerCase()} film made your ten. Suspicious.` });
-  if (dec) out.push({ level: 'Broad', title: `The ${dec}s`, decade: dec, prompt: `Your ten favourite films of the ${dec}s.`, why: `${decn} of your ten came from the ${dec}s.` });
-  out.push({ level: 'Broad', title: 'Movies, again', prompt: 'Your ten favourite films of all time.', why: 'Taste moves. Re-rank from scratch and see.' });
+  if (absent) out.push({ level: 'Specific', title: `${absent} ${N}`, genre: absent, prompt: `Your 10 favorite ${absent.toLowerCase()} ${N}.`, why: `Not one ${absent.toLowerCase()} ${N1} made your ten. Suspicious.` });
+  if (dec) out.push({ level: 'Broad', title: `The ${dec}s`, decade: dec, prompt: `Your 10 favorite ${N} of the ${dec}s.`, why: `${decn} of your ten came from the ${dec}s.` });
+  out.push({ level: 'Broad', title: `${domainMeta(S.topic).label}, again`, prompt: `Your 10 favorite ${N} of all time.`, why: 'Taste moves. Re-rank from scratch and see.' });
   // Stable ids and a domain on every generated topic: the reveal gate asks
   // "have you made a take on THIS topic", which needs the same topic to have
   // the same name twice.
@@ -1606,7 +1612,7 @@ document.addEventListener('click', e => {
     const id = +t.dataset.deeper;
     follow(id); S.q = ''; renderBuild();
     window.scrollTo({ top: 0, behavior: reduced() ? 'auto' : 'smooth' });
-    announce(`Showing films like ${byId.get(id).t}`); return;
+    announce(`Showing ${nounFor()} like ${byId.get(id).t}`); return;
   }
   if (t.dataset.facetjump) {
     const { kind, value } = JSON.parse(t.dataset.facetjump);
