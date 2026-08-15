@@ -585,6 +585,28 @@ Open question below.)
 
 ## Answered
 
+- **[Product] Identity model** — *answered 2026-08-15 (Mischa): **handles are
+  generated, changeable later.*** Everyone gets a readable handle at publish
+  time and nobody is asked to invent one. The reasoning is about where the cost
+  falls: a chosen handle puts a form and a uniqueness check in front of the
+  single action the product is for, at the exact moment somebody has just
+  finished a Ten and wants to send it. Renaming is a settings screen somebody
+  can want later. Implemented as `TopTenKit/Handle.swift`, whose validity rule
+  is the same rule as the database's `handle_shape` constraint — a client that
+  can mint a handle the database refuses is a client that fails at publish.
+- **[Data] Analytics** — *answered 2026-08-15 (Mischa): **aggregate,
+  server-side.*** Counts of publishes, remixes and completions; no per-person
+  event stream, no third-party SDK, no identifiers leaving the device.
+  `supabase/migrations/0002_aggregate_stats.sql` implements it as **views over
+  rows that already exist**, so there is no counter to keep in step and nothing
+  that can drift from what it summarises. A day is the finest bucket, because
+  an hour-by-hour series over a small user base is a per-person event stream
+  wearing a timestamp. This makes the Success Metrics section measurable.
+- **[Infra] The Supabase project** — *answered 2026-08-15 (Mischa): **he
+  creates it, Claude writes the client.*** See `supabase/README.md` for exactly
+  what is needed. The migration is written and tested; applying it needs a
+  dashboard this environment cannot reach.
+
 - **[Product] Re-ranking a published Ten** — *answered 2026-08-15 (Mischa):
   **offer, never force.*** The badge persists unless membership changes or ≥3
   items move ≥3 slots, and then regeneration is offered rather than applied.
@@ -604,13 +626,9 @@ Open question below.)
 - **[Product]** Can you view the *full list* of someone's Ten before making
   yours, or tease only the top 3 + badge? Current call: full list visible,
   only the badge gated (Req 12) — revisit if remix conversion underwhelms.
-- **[Data]** Analytics: none vs. on-device counters vs. aggregate. Blocks
-  the metrics section from being measurable.
 - **[Legal]** TMDB non-commercial licence is load-bearing for "no
   monetisation." P1 badge premium tier conflicts with it — resolve before
   any paid feature.
-- **[Design]** Handle/identity model for anonymous-until-publish users on
-  web pages (generated handles vs. required choice at publish).
 
 ## Phasing
 

@@ -364,6 +364,95 @@ begin
     'shared_with_consensus counts picks in common, ignoring position', 'shared=' || shared);
 end $$;
 
+-- ── Aggregate stats leak nothing a stranger may not already see ─────────────
+-- The point of `security_invoker = true` on the views in 0002. A Postgres view
+-- runs with its OWNER's rights by default, which would read straight past the
+-- policies above — an aggregate over rows the caller cannot see is a leak with
+-- a sum() in front of it.
+do $$
+declare pub bigint; auth_n bigint;
+begin
+  call test.as_anon();
+  select published_tens, publishing_authors into pub, auth_n from public.product_stats;
+  call test.as_owner();
+  -- Ada and Grace have both published on the crime topic by now, and Ada also
+  -- published on the spare topic the completeness checks used.
+  call test.check(pub >= 2, 'a visitor can read the aggregate figures', 'published=' || pub);
+  call test.check(auth_n = 2, 'counted by author, not inflated by one person''s several lists',
+    'authors=' || auth_n);
+end $$;
+
+-- A draft must not raise the count. Note what this does NOT prove: the view's
+-- own WHERE clause already excludes unpublished rows, so it passes with or
+-- without `security_invoker`. The structural check below is what actually pins
+-- that setting.
+do $$
+declare before_n bigint; after_n bigint;
+begin
+  call test.as_owner();
+  insert into public.tens (id, author_id, topic_id)
+  values ('dddddddd-0000-0000-0000-000000000001',
+          '11111111-1111-1111-1111-111111111111',
+          'aaaaaaaa-0000-0000-0000-000000000003');
+  insert into public.ten_items (ten_id, position, item_id, title_at_publish)
+  select 'dddddddd-0000-0000-0000-000000000001', g, 7000 + g, 'Secret ' || g
+  from generate_series(1, 10) g;
+
+  call test.as_anon();
+  select published_tens into before_n from public.product_stats;
+  call test.as_owner();
+  update public.tens set published_at = now()
+  where id = 'dddddddd-0000-0000-0000-000000000001';
+  call test.as_anon();
+  select published_tens into after_n from public.product_stats;
+  call test.as_owner();
+  call test.check(after_n = before_n + 1,
+    'an unpublished draft is invisible to the aggregates until it is published',
+    'before=' || before_n || ' after=' || after_n);
+end $$;
+
+-- Every view must run with the CALLER's rights, not its owner's. Owner rights
+-- read straight past RLS, and the day somebody adds a view over drafts or
+-- profiles that becomes a leak with a sum() in front of it. Structural,
+-- because the risk is the next view rather than the current ones.
+do $$
+declare bad text;
+begin
+  call test.as_owner();
+  select string_agg(c.relname, ', ') into bad
+  from pg_class c
+  join pg_namespace n on n.oid = c.relnamespace
+  where n.nspname = 'public' and c.relkind = 'v'
+    and not coalesce(array_to_string(c.reloptions, ',') like '%security_invoker=true%', false);
+  call test.check(bad is null,
+    'every view runs with the caller''s rights, so RLS still applies',
+    coalesce('missing on: ' || bad, 'all views checked'));
+end $$;
+
+-- Authors are counted, never listed.
+do $$
+declare cols int;
+begin
+  call test.as_owner();
+  select count(*) into cols from information_schema.columns
+  where table_schema = 'public'
+    and table_name in ('topic_stats', 'daily_publishes', 'daily_remixes', 'product_stats')
+    and (column_name like '%author_id%' or column_name like '%profile_id%'
+         or column_name like '%handle%' or column_name like '%email%');
+  call test.check(cols = 0,
+    'no aggregate view exposes a column that identifies a person', 'columns=' || cols);
+end $$;
+
+do $$
+declare rows_n int;
+begin
+  call test.as_anon();
+  select count(*) into rows_n from public.topic_stats;
+  call test.as_owner();
+  call test.check(rows_n >= 1, 'topic_stats has a row per topic anybody has published on',
+    'rows=' || rows_n);
+end $$;
+
 -- ── Report ──────────────────────────────────────────────────────────────────
 call test.as_owner();
 
