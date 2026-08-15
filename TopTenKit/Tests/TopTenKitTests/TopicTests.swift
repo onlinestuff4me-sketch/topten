@@ -13,9 +13,9 @@ struct TopicNamingTests {
         (Criteria(domain: .movie, genre: "Science Fiction"), "Top 10 Sci-Fi Movies"),
         (Criteria(domain: .movie, genre: "Animation", decade: 2000), "Top 10 Animated Movies of the 2000s"),
         (Criteria(domain: .movie, creator: "Hayao Miyazaki"), "Top 10 Hayao Miyazaki Movies"),
-        (Criteria(domain: .movie, creator: "Alfred Hitchcock", genre: "Thriller"), "Top 10 Alfred Hitchcock Thrillers"),
+        (Criteria(domain: .movie, genre: "Thriller", creator: "Alfred Hitchcock"), "Top 10 Alfred Hitchcock Thrillers"),
         (Criteria(domain: .movie, performer: "Al Pacino"), "Top 10 Al Pacino Movies"),
-        (Criteria(domain: .movie, performer: "Eddie Murphy", genre: "Comedy"), "Top 10 Eddie Murphy Comedies"),
+        (Criteria(domain: .movie, genre: "Comedy", performer: "Eddie Murphy"), "Top 10 Eddie Murphy Comedies"),
         (Criteria(domain: .tv, genre: "Comedy"), "Top 10 Comedy Shows"),
         (Criteria(domain: .tv, decade: 1990), "Top 10 Shows of the 90s"),
         (Criteria(domain: .tv), "Top 10 Shows of All Time"),
@@ -44,7 +44,7 @@ struct TopicNamingTests {
         (Criteria(domain: .movie), "Your 10 favorite movies of all time."),
         (Criteria(domain: .movie, genre: "Science Fiction"), "Your 10 favorite sci-fi movies."),
         (Criteria(domain: .tv, genre: "Comedy"), "Your 10 favorite comedy shows."),
-        (Criteria(domain: .movie, performer: "Eddie Murphy", genre: "Comedy"), "Your 10 favorite Eddie Murphy comedies."),
+        (Criteria(domain: .movie, genre: "Comedy", performer: "Eddie Murphy"), "Your 10 favorite Eddie Murphy comedies."),
     ])
     func prompts(criteria: Criteria, expected: String) {
         #expect(TopicNaming.prompt(for: criteria) == expected)

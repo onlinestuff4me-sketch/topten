@@ -33,8 +33,19 @@ tie on function, pick the one an ADA jury would respect.
   without the app), not for feature parity.
 - **List size:** Ten, always. Every list is exactly 10 ranked items. No
   5-item mode, no partial publishing. An unfinished Ten is a draft.
-- **Name:** **Top Ten** (working name; repo `topten`). A user's list is
-  called a **Ten** in product copy ("What's your Ten?").
+- **Name:** **Top Ten** (working name; repo `topten`).
+
+  **Amended 2026-08-15 (Mischa).** The user-facing voice is **"Top 10"**, in
+  digits, everywhere a person reads it: the splash headline is *"What's your
+  Top 10?"*, lists are named *"Top 10 Crime Movies of the 90s"*, and the
+  discovery screen is *"Other Top 10 Lists"*. The earlier example, *"What's
+  your Ten?"*, is superseded — it had the app calling the same object two
+  different things on two adjacent screens, and the criteria-naming rule (PRD
+  Req 12) had already made "Top 10" the first two words of every list name.
+
+  **"Ten" survives in our own writing** — this file, the specs, type names
+  (`RankedTen`, `Ten.size`) — where it is a precise term for the object.
+  Product copy uses digits; the code and the docs use the word.
 - **Badges:** Procedurally composed from a hand-crafted design system, with
   Apple's on-device Foundation Models choosing the composition and writing the
   inscription. No server-side image generation in v1 (may become a premium
