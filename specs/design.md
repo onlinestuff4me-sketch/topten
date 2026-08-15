@@ -610,6 +610,95 @@ never destroys a node, tapping a real node re-enters the path there, following
 an unexplored step stays inside the map, the active filters are stated, it
 opens centred on where you are, and no two labels overlap.
 
+### Round 8 (2026-08-15, Mischa) — two card anatomies, and one line means five lines
+
+**A browse card is a poster and a title. Nothing else.** Round 2 put both verbs
+in words on every card, and it was right for a rail that is *arguing a case*
+("Because you picked Inception"). It is wrong for a shelf you are *scanning*:
+two 44pt buttons under every poster turned eleven browse rows into eleven rows
+of buttons. The poster was always the add control, so a browse card keeps it
+and drops the rest — 221pt tall instead of 320.
+
+**`See similar` arrives after the pick, on the card that was picked.** It is
+also the first moment the question is worth asking. It is built by `markCard`,
+in place, rather than by re-rendering the rail — round 1's law is that acting
+on a card must not make the card leave, and a re-render would also throw away
+the ring that is drawing itself at that moment.
+
+> **Class names on a shared element are a namespace.** The reveal class was
+> called `.in`, which the card already used for its added-checkmark badge —
+> absolutely positioned, top-left. `See similar` landed on top of the poster.
+> Renamed `.revealed`, and the test now asserts the control sits *below the
+> artwork*, not merely inside the card.
+
+### Round 8 — the one-line rule covers all five lines
+
+*"The splash breaks our one-line rule twice."* The rule was written for the
+three bullets; the headline and the sub-line were wrapping. Both now carry
+`white-space: nowrap`, which makes the promise enforceable rather than hoped
+for, and both are sized under measured ceilings:
+
+| | 375px | 393px | 430px |
+|---|---|---|---|
+| Headline ceiling | 40.5 | 42.5 | 47 |
+| Sub-line ceiling | 17.75 | 18.5 | 20.5 |
+| Bullet ceiling | 15.75 | 16.5 | 18.25 |
+
+**Where the bullet headroom came from.** Round 7 reported a 13.5px ceiling and
+called it arithmetic. It was arithmetic against the wrong width: the splash was
+still inside `.wrap`'s 20px page gutters *and* its own 16px inset, paying twice.
+`.wrap.bare` drops the page gutters for this screen — worth 40px, more than the
+numeral column and the side inset put together — and the ceiling moved from
+13.5px to 15.75px. Bullets ship at 15.4 / 16.2 / 17.9, against 13px before
+round 7.
+
+The lesson is not about this screen: **a measured limit is only as good as the
+box you measured inside.** The first number was real and the conclusion drawn
+from it was wrong, because the box had a second constraint in it that nobody
+had looked at.
+
+**The frame.** One inset, top and bottom — the space above the first row of
+posters is the space under the CTA, 40px, equal on every screen. `max()` and
+not `+` for the safe areas: a notch and a home indicator are never the same
+number, so *adding* them guarantees the one thing the rule exists to prevent.
+The CTA band is bottom-aligned so the button's underside sits on the frame.
+
+**Posters are sized to their row, exactly.** `.marquee` clips what overflows,
+so `20svh` looked right and was silently cropping 26px off every poster. The
+row is `0.4 × (100svh − 112px)` split in two, so `--tile-h: calc(20svh − 26px)`.
+A number that is nearly right, plus a clip that hides the remainder, is worse
+than either alone — and the test now measures poster height *against its row*
+rather than on its own.
+
+**The last bullet is bold**, and the callout copy is Stack's: *"Select your
+streaming services to see what is already included in your subscriptions."*
+
+### Round 8 — the coach mark is modal
+
+Stack's pattern, replacing round 7's inline callout: the screen dims, the
+Services chip is **lifted out of the dim** so the target stays lit, the callout
+floats above everything with its arrow on the chip, and the screen is `inert`
+until OK. A coach mark you can scroll past is a coach mark nobody reads. The
+cost is real — it is an interruption on the first screen — which is why it is
+spent once, on the single control whose name does not explain itself.
+
+### Round 8 — a page title never wraps
+
+A list name is a criteria sentence now, and they vary from 25 characters to 35.
+At one fixed size the long ones broke across two lines, and a wrapped page
+title reads as two headings.
+
+**Shrink to fit, do not bucket by character count.** A bucket has to be guessed
+against a font, a locale and an accessibility size at once, and is wrong the
+moment any of the three moves. `fitOneLine` measures the real element and steps
+down from 30px, stopping at 20px and letting it wrap below that — a title too
+small to read is worse than a title on two lines. *Top 10 Animated Movies of
+the 2000s* lands at 21px on a 375pt screen.
+
+**"Start over" moved to the line below the title**, beside the prompt. A 44pt
+control on the title's line was taking a quarter of the column to say something
+secondary — and it was itself wrapping to "Start / over".
+
 ### Round 7 (2026-08-15, Mischa) — the splash in thirds, and a screen you can browse
 
 **The splash is three bands: artwork 40%, pitch 40%, CTA 20%.** Stated as

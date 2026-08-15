@@ -111,6 +111,24 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
         `${b.lh}px line-height, ${b.spare}px spare: "${b.text}"`);
     }
   };
+  // Mischa, 2026-08-15: the splash "breaks our one-line rule twice" — the
+  // headline and the sub-line were each wrapping. The rule covers all five
+  // lines on this screen, not just the three bullets.
+  const headLines = () => page.evaluate(() => ['h1', '.pitch'].map(sel => {
+    const el = document.querySelector('.intro ' + sel);
+    const lh = parseFloat(getComputedStyle(el).lineHeight);
+    return { sel, text: el.innerText.trim(), lines: Math.round(el.getBoundingClientRect().height / lh),
+      fs: Math.round(parseFloat(getComputedStyle(el).fontSize) * 10) / 10,
+      spill: Math.round(el.scrollWidth - el.clientWidth) };
+  }));
+  const headOneLineAt = async label => {
+    for (const h of await headLines()) {
+      check(h.lines === 1 && h.spill <= 1,
+        `the ${h.sel === 'h1' ? 'headline' : 'sub-line'} is one line at ${label} — ` +
+        `${h.lines} line at ${h.fs}px, ${h.spill}px spill: "${h.text}"`);
+    }
+  };
+  await headOneLineAt('iPhone 15 Pro width (393px)');
   await oneLineAt('iPhone 15 Pro width (393px)');
   /* And at the narrowest iPhone iOS 26 runs on — the SE 3rd gen and 13 mini at
      375pt. That is where the rule is actually load-bearing: bullet 1 clears it
@@ -118,6 +136,7 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
      before it breaks on the Pro this suite otherwise drives. */
   await page.setViewportSize({ width: 375, height: 667 });
   await page.waitForTimeout(120);
+  await headOneLineAt('the narrowest supported iPhone (375px)');
   await oneLineAt('the narrowest supported iPhone (375px)');
   await page.setViewportSize({ width: 393, height: 852 });
   await page.waitForTimeout(120);
@@ -143,17 +162,37 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
     await page.setViewportSize({ width: w, height: h });
     await page.waitForTimeout(150);
     const band = await page.evaluate(() => {
-      const vh = window.innerHeight, pct = sel =>
-        Math.round(document.querySelector(sel).getBoundingClientRect().height / vh * 100);
-      return { art: pct('.intro .art'), copy: pct('.intro-copy'), cta: pct('.intro .cta'),
-        tile: Math.round(document.querySelector('.marquee .tile').getBoundingClientRect().height),
+      const vh = window.innerHeight, R = sel => document.querySelector(sel).getBoundingClientRect();
+      const art = R('.intro .art'), copy = R('.intro-copy'), cta = R('.intro .cta');
+      // The 40/40/20 is a share of the space the three bands DIVIDE, not of the
+      // raw viewport — the frame and the gaps between bands sit outside it.
+      // Measuring against the viewport would be measuring the frame too, and
+      // would move every time the frame did.
+      const split = art.height + copy.height + cta.height;
+      const pct = h => Math.round(h / split * 100);
+      return { art: pct(art.height), copy: pct(copy.height), cta: pct(cta.height),
+        ofScreen: Math.round(art.height / vh * 100),
+        topGap: Math.round(R('.marquee .tile').top),
+        bottomGap: Math.round(vh - R('.intro .cta .btn').bottom),
+        tile: Math.round(R('.marquee .tile').height),
+        clip: Math.round(R('.marquee .tile').height - R('.marquee').height),
         over: document.querySelector('.intro').scrollHeight > vh + 2 };
     });
-    const near = (got, want) => Math.abs(got - want) <= 5;
+    const near = (got, want) => Math.abs(got - want) <= 2;
     check(near(band.art, 40) && near(band.copy, 40) && near(band.cta, 20),
-      `the splash holds 40/40/20 on the ${label} (${band.art}/${band.copy}/${band.cta})`);
+      `the splash holds 40/40/20 on the ${label} (${band.art}/${band.copy}/${band.cta}; ` +
+      `artwork is ${band.ofScreen}% of the raw screen once the frame is taken out)`);
     check(!band.over, `and nothing overflows the screen on the ${label}`);
-    check(band.tile >= 96, `the artwork fills its band on the ${label} (${band.tile}px posters)`);
+    // Sized to its row, not merely large: `.marquee` clips what overflows, so a
+    // poster that is 26px too tall looks fine and is silently cropped.
+    check(band.tile >= 104 && band.clip === 0,
+      `the artwork fills its band on the ${label} without being cropped ` +
+      `(${band.tile}px posters in a ${band.tile - band.clip}px row)`);
+    // Mischa, 2026-08-15: the posters come down so their inset matches the one
+    // under the CTA. Equal on every screen, or the frame is not a frame.
+    check(band.topGap === band.bottomGap,
+      `the frame is even on the ${label} — ${band.topGap}px above the posters, ` +
+      `${band.bottomGap}px under the CTA`);
   }
   await page.setViewportSize({ width: 393, height: 852 });
   await page.waitForTimeout(150);
@@ -161,7 +200,47 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
     'the CTA says "Make your first list"');
 
   await page.locator('[data-act="begin"]').click();
-  await page.waitForTimeout(200);
+  await page.waitForTimeout(400);
+
+  // ── The Services coach mark, on Stack's pattern ─────────────────────────
+  // "Services" names a control; it does not say what the control gets you, and
+  // what it gets you is the reason the catalog carries availability at all.
+  // Modal because a coach mark you can scroll past is one nobody reads.
+  const coach = await page.evaluate(() => {
+    const c = document.querySelector('.coach'); if (!c) return null;
+    const chip = document.querySelector('.chip[data-sheet="services"]');
+    const box = c.querySelector('.coachbox').getBoundingClientRect();
+    const a = c.querySelector('.arrow').getBoundingClientRect();
+    const ch = chip.getBoundingClientRect();
+    const scrim = getComputedStyle(c.querySelector('.coachscrim'));
+    return { text: c.querySelector('#coachtext').innerText.replace(/\s+/g, ' ').trim(),
+      dims: scrim.backgroundColor, spotlit: chip.classList.contains('spotlit'),
+      frozen: document.getElementById('app').inert === true &&
+              document.getElementById('dock').inert === true,
+      pointsAtChip: a.left >= ch.left - 3 && a.right <= ch.right + 3 && a.top >= ch.bottom - 14,
+      below: box.top >= ch.bottom, ok: (c.querySelector('.btn').innerText || '').trim(),
+      okH: Math.round(c.querySelector('.btn').getBoundingClientRect().height) };
+  });
+  check(!!coach, 'the Services coach mark is shown before any service has been picked');
+  check(/^Select your streaming services/.test(coach.text) && /already[\s\S]*included/.test(coach.text),
+    `and it says what the filter gets you ("${coach.text}")`);
+  check(/rgba?\(0, 0, 0/.test(coach.dims), `the screen behind it is dimmed (${coach.dims})`);
+  check(coach.frozen, 'and frozen — nothing behind the callout is reachable');
+  check(coach.spotlit, 'the Services chip is lifted out of the dim, so the target stays lit');
+  check(coach.pointsAtChip && coach.below, 'the callout sits under the chip with its arrow on it');
+  check(coach.ok === 'OK' && coach.okH >= 44, `one way out, at ${coach.okH}pt: "${coach.ok}"`);
+  // A modal that blocks the screen must actually block it.
+  const blocked = await page.locator('.rail .card .art').first()
+    .click({ timeout: 1200 }).then(() => false, () => true);
+  check(blocked, 'a tap on the screen behind the callout does not reach it');
+  await page.locator('.coachbox [data-act="tipok"]').click();
+  await page.waitForTimeout(300);
+  check(await page.locator('.coach').count() === 0, 'OK dismisses it');
+  check(await page.evaluate(() => document.getElementById('app').inert !== true),
+    'and gives the screen back');
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForTimeout(400);
+  check(await page.locator('.coach').count() === 0, 'and it stays dismissed across a reload');
 
   // ── One screen: search, filters, suggestions, and the ten slots ──────────
   check(await page.locator('#q').count() === 1, 'search field is on the build screen, not a separate tab');
@@ -183,6 +262,38 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   });
   check(clears, 'the page scrolls clear of the dock — nothing is trapped behind it');
   check(await page.locator('.rail .card').count() > 0, 'suggestions are showing');
+
+  // ── The page title never wraps (Mischa, 2026-08-15) ─────────────────────
+  // A list name is a criteria sentence now, and they vary: 25 characters for
+  // "Top 10 Movies of All Time", 35 for "Top 10 Animated Movies of the 2000s".
+  // At one fixed size the long ones broke across two lines, and a wrapped page
+  // title reads as two headings. Checked at the narrowest supported width and
+  // against the longest name the app can currently generate.
+  for (const w of [375, 393]) {
+    await page.setViewportSize({ width: w, height: 852 });
+    for (const crit of [{}, { genre: 'Animation', decade: 2000 }, { genre: 'Science Fiction', decade: 1990 },
+                        { actor: 'Robert De Niro' }, { director: 'Alfred Hitchcock', genre: 'Thriller' }]) {
+      await page.evaluate(c => { window.S.topic = window.makeTopic(c); window.renderBuild(); }, crit);
+      await page.waitForTimeout(120);
+      const t = await page.evaluate(() => {
+        const el = document.querySelector('.topbar h1');
+        const lh = parseFloat(getComputedStyle(el).lineHeight);
+        return { text: el.innerText.trim(), lines: Math.round(el.getBoundingClientRect().height / lh),
+          fs: Math.round(parseFloat(getComputedStyle(el).fontSize)),
+          spill: Math.round(el.scrollWidth - el.clientWidth) };
+      });
+      check(t.lines === 1 && t.spill <= 1,
+        `the page title holds one line at ${w}px — ${t.lines} line at ${t.fs}px: "${t.text}"`);
+      check(t.fs >= 20, `and stays readable doing it (${t.fs}px, floor is 20)`);
+    }
+  }
+  // "Start over" came off the title's line for the same reason, and must not
+  // have gone missing in the move.
+  check(await page.locator('.subrow [data-act="restart"]').count() === 1,
+    'and "Start over" moved to the line below rather than competing for the title\'s width');
+  await page.setViewportSize({ width: 393, height: 852 });
+  await page.evaluate(() => { window.S.topic = window.makeTopic({ domain: 'movie' }); window.renderBuild(); });
+  await page.waitForTimeout(200);
 
   // ── The map before anything is explored ─────────────────────────────────
   // THE 2026-08-15 defect: with an empty graph the map hung four speculative
@@ -212,17 +323,86 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
 
   // Round 2: "I didn't know how to add something to the 10 list vs what the
   // chevron would do." Both actions must say what they are, in words.
-  const addLabel = (await page.locator('.rail .card').first().locator('.do-add').innerText()).trim();
-  const simLabel = (await page.locator('.rail .card').first().locator('.do-similar').innerText()).trim();
+  // ── Browse cards are posters (Mischa, 2026-08-15) ───────────────────────
+  // Two buttons under every poster turned eleven rows of scanning into eleven
+  // rows of buttons. A browse card is the poster and the title; the poster was
+  // always the add control. `See similar` arrives only after you have added
+  // something, which is the first moment the question is worth asking.
+  const browseCard = await page.evaluate(() => {
+    const c = document.querySelector('.rail .card.browse');
+    if (!c) return null;
+    return { buttons: c.querySelectorAll('button').length,
+      hasArt: !!c.querySelector('.art'), hasTitle: !!c.querySelector('.t'),
+      acts: c.querySelectorAll('.acts').length };
+  });
+  check(!!browseCard, 'the browse rows render browse-anatomy cards');
+  check(browseCard.acts === 0 && browseCard.buttons === 1,
+    `an unpicked browse card carries no Add/Similar buttons (${browseCard.buttons} control: the poster)`);
+  check(browseCard.hasArt && browseCard.hasTitle, 'just the poster and the title');
+  // Poster height per card is what a browse row buys with that space.
+  const rowH = await page.evaluate(() => {
+    const b = document.querySelector('.rail .card.browse').getBoundingClientRect();
+    return Math.round(b.height);
+  });
+  check(rowH < 300, `so a browse card is ${rowH}px tall, not a stack of controls`);
+
+  const firstBrowse = page.locator('.rail .card.browse').first();
+  const browseId = await firstBrowse.getAttribute('data-card');
+  await firstBrowse.locator('.art').click();
+  await page.waitForTimeout(420);
+  const afterAdd = await page.evaluate(id => {
+    const c = document.querySelector(`.card.browse[data-card="${id}"]`);
+    const b = c && c.querySelector('.do-similar');
+    if (!b) return null;
+    const r = b.getBoundingClientRect(), cr = c.getBoundingClientRect();
+    const ar = c.querySelector('.art').getBoundingClientRect();
+    return { label: b.innerText.trim(), h: Math.round(r.height),
+      inside: r.left >= cr.left - 1 && r.right <= cr.right + 1,
+      belowArt: r.top >= ar.bottom - 1, top: Math.round(r.top), artBottom: Math.round(ar.bottom),
+      addButtons: c.querySelectorAll('.do-add').length };
+  }, browseId);
+  check(!!afterAdd, 'adding from a browse card reveals a control under it');
+  check(/^See similar/.test(afterAdd.label), `and it reads "${afterAdd.label}"`);
+  check(afterAdd.addButtons === 0, 'with no Add button beside it — you have already added it');
+  check(afterAdd.inside, 'and it fits inside the card');
+  // `.in` is the card's added-badge class and it is absolutely positioned, so a
+  // reveal class called `.in` put `See similar` on top of the poster. The
+  // control belongs BELOW the artwork; anything else is a collision.
+  check(afterAdd.belowArt,
+    `and sits below the poster, not on it (control top ${afterAdd.top}, poster bottom ${afterAdd.artBottom})`);
+  const others = await page.evaluate(id => document.querySelectorAll(
+    `.card.browse:not([data-card="${id}"]) .do-similar`).length, browseId);
+  check(others === 0, 'and only that card grew one — the rest of the row is untouched');
+  await firstBrowse.locator('.art').click();   // put it back
+  await page.waitForTimeout(420);
+
+  // ── A suggestion rail still names both verbs in words (round 2) ──────────
+  // A rail arguing a case is not a shelf being scanned, so it keeps them.
+  await page.locator('.rail .card.browse .art').first().click();
+  await page.waitForTimeout(500);
+  // The "Because you picked X" rail lands on the NEXT render, not on the tap:
+  // round 1's law is that the rail must not reshuffle under the thumb.
+  check(await page.locator('.rail .card:not(.browse)').count() === 0,
+    'the new rail does not shove itself in under the thumb — it waits for the next render');
+  await page.evaluate(() => window.renderBuild());
+  await page.waitForTimeout(300);
+  const sug = page.locator('.rail .card:not(.browse)').first();
+  check(await sug.count() === 1, 'picking something produces a suggestion rail');
+  const addLabel = (await sug.locator('.do-add').innerText()).trim();
+  const simLabel = (await sug.locator('.do-similar').innerText()).trim();
   check(/add/i.test(addLabel), `the add control is labelled ("${addLabel}")`);
   check(/similar/i.test(simLabel), `the drill-in control is labelled ("${simLabel}")`);
   // A label that overflows its card is a label the user cannot read.
   const fits = await page.evaluate(() => {
-    const card = document.querySelector('.rail .card').getBoundingClientRect();
-    return [...document.querySelectorAll('.rail .card:first-child .acts button')]
+    const c = document.querySelector('.rail .card:not(.browse)');
+    const card = c.getBoundingClientRect();
+    return [...c.querySelectorAll('.acts button')]
       .every(b => { const r = b.getBoundingClientRect(); return r.left >= card.left - 1 && r.right <= card.right + 1; });
   });
   check(fits, 'both card actions fit inside the card');
+  await page.evaluate(() => { window.S.tray = []; window.S.graph = { nodes: {}, roots: [], focus: null };
+    window.renderBuild(); });
+  await page.waitForTimeout(300);
   const verbs = await page.locator('.section-head .more').count();
   check(verbs === 0, 'no per-section "Back"/"Go deeper" verbs competing with each other');
 
@@ -278,23 +458,6 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   check(stickyBefore > 0, 'it starts in the flow rather than permanently overlaying the title');
   await page.evaluate(() => window.scrollTo(0, 0));
   await page.waitForTimeout(200);
-
-  // ── The Services coach mark ──────────────────────────────────────────────
-  // "Services" names a control; it does not say what the control gets you.
-  const tip = await page.evaluate(() => {
-    const t = document.querySelector('.tip'); if (!t) return null;
-    const chip = [...document.querySelectorAll('.chip')].find(c => /Services/.test(c.innerText));
-    const a = t.querySelector('.arrow').getBoundingClientRect(), c = chip.getBoundingClientRect();
-    const x = t.querySelector('.tipx').getBoundingClientRect();
-    return { text: t.innerText.replace(/\s+/g, ' ').trim(),
-      pointsAtServices: a.left >= c.left - 2 && a.right <= c.right + 2,
-      below: a.top >= c.bottom - 12, dismiss: Math.min(x.width, x.height) };
-  });
-  check(!!tip, 'a tip is shown before any service has been picked');
-  check(/streaming services/i.test(tip.text) && /subscription/i.test(tip.text),
-    `and it says what the filter gets you ("${tip.text.replace(' ×', '')}")`);
-  check(tip.pointsAtServices && tip.below, 'its arrow points up at the Services chip');
-  check(tip.dismiss >= 44, `dismissing it meets the 44pt target (${Math.round(tip.dismiss)}pt)`);
 
   // ── The services sheet must not jump when you tap a service ──────────────
   // It used to re-render itself on every tap, so the sheet replayed its enter
@@ -382,8 +545,14 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   await page.screenshot({ path: SHOTS + '/1-build.png' });
 
   // ── Branching: more like this, with a trail you can walk back ────────────
-  const branchFrom = await page.locator('.rail .card').nth(2).getAttribute('data-card');
-  await page.locator('.rail .card').nth(2).locator('.do-similar').click();
+  // Drilling in now starts from a SUGGESTION card, because that is where the
+  // labelled `Similar` control lives — a browse card offers `See similar` only
+  // after it has been picked. The pick above earned this rail, so render it.
+  await page.evaluate(() => window.renderBuild());
+  await page.waitForTimeout(250);
+  const drill = page.locator('.rail .card:not(.browse)').nth(1);
+  const branchFrom = await drill.getAttribute('data-card');
+  await drill.locator('.do-similar').click();
   await page.waitForTimeout(120);
   const h2 = await page.locator('.section-h').first().innerText();
   check(/^MORE LIKE /i.test(h2), `drilling in opens a "${h2}" section`);
@@ -822,8 +991,11 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   check(!/\bfilms?\b/i.test(bodyBooks), 'nothing on the books screen calls a book a film');
   check(!/\bnovels?\b/i.test(bodyBooks), 'and nothing calls it a novel');
 
-  // "More like this" has to make a claim a reader would make.
-  await page.locator('.rail .card').first().locator('.do-similar').click();
+  // "More like this" has to make a claim a reader would make. Reached the way
+  // a reader reaches it on a browse row: pick the book, then See similar.
+  await page.locator('.rail .card.browse .art').first().click();
+  await page.waitForTimeout(420);
+  await page.locator('.rail .card.browse .do-similar').first().click();
   await page.waitForTimeout(250);
   const bookHead = await page.locator('.section-h').first().innerText();
   check(/^MORE LIKE /i.test(bookHead), `drilling into a book opens a "${bookHead}" section`);

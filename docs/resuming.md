@@ -4,7 +4,7 @@
 convention). Read this first, then `AGENTS.md`, then `specs/`.*
 
 **Last written:** 2026-08-15 · cloud session (Linux, no Xcode) · **M0 done,
-M1.5 prototype through seven rounds of feedback, three domains live**
+M1.5 prototype through eight rounds of feedback, three domains live**
 
 ---
 
@@ -38,7 +38,7 @@ before a line of Swift was written against it.
   4 tests, green. Falsified once on a throwaway branch to prove the gate can
   go red.
 - **Browser (Chromium, iPhone 15 Pro viewport, `docs/prototype/drive.js`):**
-  the prototype driven end to end — 262 assertions, zero page errors.
+  the prototype driven end to end — 308 assertions, zero page errors.
   Playwright is installed globally here, so the suite needs
   `NODE_PATH=/opt/node22/lib/node_modules` and a static server on 8788
   (`python3 -m http.server 8788` from `docs/prototype`). These now
@@ -124,6 +124,36 @@ state that broke it.
 
 **Anything that rebuilds `catalog.js` must assume someone is holding a draft
 against the old one.**
+
+## Round 8 (2026-08-15) — two card anatomies, and the one-line rule properly kept
+
+| Ask | Outcome |
+|---|---|
+| Browse cards poster-only | A browse card is the poster and the title, 221pt instead of 320. The poster was always the add control |
+| "See similar" after you add | Grown in place by `markCard` on the card you picked — no re-render, so the rail does not move and the ring keeps drawing |
+| Splash breaks the one-line rule twice | The headline and sub-line were wrapping. Both `nowrap` now, both sized under measured ceilings |
+| Bullets still not big enough | **13.5px → 15.75px ceiling** — see below. Shipping 15.4 / 16.2 / 17.9 against 13px before round 7 |
+| Posters bigger, framed to match the CTA | 40px above the posters and 40px under the CTA on every screen; posters sized to their row exactly |
+| Bold the last bullet | Done |
+| Tooltip like Stack's | Modal: dims, freezes, spotlights the chip, one OK |
+| The page title wraps | `fitOneLine` shrinks 30 → 20px; "Start over" moved off the title's line |
+
+**Round 7's bullet limit was measured in the wrong box.** It reported a 13.5px
+ceiling as hard arithmetic. The arithmetic was right and the box was wrong: the
+splash was still paying `.wrap`'s 20px page gutters *and* its own 16px inset.
+`.wrap.bare` drops the page gutters for that screen and the ceiling moved to
+15.75px — more headroom than the numeral column and the side inset combined.
+
+**A measured limit is only as good as the box you measured inside.** Worth
+carrying: the first number was genuinely measured and the conclusion drawn from
+it was still wrong, because there was a second constraint inside the box that
+nobody had looked at.
+
+Two collisions worth remembering. The reveal class for `See similar` was called
+`.in`, which the card already used for its absolutely-positioned added-badge —
+so the control rendered on top of the poster. And `--tile-h: 20svh` overshot its
+row by 26px, which `.marquee`'s `overflow: hidden` swallowed silently; the test
+now measures poster height *against its row* rather than on its own.
 
 ## Round 7 (2026-08-15) — the splash in thirds, and a screen you can browse
 

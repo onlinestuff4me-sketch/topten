@@ -96,6 +96,12 @@ section { margin-top: var(--s8); }
 .section-head .more { color: var(--accent); font-size: 0.8125rem; font-weight: 600; white-space: nowrap; padding: var(--s2) 0 var(--s2) var(--s2); }
 
 .topbar { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s3); }
+/* "Start over" moved off the title's line: a criteria name needs the full
+   column width to stay on one line, and a 44pt control beside it was taking a
+   quarter of that column to say something secondary. */
+.subrow { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s3); }
+.subrow .prompt { flex: 1; min-width: 0; }
+.fitline { display: block; overflow: hidden; }
 /* nowrap because the list name beside it is now a full criteria sentence
    ("Top 10 Animated Movies of the 2000s") and wraps to two lines — which was
    folding "Start over" into "Start / over" beside it. */
@@ -128,21 +134,27 @@ section { margin-top: var(--s8); }
 .stickybar .search { margin-top: 0; }
 
 /* ── The services coach mark ────────────────────────────────────────────── */
-/* Points up at the Services chip, which is always first in the row. It says
-   what the filter GETS you rather than what it is called — "Services" names a
-   control, not a promise. */
-.tip { position: relative; display: flex; align-items: flex-start; gap: var(--s2);
-  margin: var(--s3) 0 var(--s1); padding: var(--s3); border-radius: var(--r-card);
-  background: var(--accent-muted); border: 1px solid var(--accent);
-  color: var(--accent); font-size: 0.8125rem; line-height: 1.35; }
-.tip .arrow { position: absolute; top: -6px; left: 26px; width: 10px; height: 10px;
-  background: var(--accent-muted); border-left: 1px solid var(--accent); border-top: 1px solid var(--accent);
+/* Stack's pattern: dim the screen, float the callout over everything, and hold
+   the screen until OK. It points up at the Services chip, and the chip itself
+   is lifted above the scrim so the thing being pointed at is the one thing
+   still lit. It says what the filter GETS you rather than what it is called —
+   "Services" names a control, not a promise. */
+.coach { position: fixed; inset: 0; z-index: 60; opacity: 0; transition: opacity .22s ease; }
+.coach.on { opacity: 1; }
+.coachscrim { position: absolute; inset: 0; background: rgba(0,0,0,.55); }
+.chip.spotlit { position: relative; z-index: 61; box-shadow: 0 0 0 3px var(--accent-bright); }
+.coachbox { position: absolute; left: var(--margin); right: var(--margin);
+  max-width: 520px; margin-inline: auto; padding: var(--s4);
+  border-radius: var(--r-card); background: var(--bg-surface);
+  border: 1px solid var(--accent); box-shadow: 0 18px 48px rgba(0,0,0,.34);
+  transform: translateY(-6px); transition: transform .22s ease; }
+.coach.on .coachbox { transform: none; }
+.coachbox p { margin: 0 0 var(--s4); font-size: 0.9375rem; line-height: 1.4; color: var(--text-primary); }
+.coachbox .btn { width: 100%; min-height: 48px; }
+.coachbox .arrow { position: absolute; top: -7px; width: 12px; height: 12px; margin-left: -6px;
+  background: var(--bg-surface); border-left: 1px solid var(--accent); border-top: 1px solid var(--accent);
   transform: rotate(45deg); }
-.tip .tiptext { flex: 1; min-width: 0; }
-/* 44pt of touch pulled back into the box with negative margin, so meeting the
-   target does not make the callout taller than the sentence inside it. */
-.tip .tipx { flex: 0 0 44px; height: 44px; margin: -12px -12px -12px 0;
-  display: grid; place-items: center; color: var(--accent); font-size: 1.125rem; }
+@media (prefers-reduced-motion: reduce) { .coach, .coach .coachbox { transition: none; } }
 
 /* ── Rails and cards ────────────────────────────────────────────────────── */
 /* scroll-padding is load-bearing, not a nicety: scroll-snap aligns a card to
@@ -172,6 +184,12 @@ section { margin-top: var(--s8); }
    card, and a row that only just fits at the default text size is a row that
    breaks at the accessibility sizes this app has to pass. */
 .card .acts { display: flex; flex-direction: column; gap: 6px; margin-top: var(--s2); }
+/* The one control a browse card ever shows, and only once it has been picked.
+   It opens rather than appears — the card is answering, and an answer that
+   pops into place reads as a repaint. */
+.card .acts.one { opacity: 0; transform: translateY(-4px); transition: opacity .18s ease, transform .18s var(--ease-out); }
+.card .acts.one.revealed { opacity: 1; transform: none; }
+@media (prefers-reduced-motion: reduce) { .card .acts.one { transition: none; } }
 .card .acts button { width: 100%; min-height: 34px; border-radius: 999px; font-size: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 4px; padding: 0 8px; }
 .card .acts .do-add { background: var(--accent); color: #fff; }
 @media (prefers-color-scheme: dark) { .card .acts .do-add { color: #17140B; } }
@@ -379,38 +397,72 @@ footer.notes .build { color: var(--text-disabled); margin-top: var(--s2); }
    one, which is exactly the drift this replaces. Every type size below is a
    clamp against the viewport so all three bands stay full at 375px and at
    440px without a media query deciding it. */
-.intro { min-height: 100svh; display: flex; flex-direction: column; gap: var(--s4);
-  padding: calc(env(safe-area-inset-top) + var(--s4)) 0 calc(env(safe-area-inset-bottom) + var(--s5)); }
+/* One inset, top and bottom (Mischa, 2026-08-15): the space above the first
+   row of posters is the same space that sits under the CTA, so the screen is
+   framed rather than stuck to its top edge.
+
+   `max()` and not `+`: adding the safe-area insets makes the frame lopsided on
+   a real handset, where the top inset is a notch and the bottom is a home
+   indicator — the two are never the same number, so adding them guarantees the
+   one thing this rule exists to prevent. Taking the larger of the frame and
+   the inset keeps both sides equal wherever the insets are smaller than the
+   frame, and stays clear of the hardware where they are not. */
+.wrap.bare { padding: 0; }
+.intro { --frame: 40px; min-height: 100svh; display: flex; flex-direction: column; gap: var(--s4);
+  padding: max(env(safe-area-inset-top), var(--frame)) 0 max(env(safe-area-inset-bottom), var(--frame)); }
 .intro > * { min-height: 0; }
-.intro .art { flex: 40 1 0; display: flex; flex-direction: column; justify-content: center; gap: var(--s2); }
+/* Top-aligned, not centred: centring would reintroduce slack above the posters
+   that the frame is there to control. */
+.intro .art { flex: 40 1 0; display: flex; flex-direction: column; justify-content: flex-start; gap: var(--s2); }
+/* A tighter side inset than the rest of the app uses, because on this screen
+   every horizontal pixel is a pixel of bullet — see the arithmetic below. */
 .intro-copy { flex: 40 1 0; display: flex; flex-direction: column; justify-content: center;
-  padding: 0 var(--margin); max-width: 560px; margin-inline: auto; width: 100%; }
-.intro h1 { font-family: var(--serif); font-weight: 600; font-size: clamp(2rem, 9.5vw, 2.75rem);
-  line-height: 1.04; letter-spacing: -0.022em; margin: 0; }
-.intro .pitch { font-size: clamp(1rem, 4.4vw, 1.1875rem); line-height: 1.35;
-  color: var(--text-secondary); margin: var(--s3) 0 0; max-width: 26em; }
+  padding: 0 var(--s4); max-width: 560px; margin-inline: auto; width: 100%; }
+/* The headline and the sub-line are held to ONE LINE too (Mischa,
+   2026-08-15) — at 2.75rem "What's your Top 10?" broke across two, and a
+   headline that wraps is a headline that was set too big. Measured one-line
+   ceilings: 40.5 / 42.5 / 47px for the headline at 375 / 393 / 430, and
+   17.75 / 18.5 / 20.5px for the sub-line. Both ramps sit under those, and
+   `nowrap` makes the promise enforceable rather than hoped for. `max-width`
+   is gone from the sub-line for the same reason — an em-based cap is a second,
+   invisible thing deciding where the line breaks. */
+.intro h1 { font-family: var(--serif); font-weight: 600; font-size: clamp(2rem, 10vw, 2.75rem);
+  line-height: 1.06; letter-spacing: -0.022em; margin: 0; white-space: nowrap; }
+.intro .pitch { font-size: clamp(1rem, 4.5vw, 1.25rem); line-height: 1.35;
+  color: var(--text-secondary); margin: var(--s3) 0 0; white-space: nowrap; }
 .intro ul { margin: var(--s5) 0 0; display: grid; gap: var(--s3); }
-/* One line per bullet (Mischa, round 5) is what caps this size, not taste.
-   "Ten and only ten. The limit is the point." is 41 characters and it has to
-   survive a 375px iPhone with a numeral beside it, so the bullets can only be
-   as large as that sentence allows: measured ceilings are 13.5px at 375, 14.25
-   at 393, 16 at 430, and the ramp below sits about 2% under each. Bigger type
-   here means breaking a promise, so the growth this screen needed went into
-   the headline and the pitch, which are allowed to wrap. The numeral column
-   and its gap are part of the arithmetic — every pixel they give back is a
-   pixel of sentence. */
-.intro li { display: grid; grid-template-columns: 1.6em 1fr; gap: var(--s2); align-items: baseline;
-  font-size: clamp(0.8125rem, calc(4vw - 1.8px), 1rem); line-height: 1.3; }
+/* One line per bullet (Mischa, round 5) is what caps this size, not taste, and
+   the cap is a measurement anyone can repeat. "Ten and only ten. The limit is
+   the point." is 41 characters; beside a numeral, inside a 375px screen, the
+   largest size that still fits on one line is 15.75px. At 393 it is 16.5, at
+   430 it is 18.25. The ramp below sits ~2% under each.
+
+   Every horizontal pixel on this screen is a pixel of bullet, which is why the
+   side inset is --s4 rather than --margin, the numeral column is 1.2em with a
+   6px gap, and the splash escapes `.wrap`'s own gutters entirely (`.wrap.bare`
+   — worth 40px on its own, and by far the largest of the four). Together they
+   moved the 375px ceiling from 13.5px to 15.75px, which is the difference
+   between "measurably bigger" and "bigger". */
+.intro li { display: grid; grid-template-columns: 1.2em 1fr; gap: 6px; align-items: baseline;
+  font-size: clamp(0.9375rem, calc(4.545vw - 1.65px), 1.125rem); line-height: 1.3; }
 .intro li b { font-weight: 700; }
 .intro li .m { font-family: var(--serif); font-weight: 700; color: var(--accent-bright);
   text-align: center; line-height: 1.2; font-size: 1.05em; }
-.intro .cta { flex: 20 1 0; display: flex; align-items: center;
+.intro .cta { flex: 20 1 0; display: flex; align-items: flex-end;
   padding: 0 var(--margin); max-width: 560px; margin-inline: auto; width: 100%; }
 .intro .cta .btn { width: 100%; min-height: 58px; font-size: 1.125rem; }
 
-/* Tiles are sized off the band that holds them: two rows plus one gap fill the
-   artwork 40%, so the posters grow with the screen instead of stranding it. */
-.marquee { --tile-h: clamp(96px, 18.4svh, 190px); overflow: hidden;
+/* Tiles are sized off the band that holds them, and the sum has to be exact:
+   the artwork band is 40% of what is left after the frame (2 x 40px) and the
+   two gaps between bands (2 x 16px), and it holds two rows plus one 8px gap.
+
+     row = (0.4 x (100svh - 112px) - 8px) / 2  =  20svh - 26.4px
+
+   `20svh` alone overshot that by ~26px, and `.marquee`'s own `overflow:
+   hidden` swallowed the difference — the posters were being quietly cropped
+   top and bottom rather than sized to fit. A number that is nearly right and
+   a clip that hides the remainder is worse than either alone. */
+.marquee { --tile-h: clamp(96px, calc(20svh - 26px), 210px); overflow: hidden;
   -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
   mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
 .marquee .strip { display: flex; gap: var(--s2); width: max-content; animation: drift 46s linear infinite; }
@@ -869,7 +921,7 @@ const standing = f => f.v * Math.log10((f.vc || 0) + 10);
 function browseRows(have) {
   const shelf = pool().filter(f => !have.has(f.id));
   const rows = [], take = (list, n = ROW_SIZE) => list.slice(0, n).map(f => ({ f, why: '' }));
-  const add = (id, title, list) => { const c = take(list); if (c.length >= MIN_ROW) rows.push({ id, title, cards: c }); };
+  const add = (id, title, list) => { const c = take(list); if (c.length >= MIN_ROW) rows.push({ id, title, cards: c, browse: true }); };
 
   // Newest first, but a 2026 release with nine votes is not a release anybody
   // is looking for — within a year, order by how much the shelf has to say.
@@ -900,9 +952,29 @@ function svgIcon(name) {
   return `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">${p}</svg>`;
 }
 
-function cardHTML(c) {
+/* Two card anatomies, and the difference is what the row is FOR.
+
+   A suggestion rail is arguing a case — "because you picked Inception" — so
+   its cards carry both verbs in words, which is round 2's fix ("I didn't know
+   how to add something vs what the chevron would do").
+
+   A BROWSE row is a shelf you are scanning, and two buttons under every poster
+   turn eleven rows of scanning into eleven rows of buttons (Mischa,
+   2026-08-15). Browse cards are the poster and the title, nothing else. The
+   poster is still the add control — it always was — and `See similar` appears
+   under a card only AFTER you have added it, which is also the first moment
+   the question is worth asking. */
+function cardHTML(c, browse = false) {
   const inTen = S.tray.includes(c.f.id);
-  return `<div class="card" data-card="${c.f.id}" data-in="${inTen ? 1 : 0}">
+  const acts = browse
+    ? (inTen ? `<div class="acts one">
+        <button class="do-similar" data-deeper="${c.f.id}" aria-label="Show ${nounFor()} like ${esc(c.f.t)}">See similar ${svgIcon('deeper')}</button>
+      </div>` : '')
+    : `<div class="acts">
+      <button class="do-add" data-add="${c.f.id}">${inTen ? '✓ Added' : '+ Add'}</button>
+      <button class="do-similar" data-deeper="${c.f.id}" aria-label="Show ${nounFor()} like ${esc(c.f.t)}">Similar ${svgIcon('deeper')}</button>
+    </div>`;
+  return `<div class="card${browse ? ' browse' : ''}" data-card="${c.f.id}" data-in="${inTen ? 1 : 0}">
     <button class="art" data-add="${c.f.id}" aria-label="${inTen ? 'Remove' : 'Add'} ${esc(c.f.t)}" aria-pressed="${inTen}">
       <img src="${art(c.f, 'w342')}" alt="" loading="lazy" decoding="async">
       <svg class="ring" viewBox="0 0 120 180" preserveAspectRatio="none"><rect x="1.5" y="1.5" width="117" height="177" rx="6"/></svg>
@@ -912,10 +984,7 @@ function cardHTML(c) {
     ${c.why ? (c.why.jump
         ? `<div class="why"><button data-facetjump='${esc(JSON.stringify(c.why.jump))}'>${esc(c.why.label)}</button></div>`
         : `<div class="why"><span class="static">${esc(c.why.label)}</span></div>`) : ''}
-    <div class="acts">
-      <button class="do-add" data-add="${c.f.id}">${inTen ? '✓ Added' : '+ Add'}</button>
-      <button class="do-similar" data-deeper="${c.f.id}" aria-label="Show ${nounFor()} like ${esc(c.f.t)}">Similar ${svgIcon('deeper')}</button>
-    </div>
+    ${acts}
   </div>`;
 }
 
@@ -1028,17 +1097,50 @@ function filterChips() {
    its own does not say what it gets you, and this is the filter the whole
    catalog was enriched to support. Three rules keep it from becoming nagware:
    it appears only while no service has been chosen, only on a domain that HAS
-   services (a book is not on Netflix), and dismissing it is permanent. */
-function servicesTip() {
-  if (S.tipDone) return '';
-  if (!axes().services) return '';
-  if (S.filters.services.length) return '';
-  return `<div class="tip" role="note">
-    <span class="arrow" aria-hidden="true"></span>
-    <span class="tiptext">Tell us your streaming services and we will show what is
-      already included in your subscriptions.</span>
-    <button class="tipx" data-act="tipdone" aria-label="Dismiss tip">×</button>
-  </div>`;
+   services (a book is not on Netflix), and dismissing it is permanent.
+
+   Modal, on Stack's pattern (Mischa, round 8): the screen dims, the callout
+   floats above everything, and nothing else is reachable until OK is tapped.
+   A coach mark you can scroll past is a coach mark nobody reads — and the one
+   that was here, sitting inline under the chips, was exactly that. The cost is
+   real (it is an interruption on the first screen), which is why it is spent
+   once, on the single control whose name does not explain itself. */
+const tipShowing = () => !S.tipDone && !!axes().services && !S.filters.services.length;
+
+function coachMark() {
+  if (!tipShowing()) return;
+  const chip = $('.chip[data-sheet="services"]');
+  if (!chip) return;
+  const r = chip.getBoundingClientRect();
+  const el = document.createElement('div');
+  el.className = 'coach';
+  el.innerHTML = `<div class="coachscrim" data-act="tipok"></div>
+    <div class="coachbox" role="alertdialog" aria-modal="true" aria-labelledby="coachtext">
+      <span class="arrow" aria-hidden="true"></span>
+      <p id="coachtext">Select your streaming services to see what is already
+        included in your subscriptions.</p>
+      <button class="btn" data-act="tipok">OK</button>
+    </div>`;
+  document.body.appendChild(el);
+  // The hole in the dim: the chip is lifted above the scrim so the thing being
+  // pointed at is the one thing still lit.
+  chip.classList.add('spotlit');
+  const box = el.querySelector('.coachbox');
+  box.style.top = `${Math.round(r.bottom + 10)}px`;
+  const arrow = el.querySelector('.arrow');
+  // Centre the arrow on the chip, clamped inside the box's own corners so it
+  // never floats off the end of the callout on a narrow screen.
+  const boxR = box.getBoundingClientRect();
+  const x = Math.min(Math.max(r.left + r.width / 2 - boxR.left, 18), boxR.width - 18);
+  arrow.style.left = `${Math.round(x)}px`;
+  requestAnimationFrame(() => el.classList.add('on'));
+  app.inert = true; dockEl.inert = true;
+  const ok = el.querySelector('.btn'); if (ok) ok.focus();
+}
+function closeCoach() {
+  const el = $('.coach'); if (el) el.remove();
+  const chip = $('.chip.spotlit'); if (chip) chip.classList.remove('spotlit');
+  app.inert = false; dockEl.inert = false;
 }
 
 function renderBuild() {
@@ -1057,16 +1159,18 @@ function renderBuild() {
     // and the map.
     body = secs.map(s => `<section>
         <div class="section-head"><h2 class="section-h">${esc(s.title)}</h2></div>
-        <div class="rail">${s.cards.map(cardHTML).join('')}</div>
+        <div class="rail">${s.cards.map(c => cardHTML(c, !!s.browse)).join('')}</div>
       </section>`).join('') || '';
   }
 
   app.innerHTML = `
     <div class="topbar">
-      <h1 class="display-lg">${esc(S.topic.title)}</h1>
+      <h1 class="display-lg fitline">${esc(S.topic.title)}</h1>
+    </div>
+    <div class="subrow">
+      <p class="prompt">${esc(S.topic.prompt)}</p>
       <button class="link" data-act="restart">Start over</button>
     </div>
-    <p class="prompt">${esc(S.topic.prompt)}</p>
 
     <div class="stickybar">
       <div class="search">
@@ -1075,13 +1179,15 @@ function renderBuild() {
         ${S.q ? '<button class="clear" data-act="clearq" aria-label="Clear search">×</button>' : ''}
       </div>
       ${filterChips()}
-      ${servicesTip()}
     </div>
     ${showingBar(q, results)}
     ${body}
     ${notes()}`;
 
+  fitOneLine($('.fitline'));
   renderDock();
+  closeCoach();
+  coachMark();
   const qi = $('#q');
   if (qi) {
     // Live autocomplete, debounced — no submit step (Stack search rule).
@@ -1131,7 +1237,7 @@ function notes() {
   return `<footer class="notes">
     <p>Structure prototype. Glass, haptics, and final motion are judged on
     device, not here. Judge the flow, the anatomy, and the words.</p>
-    <p class="build">build 0012 · splash in thirds · 11 browse rows · sticky search</p>
+    <p class="build">build 0013 · poster-only browse cards · modal coach mark · five lines, one line each</p>
   </footer>`;
 }
 
@@ -1180,6 +1286,23 @@ function markCard(id, on) {
     el.dataset.in = on ? '1' : '0';
     const btn = el.querySelector('[data-add]');
     if (btn) { btn.setAttribute('aria-pressed', String(on)); if (btn.classList.contains('add')) btn.textContent = on ? '✓' : '+'; }
+    // A browse card grows its `See similar` when it is picked and loses it
+    // again when it is not. Built here rather than by re-rendering the rail,
+    // because the rail must not move under the thumb (round 1's law: acting on
+    // a card does not make the card leave) — and a re-render would also throw
+    // away the ring that is drawing itself two lines below.
+    if (el.classList.contains('browse')) {
+      const acts = el.querySelector('.acts');
+      if (on && !acts) {
+        const f = byId.get(id);
+        const d = document.createElement('div');
+        d.className = 'acts one';
+        d.innerHTML = `<button class="do-similar" data-deeper="${id}" aria-label="Show ${nounFor()} like ${esc(f.t)}">See similar ${svgIcon('deeper')}</button>`;
+        el.appendChild(d);
+        if (!reduced()) requestAnimationFrame(() => d.classList.add('revealed'));
+        else d.classList.add('revealed');
+      } else if (!on && acts) acts.remove();
+    }
     const rect = el.querySelector('.ring rect');
     if (!rect) continue;
     const len = rect.getTotalLength ? rect.getTotalLength() : 600;
@@ -1541,6 +1664,10 @@ function introTiles(n, offset) {
     </div>`).join('');
 }
 function renderIntro() {
+  // The splash owns the whole screen. `.wrap`'s page padding would otherwise
+  // add 16px at the top and a dock-sized gap at the bottom, which is exactly
+  // the asymmetry that made the frame below impossible to reason about.
+  app.className = 'wrap bare';
   const rowA = introTiles(10, 0), rowB = introTiles(10, 10);
   app.innerHTML = `<div class="intro">
     <div class="art">
@@ -1553,7 +1680,7 @@ function renderIntro() {
       <ul>
         <li><span class="m">10</span><span>Ten and only ten. The limit is the point.</span></li>
         <li><span class="m">★</span><span>Finish it and earn a secret badge.</span></li>
-        <li><span class="m">0</span><span>Free. No ads. No subscription. Ever.</span></li>
+        <li><span class="m">0</span><span><b>Free. No ads. No subscription. Ever.</b></span></li>
       </ul>
     </div>
     <div class="cta">
@@ -2113,6 +2240,29 @@ function rabbitHole() {
   return offers;
 }
 
+/* A list name is now a criteria sentence, and criteria sentences vary in
+   length: "Top 10 Movies of All Time" is 25 characters, "Top 10 Animated
+   Movies of the 2000s" is 35. At one fixed size the long ones wrapped, and a
+   wrapped page title reads as two headings (Mischa, 2026-08-15).
+
+   Shrink to fit rather than bucket by character count: a bucket has to be
+   guessed against a font, a locale and an accessibility size all at once, and
+   is wrong the moment any of the three moves. This measures the real element
+   and steps down until it fits — a handful of layout reads on one node, once
+   per render. It stops at 20px and lets the title wrap below that, because a
+   title too small to read is worse than a title on two lines. */
+function fitOneLine(el, max = 30, min = 20) {
+  if (!el) return;
+  el.style.whiteSpace = 'nowrap';
+  for (let px = max; px >= min; px -= 1) {
+    el.style.fontSize = px + 'px';
+    if (el.scrollWidth <= el.clientWidth + 1) return;
+  }
+  // Nothing in the range fits: wrap at the floor rather than shrink further.
+  el.style.whiteSpace = '';
+  el.style.fontSize = min + 'px';
+}
+
 /* ── Routing ──────────────────────────────────────────────────────────────── */
 function setBackgroundInert(on) {
   for (const el of [app, dockEl]) { el.inert = on; if (on) el.setAttribute('aria-hidden', 'true'); else el.removeAttribute('aria-hidden'); }
@@ -2121,6 +2271,7 @@ function render() {
   $$('.vault').forEach(v => v.remove());
   closeMap();
   setBackgroundInert(false);
+  app.className = 'wrap';
   if (S.scene === 'intro') renderIntro();
   else if (S.scene === 'discover') renderDiscover();
   else if (S.scene === 'other') renderOther(S.other);
@@ -2209,7 +2360,7 @@ document.addEventListener('click', e => {
     case 'backhome': S.scene = (S.done || []).length ? 'done' : 'build'; save(); render(); break;
     case 'notyet': announce(`${t.dataset.label} is not built yet`); break;
     case 'clearq': S.q = ''; save(); renderBuild(); break;
-    case 'tipdone': S.tipDone = true; save(); renderBuild(); break;
+    case 'tipok': S.tipDone = true; save(); closeCoach(); break;
     case 'openten': case 'arrange': openSheet('ten'); break;
     case 'closesheet': closeSheet(); break;
     case 'duel': startDuel(); break;
