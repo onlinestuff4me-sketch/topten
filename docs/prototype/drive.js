@@ -77,6 +77,32 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   check(clears, 'the page scrolls clear of the dock — nothing is trapped behind it');
   check(await page.locator('.rail .card').count() > 0, 'suggestions are showing');
 
+  // ── The map before anything is explored ─────────────────────────────────
+  // THE 2026-08-15 defect: with an empty graph the map hung four speculative
+  // films off the topic, on edges, wearing their own posters — four
+  // selections nobody had made, under a title that claims to record
+  // selections. The empty map must name no film at all.
+  const wouldHaveShown = await page.evaluate(() => pool().slice(0, 4).map(f => f.t));
+  await page.locator('.showing [data-act="openmap"]').click();
+  await page.waitForTimeout(200);
+  check(await page.locator('.mapview').count() === 1, 'the map is reachable before anything is explored');
+  check((await page.locator('.map-head h2').innerText()).trim() === 'Map of your selections',
+    'the map is titled "Map of your selections"');
+  check(await page.locator('.map-empty').count() === 1, 'an empty graph gets a designed empty state');
+  check(await page.locator('.map-node').count() === 0, 'and NOT one node of any kind');
+  check(await page.locator('.mapview image').count() === 0, 'no poster is drawn anywhere on it');
+  check(await page.locator('.map-edge').count() === 0, 'and nothing hangs off the topic on an edge');
+  const blankText = await page.locator('.map-empty').innerText();
+  check(wouldHaveShown.every(t => !blankText.includes(t)),
+    `the empty map names no film from the shelf (would have shown: ${wouldHaveShown.join(', ')})`);
+  check(/record of where you have actually been/i.test(blankText), 'it says what the map is for');
+  check(/\+ Add/.test(blankText) && /Similar/.test(blankText),
+    'and names both controls that put something on it');
+  await page.screenshot({ path: SHOTS + '/16-map-empty.png' });
+  await page.locator('.mapview [data-act="closemap"]').click();
+  await page.waitForTimeout(150);
+  check(await page.locator('.mapview').count() === 0, 'Done closes the empty map');
+
   // Round 2: "I didn't know how to add something to the 10 list vs what the
   // chevron would do." Both actions must say what they are, in words.
   const addLabel = (await page.locator('.rail .card').first().locator('.do-add').innerText()).trim();
@@ -166,7 +192,8 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   // ── The map ─────────────────────────────────────────────────────────────
   await page.locator('[data-act="openmap"]').click();
   await page.waitForTimeout(200);
-  check(await page.locator('.mapview svg').count() === 1, 'the map draws the explored graph');
+  // Scoped to the canvas: the legend's swatches are svgs of their own now.
+  check(await page.locator('.map-scroll > svg').count() === 1, 'the map draws the explored graph as one canvas');
   check(await page.locator('.map-node').count() >= 3, `the map shows every node plus the origin (${await page.locator('.map-node').count()})`);
   check(await page.locator('.map-edge').count() >= 2, 'the map draws the edges between them');
   // Labels must not collide with their neighbours' — the map is unreadable
@@ -180,8 +207,73 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
     return false;
   });
   check(!collide, 'no two map labels overlap');
+  check((await page.locator('.map-head h2').innerText()).trim() === 'Map of your selections',
+    'the populated map carries the same title');
   // Round 3: the map must be somewhere you can go, not just a log.
   check(await page.locator('.map-node.ghost').count() > 0, 'the map offers unexplored next steps');
+
+  // ── The legend is a visual key, not a sentence (2026-08-15) ─────────────
+  check(await page.locator('.map-legend').count() === 0, 'the run-on legend sentence is gone');
+  const keyCount = await page.locator('.map-key li').count();
+  check(keyCount >= 3, `the legend is a key of ${keyCount} separate marked states`);
+  check(await page.locator('.map-key li svg').count() === keyCount, 'every key carries its own drawn swatch');
+  const keyLabels = (await page.locator('.map-key li span').allInnerTexts()).map(s => s.trim());
+  check(keyLabels.length === keyCount && keyLabels.every(l => l.length > 0 && l.split(/\s+/).length <= 3),
+    `each key is a two-or-three-word label (${keyLabels.join(' | ')})`);
+  check(new Set(keyLabels).size === keyLabels.length, 'no two keys carry the same label');
+  // Accessibility gate: the states must be told apart with the colour thrown
+  // away. In the vault theme --accent and --accent-bright are the same gold,
+  // so a key separated by colour would separate nothing there. This signature
+  // reads geometry only — tag, dash pattern, filled-or-not — never a hue.
+  const sigs = await page.evaluate(() => [...document.querySelectorAll('.map-key li')].map(li =>
+    [...li.querySelectorAll('svg *')].map(el => {
+      const cs = getComputedStyle(el);
+      return el.tagName
+        + (cs.strokeDasharray && cs.strokeDasharray !== 'none' ? ':dashed' : '')
+        + (cs.fill && cs.fill !== 'none' ? ':filled' : '');
+    }).join(',')));
+  check(new Set(sigs).size === sigs.length,
+    `every key differs in shape, not only colour (${sigs.join(' / ')})`);
+  await page.screenshot({ path: SHOTS + '/17-map-legend.png' });
+
+  // ── A speculative step may never look like a selection ──────────────────
+  const ghostArt = await page.evaluate(() =>
+    [...document.querySelectorAll('.map-node.ghost')].some(g => g.querySelector('image')));
+  check(!ghostArt, 'an unexplored step wears no poster — the map cannot imply a pick');
+  check(await page.locator('.map-node.ghost .map-plus').count() > 0,
+    'it carries a + where the artwork would be, so the difference survives greyscale');
+  check(await page.locator('.map-node.focus .map-here').count() === 1,
+    '"you are here" is a marker above the plate, not only a coloured ring');
+  check(await page.locator('.map-node.picked .map-tick').count() > 0,
+    'a pick carries a tick, not only a gold ring');
+  // The invariant behind the whole bug: artwork means "this is on your path".
+  const honest = await page.evaluate(() => [...document.querySelectorAll('.map-node')].every(g => {
+    if (!g.querySelector('image')) return true;
+    const id = +g.dataset.mapnode;
+    return Number.isFinite(id) && !!window.S.graph.nodes[id];
+  }));
+  check(honest, 'every node drawn with artwork is a film actually on your path');
+
+  // Both themes, because the vault is where a colour-only key would collapse:
+  // there --accent and --accent-bright are the same gold. Every marker that
+  // carries a state must still be drawn.
+  await page.emulateMedia({ colorScheme: 'dark' });
+  await page.waitForTimeout(120);
+  check(await page.locator('.map-key li').count() === keyCount, 'the key survives the vault theme');
+  check(await page.locator('.map-node.ghost .map-plus').count() > 0, 'the + is drawn in the vault theme too');
+  check(await page.locator('.map-node.focus .map-here').count() === 1, 'and so is the "you are here" caret');
+  const darkSigs = await page.evaluate(() => [...document.querySelectorAll('.map-key li')].map(li =>
+    [...li.querySelectorAll('svg *')].map(el => {
+      const cs = getComputedStyle(el);
+      return el.tagName
+        + (cs.strokeDasharray && cs.strokeDasharray !== 'none' ? ':dashed' : '')
+        + (cs.fill && cs.fill !== 'none' ? ':filled' : '');
+    }).join(',')));
+  check(new Set(darkSigs).size === darkSigs.length, 'the keys stay shape-distinct in the vault theme');
+  await page.screenshot({ path: SHOTS + '/18-map-legend-dark.png' });
+  await page.emulateMedia({ colorScheme: 'light' });
+  await page.waitForTimeout(120);
+
   // The map must open where you are, not at its corner.
   await page.waitForTimeout(120);
   const fv = await page.evaluate(() => {
@@ -271,6 +363,16 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   const heads = await page.locator('.section-h').allInnerTexts();
   check(heads.some(h => /^ON /i.test(h)), `a rail is headed by the service itself (${heads.join(' | ')})`);
   await page.screenshot({ path: SHOTS + '/3-services.png' });
+
+  // The map must say what is shaping what it offers, or it looks like it lost
+  // your context (round 3). It must still say so after the round-4 rewrite.
+  const svcName = await page.evaluate(id => (SERVICES.find(x => x[0] === id) || [, id])[1], svcId);
+  await page.locator('.showing [data-act="openmap"]').click();
+  await page.waitForTimeout(200);
+  const mapCtx = await page.locator('.map-context').innerText();
+  check(mapCtx.includes(svcName), `the map states the active filter ("${mapCtx.replace(/\s+/g, ' ').trim()}")`);
+  await page.locator('.mapview [data-act="closemap"]').click();
+  await page.waitForTimeout(150);
 
   // Clearing the filter returns the screen to its own home.
   await page.locator('.chip[data-sheet="services"] [data-clear]').click();
