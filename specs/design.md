@@ -428,6 +428,50 @@ below marked *proposed* is awaiting his rounds.
   the line length against a fixed ~700ms budget: length changes the rhythm,
   never the duration. `Motion.revealSequence` stays the timing authority.
 
+## A domain brings its own words and its own pictures (2026-08-15, Claude — books)
+
+Adding books to the prototype made two assumptions visible that had been free
+while every shelf came from TMDB. Both are now rules, and both are the kind of
+thing the fourth domain (games) should cost nothing to add.
+
+- **Artwork is asked for, never assembled at the call site.** Every screen
+  used to build `image.tmdb.org/t/p/w185` + the item's path, in a dozen
+  places. Books are not on TMDB and never will be, so an item may now carry an
+  absolute `img` of its own, and one helper — `art(item, size)` — answers with
+  `item.img` when there is one and the TMDB pattern when there is not. The
+  rule: **a screen asks an item for its picture; it does not know where
+  pictures live.** A domain whose artwork sits somewhere else then costs one
+  field, not a dozen edits.
+- **Each domain names its own axes, and a missing axis draws nothing.** The
+  refinement chips were Services / Genre / Director / Actor for everything. On
+  a books shelf, "Director" is wrong, "Genre" is really Subject, and Services
+  and Actor do not exist at all — a book has no cast and is not on Netflix. A
+  domain now declares its axis labels, and **a null axis is not drawn**: an
+  absent chip is honest, while a chip that opens onto an empty sheet is a
+  dead control the user paid a tap to discover. (Films and TV keep exactly the
+  chips they had.)
+- **The domain also owns the noun.** "All 613 films on the shelf", "12 films",
+  "Search films", "Not one horror film made your ten" — every one of those is
+  now the current domain's word, singular or plural by the same rule, from one
+  helper. Two bugs fell out of writing it down: the shelf count was counting
+  TV shows as films, and a badge inscribed *"5 Austen films, no apologies"*
+  over a shelf of books.
+- **Similarity keeps its axes and changes its verbs.** The link scoring
+  (series 14, brand 5, author 5, cast 6/2, crowd 5, genre 1.5, era 1) needed
+  no new axis for books — a series is a series, an author is the authorship
+  axis, a shared subject is the floor. Only the words differ: the crowd edge
+  is *"Often read together"*, and a second name on a book is *"Also by"*
+  rather than *"With"*.
+
+**Cover artwork is reproduced, not approximated.** The mirrored book covers are
+the Standard Ebooks cover *design*, not just its painting: the build replays
+each book's own `cover.svg` — its title box, its coordinates, its League
+Spartan setting — over the artwork. The first pass skipped that step and the
+shelf became a wall of untitled nineteenth-century paintings; a reader
+scanning a shelf of paintings cannot find a book. Covers are mirrored at 240px
+(twice the 120pt card) and average 14KB, against 680KB for the source artwork:
+the prototype ships the whole shelf for the weight of two source covers.
+
 ## Web parity (share pages)
 
 The web page is Laurel translated, not approximated: same tokens exported to

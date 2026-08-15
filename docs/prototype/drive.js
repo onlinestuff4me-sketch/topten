@@ -421,6 +421,90 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   check(/See other people/i.test(await page.locator('body').innerText()),
     'discovery IS offered after the second list');
 
+  // ── Books: the third shelf, entered the way a user would enter it ──────
+  // The books catalog is a separate file (books.js) with its own artwork that
+  // is not on TMDB, so this block proves three things the other domains
+  // cannot: that a domain can bring its own pictures, that the shelf is
+  // really only books, and that none of the film vocabulary leaked in.
+  const booksOffer = page.locator('.sug-topic', { hasText: 'Your top ten books' }).first();
+  check(await booksOffer.count() === 1, 'books is offered as a real list to make, not a "coming next" row');
+  await booksOffer.click();
+  await page.waitForTimeout(300);
+  check(await page.locator('h1').innerText() === 'Books', 'and it lands on the Books build screen');
+  check(await page.locator('.rail .card').count() > 0, 'the books shelf is populated');
+
+  const booksOnly = await page.evaluate(() => [...document.querySelectorAll('.rail .card')]
+    .every(c => (window.byId.get(+c.dataset.card) || {}).dm === 'book'));
+  check(booksOnly, 'the books topic offers only books — a Ten never mixes domains');
+
+  // Artwork is the whole screen, so a cover that does not load is not a
+  // cosmetic problem. Only the cards actually on screen are judged: the rest
+  // are loading="lazy" and have deliberately not started.
+  await page.waitForTimeout(400);
+  const covers = await page.evaluate(() => {
+    const seen = [...document.querySelectorAll('.rail .card .art img')].filter(i => {
+      const r = i.getBoundingClientRect();
+      return r.top < innerHeight && r.bottom > 0 && r.left < innerWidth && r.right > 0;
+    });
+    return { n: seen.length, loaded: seen.filter(i => i.complete && i.naturalWidth > 0).length,
+             own: seen.every(i => /\/covers\//.test(i.src)), sample: (seen[0] || {}).src };
+  });
+  check(covers.own, `book cards ask for the book's own cover rather than a TMDB path (${covers.sample})`);
+  check(covers.n >= 3 && covers.loaded === covers.n, `every book cover on screen renders (${covers.loaded}/${covers.n})`);
+
+  // The axes a book has, and none of the ones it does not.
+  const bookChips = (await page.locator('.chip').allInnerTexts()).map(t => t.trim());
+  check(bookChips.some(c => /^Author/.test(c)) && bookChips.some(c => /^Subject/.test(c)),
+    `the refinements are named for books (${bookChips.join(', ')})`);
+  check(!bookChips.some(c => /Services|Actor|Director|Genre/.test(c)),
+    'and a book is not offered a Director, an Actor, or a streaming service');
+
+  const bodyBooks = await page.locator('body').innerText();
+  check(/\d+ books on the shelf/.test(bodyBooks), 'the Now showing bar counts books, not films');
+  check(!/\bfilms?\b/i.test(bodyBooks), 'nothing on the books screen calls a book a film');
+  check(!/\bnovels?\b/i.test(bodyBooks), 'and nothing calls it a novel');
+
+  // "More like this" has to make a claim a reader would make.
+  await page.locator('.rail .card').first().locator('.do-similar').click();
+  await page.waitForTimeout(250);
+  const bookHead = await page.locator('.section-h').first().innerText();
+  check(/^MORE LIKE /i.test(bookHead), `drilling into a book opens a "${bookHead}" section`);
+  const whys = await page.locator('.rail .card .why').allInnerTexts();
+  check(whys.length > 0, `the branch says why each book is there (${whys.length} reasons)`);
+  check(!whys.some(w => /watched/i.test(w)), 'no books rail claims two books are "watched" together');
+  check(whys.some(w => /^(More |Also |Often read)/.test(w.trim())),
+    `the claims are the book axes — series, author, subject, read-together (${whys.slice(0, 3).join(' | ')})`);
+
+  while (await page.evaluate(() => window.S.tray.length) < 10) {
+    const free = page.locator('.rail .card[data-in="0"]').first();
+    if (!(await free.count())) break;
+    await free.locator('.art').click();
+    await page.waitForTimeout(25);
+  }
+  check(await page.evaluate(() => window.S.tray.length) === 10, 'a books Ten fills to ten');
+  const trayAllBooks = await page.evaluate(() =>
+    window.S.tray.every(id => (window.byId.get(id) || {}).dm === 'book'));
+  check(trayAllBooks, 'and every one of the ten is a book');
+  await page.screenshot({ path: SHOTS + '/12-books.png' });
+
+  await page.locator('[data-act="arrange"]').click();
+  await page.waitForTimeout(300);
+  check(await page.locator('.tenrow').count() === 10, 'the books Ten opens as one reorderable list');
+  await page.locator('[data-act="finish"]').click();
+  await page.waitForSelector('.vault', { timeout: 5000 });
+  await page.locator('[data-act="skip"]').click();
+  await page.waitForSelector('.after.on', { timeout: 5000 });
+  const bookInsc = (await page.locator('.vault .inscription').innerText()).trim();
+  check(!/film/i.test(bookInsc), `a book badge is inscribed about books ("${bookInsc}")`);
+  await page.locator('[data-act="done"]').click();
+  await page.waitForTimeout(250);
+  const afterBooks = await page.locator('body').innerText();
+  check(/More books, closer in/i.test(afterBooks), 'finishing a books Ten offers more books, closer in');
+  // Split case-insensitively: section headings are uppercased by CSS, and
+  // innerText returns what is rendered, not what is in the markup.
+  check(!/\bfilms\b/i.test(afterBooks.split(/or a different kind of list/i)[0]),
+    'and its own suggestions are phrased in books');
+
   // ── Discovery, and the reveal gate ──────────────────────────────────────
   await page.locator('[data-act="discover"]').click();
   await page.waitForTimeout(250);
