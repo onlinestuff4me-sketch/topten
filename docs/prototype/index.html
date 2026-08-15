@@ -1699,9 +1699,11 @@ function compose(ids, topic) {
 function inscribe(F, seed, topic) {
   const [g, gn] = F.genre, [d, dn] = F.director, [dec, decn] = F.decade;
   const second = F.films[1];
-  const N = noun(0, topic);
   const short = t => t.split(/[:—–-]/)[0].trim();
   const c = [];
+  // Both the copy pass and the books pass caught the same bug here — a books
+  // badge inscribed "5 Austen films" — and each brought its own helper. One
+  // survives.
   const N = nounFor(topic);
   if (dn >= 3) c.push(`${dn} ${d.split(' ').pop()} ${N}, no apologies`);
   if (gn >= 4) c.push(`${gn} ${g.toLowerCase()} ${N}, zero regrets`);
