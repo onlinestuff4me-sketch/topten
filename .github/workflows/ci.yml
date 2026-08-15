@@ -100,6 +100,11 @@ jobs:
       - name: The share pages
         run: node docs/prototype/drive_share.js
 
+      # Every request is intercepted, so this never reaches the real project
+      # and never sends an email — the built-in sender allows two an hour.
+      - name: The Supabase client
+        run: node docs/prototype/drive_db.js
+
   probe-app:
     name: Detect app target
     runs-on: ubuntu-latest
