@@ -398,12 +398,52 @@ function load() {
   try {
     const r = JSON.parse(localStorage.getItem(KEY));
     if (!r || !r.topic || !Array.isArray(r.tray)) return null;
-    // Normalise anything a older build may not have written. A saved draft
+    // Normalise anything an older build may not have written. A saved draft
     // that predates a field must not be able to crash the app that reads it.
     const base = fresh(r.topic);
-    return { ...base, ...r, graph: r.graph && r.graph.nodes ? r.graph : base.graph,
-             filters: { ...base.filters, ...(r.filters || {}) } };
+    const merged = { ...base, ...r, graph: r.graph && r.graph.nodes ? r.graph : base.graph,
+                     filters: { ...base.filters, ...(r.filters || {}) } };
+    return prune(merged);
   } catch (e) { return null; }
+}
+
+/* Drop anything the shelf no longer holds.
+
+   The catalog is rebuilt from TMDB, so a draft saved against an older build
+   can name films that are simply not here any more. Defending at every read
+   site is whack-a-mole — one missed `byId.get(id).t` blanked the whole map —
+   so the state is cleaned once, on the way in. A node that goes takes its
+   place in the chain with it: its children are re-parented to its parent, so
+   a path stays a path rather than losing its middle. */
+function prune(st) {
+  const known = id => byId.has(id);
+  st.tray = st.tray.filter(known);
+  st.keep = (st.keep || []).filter(known);
+  st.ranked = (st.ranked || []).filter(known);
+
+  const g = st.graph || { nodes: {}, roots: [], focus: null };
+  const nodes = {};
+  for (const [k, n] of Object.entries(g.nodes || {})) {
+    const id = Number(k);
+    if (known(id)) nodes[id] = { ...n, id, kids: (n.kids || []).filter(known) };
+  }
+  // Re-parent orphans onto the nearest surviving ancestor.
+  const survivingParent = n => {
+    let p = n.parent;
+    while (p != null && !nodes[p]) p = (g.nodes[p] || {}).parent ?? null;
+    return p ?? null;
+  };
+  for (const n of Object.values(nodes)) n.parent = survivingParent(n);
+  for (const n of Object.values(nodes)) {
+    n.kids = Object.values(nodes).filter(k => k.parent === n.id).map(k => k.id);
+  }
+  st.graph = {
+    nodes,
+    roots: Object.values(nodes).filter(n => n.parent == null).map(n => n.id),
+    focus: nodes[g.focus] ? g.focus : null
+  };
+  if (st.rank && st.rank.current != null && !known(st.rank.current)) { st.rank = null; st.scene = 'build'; }
+  return st;
 }
 function save() { try { localStorage.setItem(KEY, JSON.stringify(S)); } catch (e) {} }
 
@@ -785,7 +825,7 @@ function notes() {
   return `<footer class="notes">
     <p>Structure prototype. Glass, haptics, and final motion are judged on
     device, not here. Judge the flow, the anatomy, and the words.</p>
-    <p class="build">build 0007 · why-aware suggestions · series · studios · stars</p>
+    <p class="build">build 0008 · why-aware suggestions · stale drafts survive</p>
   </footer>`;
 }
 
@@ -1010,7 +1050,9 @@ function renderMap() {
         <rect class="plate" x="${c.cx - MAP.w / 2}" y="${c.cy - MAP.originH / 2}" width="${MAP.w}" height="${MAP.originH}" rx="10"/>
         <text x="${c.cx}" y="${c.cy + 4}" text-anchor="middle">${esc(mapLabel(S.topic.title))}</text></g>`;
     }
-    const f = byId.get(p.id), picked = S.tray.includes(p.id), isGhost = ghostSet.has(p.id) && !node(p.id);
+    const f = byId.get(p.id);
+    if (!f) return '';                       // never let one unknown id blank the map
+    const picked = S.tray.includes(p.id), isGhost = ghostSet.has(p.id) && !node(p.id);
     const label = mapLabel(f.t);
     return `<g class="map-node ${S.graph.focus === p.id ? 'focus' : ''} ${picked ? 'picked' : ''} ${isGhost ? 'ghost' : ''}"
         data-mapnode="${p.id}" ${isGhost ? 'data-mapghost="1"' : ''} tabindex="0" role="button"

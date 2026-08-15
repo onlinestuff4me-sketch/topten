@@ -38,7 +38,7 @@ before a line of Swift was written against it.
   4 tests, green. Falsified once on a throwaway branch to prove the gate can
   go red.
 - **Browser (Chromium, iPhone 15 Pro viewport, `docs/prototype/drive.js`):**
-  the prototype driven end to end — 61 assertions, zero page errors. These now
+  the prototype driven end to end — 65 assertions, zero page errors. These now
   include layout invariants Mischa reported by eye: every block shares one
   left edge, rails align to it, all ten slots fit without scrolling, and
   nothing is trapped behind the dock. Screenshots from the same run judge the
@@ -108,6 +108,19 @@ Collateral), and the detail fetch set fields without clearing them, so a
 corrected run left its own rejects in place. The build verifies brand ids
 against TMDB now and fails loudly if they drift — the inherited rule from
 tech-stack.md, finally applied to this data too.
+
+## Known trap: a rebuilt shelf breaks old drafts
+
+The catalog is regenerated from TMDB, so film ids come and go between builds.
+A draft saved by an earlier build could name films that no longer exist, and
+one unguarded `byId.get(id).t` blanked the whole map. State is now **pruned on
+load**: unknown ids leave the tray and the graph, and a removed node's children
+are re-parented to its parent so a path keeps its shape. Defend once at the
+door, not at every read site — and the regression test carries exactly the
+state that broke it.
+
+**Anything that rebuilds `catalog.js` must assume someone is holding a draft
+against the old one.**
 
 ## What the prototype changed in the specs
 

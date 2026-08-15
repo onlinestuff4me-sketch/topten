@@ -354,6 +354,30 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   await page.reload({ waitUntil: 'networkidle' });
   check((await page.locator('.dock-top .n').innerText()) === '1 of 10', 'the draft survives a reload');
 
+  // ── A draft saved by an earlier build must survive a rebuilt shelf ──────
+  // The catalog is regenerated from TMDB, so ids can vanish between builds.
+  // This exact state blanked the map and threw on 'reading t'.
+  await page.evaluate(() => {
+    localStorage.setItem('topten.proto.v4', JSON.stringify({
+      scene: 'build', topic: { id: 'movies', title: 'Movies', prompt: 'p' },
+      tray: [999999001, 999999002], q: '',
+      graph: { nodes: { '999999001': { id: 999999001, parent: null, kids: [999999002], kind: 'followed' },
+                        '999999002': { id: 999999002, parent: 999999001, kids: [], kind: 'picked' } },
+               roots: [999999001], focus: 999999001 },
+      filters: { services: [], genre: null, director: null, actor: null },
+      region: 'GB', keep: [], ranked: [], rank: null, comparisons: 0, badge: null
+    }));
+  });
+  const beforeStale = errors.length;
+  await page.reload({ waitUntil: 'networkidle' });
+  await page.waitForTimeout(300);
+  check((await page.locator('.dock-top .n').innerText()) === '0 of 10',
+    'films the shelf no longer holds are dropped from the draft, not counted');
+  check(await page.evaluate(() => Object.keys(window.S.graph.nodes).length) === 0,
+    'and from the map graph');
+  check(await page.locator('.rail .card').count() > 0, 'the screen still builds');
+  check(errors.length === beforeStale, 'a stale draft raises no errors: ' + JSON.stringify(errors.slice(beforeStale)));
+
   check(errors.length === 0, 'no page errors: ' + JSON.stringify(errors));
   console.log('\nALL CHECKS PASSED');
   await browser.close();
