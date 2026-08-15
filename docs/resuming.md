@@ -3,8 +3,8 @@
 *Session-handoff file, rewritten at the end of each session (Stack
 convention). Read this first, then `AGENTS.md`, then `specs/`.*
 
-**Last written:** 2026-08-15 · cloud session (Linux, no Xcode) · **M0 done,
-M1.5 prototype through eight rounds of feedback, three domains live**
+**Last written:** 2026-08-15 · cloud session (Linux, no Xcode) · **M0 and M1
+done, M1.5 prototype through eight rounds of feedback, three domains live**
 
 ---
 
@@ -20,8 +20,10 @@ M1.5 prototype through eight rounds of feedback, three domains live**
   reveal, and the post-completion rabbit hole. 620-film catalog baked from
   TMDB with per-film streaming availability, cast, and recommendation edges.
   **Round 6 is pending Mischa's next pass.**
-- **M1 — the brain: not started.** Deliberately resequenced after the
-  prototype (see below).
+- **M1 — the brain: done.** `TopTenKit` holds the models, the criteria namer,
+  guided placement, Borda consensus, palette derivation, the badge pre-pass
+  and its inscription post-check, the suggestion engine and the catalog
+  boundary. 85 tests, green on Linux CI. See the M1 section below.
 
 ## Sequencing change (2026-08-14, Mischa's call, executed by Claude)
 
@@ -124,6 +126,47 @@ state that broke it.
 
 **Anything that rebuilds `catalog.js` must assume someone is holding a draft
 against the old one.**
+
+## M1 — the brain (2026-08-15)
+
+`TopTenKit` now holds every rule that can be expressed without a UI, and
+everything the prototype proved is encoded here as the source of truth rather
+than as JavaScript nobody can run twice.
+
+| File | What it settles |
+|---|---|
+| `Domain.swift` | Domains and their vocabulary; `Item` as the shape the rules read |
+| `Topic.swift` | Criteria, the namer, the surname rule, and the ≥10 supply gate |
+| `Placement.swift` | Guided placement as a state machine; carries the 22 floor and its own 25 worst case as code |
+| `Consensus.swift` | Borda, fed one Ten at a time, deterministic tie-breaks |
+| `Palette.swift` | sRGB ↔ CIE L\*C\*h, the Laurel-safe clamp, and a reproducible RNG |
+| `Badge.swift` | The pre-pass and its candidate sets — what the on-device model chooses among |
+| `Inscription.swift` | The post-check as enforcing code, policing templates too |
+| `BadgeEligibility.swift` | Re-rank: offer, never force |
+| `Suggestions.swift` | The fraction is the reason and never the name |
+| `Catalog.swift` | A three-question protocol, browse rows, TMDB DTOs |
+
+**Verified on CI, which is the only instrument this session has.** No Swift
+toolchain here (`download.swift.org` denied, no Docker), so M1 was written
+blind and driven to green by reading the Linux job. Three rounds:
+
+1. **The type checker gave up** on two `map`/`sorted` chains over tuple
+   literals with mixed `Double` arithmetic. Rewritten as loops with annotated
+   types. Worth knowing before writing more Swift blind: a chain that reads
+   fine can simply exceed the inference budget.
+2. **Argument order** — Swift wants memberwise-init arguments in declaration
+   order, and three call sites had `creator:` before `genre:`.
+3. **Two tests were wrong, not the code.** The comparison floor is a
+   *worst-case* bound, not a per-run minimum — a lucky permutation finished in
+   19, and the assertion said `min >= floor`. And the books fixture made every
+   book a Romance, so the "Popular romance books" row was an exact copy of
+   "Popular" and the new duplicate-row guard correctly dropped it.
+
+**Mischa's calls, 2026-08-15** (recorded in prd.md's new Answered section):
+"Top 10" in digits is the user-facing voice everywhere; re-ranking offers a
+new badge and never forces one; fixture people stay as obvious fixtures; and
+M2 waits — the next work is more prototype rounds, not SwiftUI nobody here can
+compile.
 
 ## Round 8 (2026-08-15) — two card anatomies, and the one-line rule properly kept
 
