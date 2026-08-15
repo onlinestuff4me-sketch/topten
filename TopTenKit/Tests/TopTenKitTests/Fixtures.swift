@@ -86,10 +86,15 @@ enum Fixture {
                               creator: "Showrunner \(i)", performers: ["Lead \(i)"],
                               score: 8.0, voteCount: 2000))
         }
-        for i in 0..<11 {
+        // Two subjects, not one. A shelf where every book is Romance makes the
+        // "Popular romance books" row an exact copy of the "Popular" row, and
+        // a fixture that cannot tell those apart cannot test either.
+        for i in 0..<22 {
             items.append(Item(id: ItemID(TMDB.bookIDOffset + i), domain: .book,
-                              title: "Book \(i)", year: 1950 + i, genres: ["Romance"],
-                              creator: "Author \(i)", score: 8.0, voteCount: 3000))
+                              title: "Book \(i)", year: 1950 + i % 11,
+                              genres: [i < 11 ? "Romance" : "Mystery"],
+                              creator: "Author \(i)", score: 7.5 + Double(i % 7) / 10,
+                              voteCount: 3000 + i * 50))
         }
         return InMemoryCatalog(items: items)
     }()

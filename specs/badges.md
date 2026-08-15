@@ -114,10 +114,18 @@ slotted; discard on change).
   topic unlock for you, retroactively and forever.
 - The *list* is never gated — only badges. (PRD Req 12; open question there
   tracks whether to tighten this.)
-- Re-ranking a published Ten: badge **persists** unless membership changes
-  or ≥3 items move ≥3 slots, in which case regeneration is offered, not
-  forced ("Your Ten changed. New badge?"). *(Provisional — flagged as an
-  open question in the PRD, awaiting Mischa's call.)*
+- Re-ranking a published Ten: **offer, never force** (decided 2026-08-15,
+  Mischa). The badge persists unless membership changes, or ≥3 items move ≥3
+  slots — then regeneration is *offered*: "Your Top 10 changed. New badge?"
+
+  A badge is an earned object and the user may be attached to it, so a small
+  edit must not silently replace one; but a badge that no longer describes its
+  list is a lie the app is telling on the user's behalf. The line between
+  those two lives in `TopTenKit/BadgeEligibility.swift` rather than in this
+  paragraph, because *"significant change"* is exactly the kind of phrase two
+  people read two different ways. Membership is judged on sets before order is
+  considered at all: a badge composed from items that have left the list is
+  stale wherever the survivors ended up.
 
 ## Quality bar & anti-slop tests
 

@@ -42,10 +42,17 @@ struct PlacementTests {
             #expect(result.comparisons <= worst)
             seen.append(result.comparisons)
         }
-        // And it is not merely inside the budget by luck: the measured range
-        // sits at the floor, matching the prototype's observed 21-23.
-        #expect(seen.min()! >= floor - 1)
-        #expect(seen.max()! <= worst)
+        // And it is not merely inside the budget by luck — some input really
+        // does force the algorithm up to the floor.
+        //
+        // The floor is a WORST-CASE bound, not a per-run minimum: a single
+        // lucky permutation can finish in fewer, because a binary search over
+        // a window closes early when the answer lands at an edge. This
+        // assertion said `min >= floor` on the first run and CI caught it at
+        // 19 — the assertion was wrong, not the algorithm.
+        #expect(seen.max()! >= floor,
+                "measured \(seen.min()!)-\(seen.max()!); nothing reached the \(floor) floor")
+        #expect(seen.max()! <= worst, "measured \(seen.min()!)-\(seen.max()!)")
     }
 
     @Test("The floor is a floor: no algorithm can beat it")

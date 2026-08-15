@@ -583,14 +583,27 @@ and reveal; badge generation off the main thread.
 none / on-device / privacy-preserving aggregate — before instrumenting.
 Open question below.)
 
+## Answered
+
+- **[Product] Re-ranking a published Ten** — *answered 2026-08-15 (Mischa):
+  **offer, never force.*** The badge persists unless membership changes or ≥3
+  items move ≥3 slots, and then regeneration is offered rather than applied.
+  Implemented as `TopTenKit/BadgeEligibility.swift`, not as prose: "significant
+  change" is a phrase two people read two ways. See badges.md.
+- **[Product] The user-facing voice** — *answered 2026-08-15 (Mischa): **"Top
+  10", in digits, everywhere a person reads it.*** AGENTS.md's earlier locked
+  example ("What's your Ten?") is superseded; "Ten" stays in the specs and in
+  type names, where it is a term rather than copy.
+- **[Product] Fixture people on the discovery screen** — *answered 2026-08-15
+  (Mischa): keep them as obvious fixtures.* First names, generated lists, and
+  the app never implies they are real accounts. Revisit at M5, when there are
+  real published Tens to show instead.
+
 ## Open Questions
 
 - **[Product]** Can you view the *full list* of someone's Ten before making
   yours, or tease only the top 3 + badge? Current call: full list visible,
   only the badge gated (Req 12) — revisit if remix conversion underwhelms.
-- **[Product]** Re-ranking a published Ten: does the badge regenerate (new
-  joke) or persist (provenance)? Leaning: persists unless items change ≥3
-  slots or membership changes — rule lives in badges.md, needs Mischa's call.
 - **[Data]** Analytics: none vs. on-device counters vs. aggregate. Blocks
   the metrics section from being measurable.
 - **[Legal]** TMDB non-commercial licence is load-bearing for "no
