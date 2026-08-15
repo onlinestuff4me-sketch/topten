@@ -23,3 +23,7 @@ playwright-report/
 
 # macOS
 .DS_Store
+
+# Agent worktrees — transient checkouts created by parallel subagents and
+# removed when they finish. Never part of the project's history.
+.claude/worktrees/
