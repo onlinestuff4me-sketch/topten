@@ -29,6 +29,34 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   page.on('console', m => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
   const check = (cond, msg) => { if (!cond) throw new Error('FAILED: ' + msg); console.log('  ok — ' + msg); };
 
+  /* US spelling is a standing rule (specs/design.md, "Voice and spelling",
+     2026-08-15). Scan everything a user can actually read — visible text plus
+     the strings only assistive tech reads — not the source, so a British word
+     baked into a template shows up wherever it renders.
+     Two kinds of text on screen are not ours to spell and are subtracted
+     before the match: catalog titles, which stay as their makers wrote them
+     ("The Favourite", 2018), and whatever the user has typed into the search
+     field, which the Now showing bar quotes back at them. What is left is the
+     copy this repo wrote, which is the whole of what the rule ever claimed. */
+  const BRITISH = /favourite|colour|centre|organis|apologise/i;
+  const noBritishSpelling = async where => {
+    const found = await page.evaluate(re => {
+      const rx = new RegExp(re, 'i');
+      let text = document.body.innerText + '\n';
+      for (const el of document.querySelectorAll('[aria-label],[placeholder],[title],[alt]'))
+        text += ['aria-label', 'placeholder', 'title', 'alt']
+          .map(a => el.getAttribute(a) || '').join(' ') + '\n';
+      for (const f of (window.byId ? window.byId.values() : []))
+        if (rx.test(f.t)) text = text.split(f.t).join(' ');
+      const q = (window.S && window.S.q || '').trim();
+      if (q && rx.test(q)) text = text.split(q).join(' ');
+      const m = text.match(rx);
+      return m ? text.slice(Math.max(0, m.index - 40), m.index + 40) : null;
+    }, BRITISH.source);
+    check(found === null, `no British spelling in what the user reads — ${where}` +
+      (found === null ? '' : ` (found: …${found}…)`));
+  };
+
   // Stack's splash rule, inherited: the first screen must be instant, so it
   // may not depend on a third party being up.
   const apiCalls = [];
@@ -43,6 +71,59 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   const introText = await page.locator('.intro').innerText();
   check(/free/i.test(introText), 'it answers what this costs before asking for anything');
   check(await page.locator('.intro [data-act="begin"]').count() === 1, 'one CTA');
+
+  // ── The 2026-08-15 copy pass: less of it, and every claim on one line ────
+  check((await page.locator('.intro h1').innerText()).trim() === "What's your Top 10?",
+    'the headline is "What\'s your Top 10?"');
+  check((await page.locator('.intro .pitch').innerText()).trim() === 'The list you would defend to the death',
+    'the sub-line is "The list you would defend to the death"');
+  const bullets = (await page.locator('.intro li').allInnerTexts()).map(t => t.replace(/^\S+\s+/, '').trim());
+  const wanted = ['Ten and only ten. The limit is the point.',
+                  'Finish it and earn a secret badge.',
+                  'Free. No ads. No subscription. Ever.'];
+  check(bullets.length === 3, `three bullets, not more (${bullets.length})`);
+  wanted.forEach((w, i) => check(bullets[i] === w, `bullet ${i + 1} reads "${w}" (got "${bullets[i]}")`));
+  // Bullet 3 now carries the cost, so the separate line under the CTA is gone.
+  check(await page.locator('.intro .cost').count() === 0,
+    'no separate cost line under the CTA — the third bullet carries it');
+
+  /* Mischa's actual requirement: ONE line per bullet at iPhone width. Measured
+     two ways because either alone can lie — the height ratio misses a bullet
+     whose second line happens to be short in a shrunk box, and a Range's line
+     boxes miss nothing but depend on the text being one node. The spare width
+     is reported alongside, because "fits" and "fits with room" are different
+     answers to whether the next copy edit is safe. */
+  const measureBullets = () => page.evaluate(() => [...document.querySelectorAll('.intro li')].map(li => {
+    const span = li.querySelector('span:last-child');
+    const lh = parseFloat(getComputedStyle(span).lineHeight);
+    const box = span.getBoundingClientRect();
+    const r = document.createRange(); r.selectNodeContents(span);
+    const rects = [...r.getClientRects()].filter(x => x.width > 0.5);
+    const tops = new Set(rects.map(x => Math.round(x.top)));
+    const used = Math.max(...rects.map(x => x.right)) - Math.min(...rects.map(x => x.left));
+    return { text: span.innerText.trim(), h: Math.round(box.height), lh,
+      byHeight: Math.round(box.height / lh), lineBoxes: tops.size, spare: Math.round(box.width - used) };
+  }));
+  const oneLineAt = async label => {
+    for (const b of await measureBullets()) {
+      check(b.byHeight === 1 && b.lineBoxes === 1,
+        `intro bullet is one line at ${label} — ${b.lineBoxes} line box, ${b.h}px against a ` +
+        `${b.lh}px line-height, ${b.spare}px spare: "${b.text}"`);
+    }
+  };
+  await oneLineAt('iPhone 15 Pro width (393px)');
+  /* And at the narrowest iPhone iOS 26 runs on — the SE 3rd gen and 13 mini at
+     375pt. That is where the rule is actually load-bearing: bullet 1 clears it
+     by single-digit pixels, so a longer word in a future edit breaks here long
+     before it breaks on the Pro this suite otherwise drives. */
+  await page.setViewportSize({ width: 375, height: 667 });
+  await page.waitForTimeout(120);
+  await oneLineAt('the narrowest supported iPhone (375px)');
+  await page.setViewportSize({ width: 393, height: 852 });
+  await page.waitForTimeout(120);
+
+  await noBritishSpelling('the intro');
+  await page.screenshot({ path: SHOTS + '/13-intro-copy.png' });
   check(!/\bskip\b/i.test(introText), 'and no Skip — this screen only tells, so a Skip would compete with the CTA');
   check(apiCalls.length === 0, `the intro makes no API calls (${apiCalls.length})`);
   // The one action on the screen must be reachable without scrolling for it.
@@ -100,9 +181,12 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   const bodyText = await page.locator('body').innerText();
   check(!/widely called great/i.test(bodyText), 'no "Widely called great" caption under every poster');
   check(!/keep going and make the cut/i.test(bodyText), 'the "or keep going and make the cut" line is gone');
-  // Round 3: "Everything" was a lie about a shelf of a few hundred films.
+  // Round 3: "Everything" was a lie about a catalog of a few hundred titles.
   check(!/Everything —/.test(bodyText), 'the Now showing bar does not claim to show "Everything"');
-  check(/All \d+ films on the shelf/.test(bodyText), 'it states the size of the shelf instead');
+  check(/All \d+ movies in our collection/.test(bodyText), 'it states the size of the collection instead');
+  // 2026-08-15: "shelf" is not a word the user ever sees.
+  check(!/\bshelf\b/i.test(bodyText), 'the word "shelf" is gone from the build screen');
+  await noBritishSpelling('the build screen');
 
   // ── One left edge: every section heading starts at the same x ────────────
   const xs = await page.evaluate(() => {
@@ -291,11 +375,11 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   await page.locator('.sheet [data-act="closesheet"]').click();
   await page.waitForTimeout(350);
   const zero = await page.evaluate(() => window.S ? document.querySelector('.showing').innerText : '');
-  check(/0 films/.test(zero), `the dead end is reported honestly (${zero.split('\n').pop()})`);
+  check(/0 movies/.test(zero), `the dead end is reported honestly (${zero.split('\n').pop()})`);
   const escapes = await page.locator('.escape').count();
   check(escapes >= 2, `it offers ${escapes} ways out rather than just a wall`);
   const escapeText = await page.locator('.escape').first().innerText();
-  check(/\d+ films?$/.test(escapeText.trim()), `each way out says what it would get you ("${escapeText}")`);
+  check(/\d+ movies?$/.test(escapeText.trim()), `each way out says what it would get you ("${escapeText}")`);
   await page.screenshot({ path: SHOTS + '/8-deadend.png' });
   await page.locator('.escape').first().click();
   await page.waitForTimeout(250);
@@ -369,11 +453,14 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   const picks = await page.evaluate(() => window.S.ranked.map(id => window.byId.get(id)));
   const genres = new Set(picks.flatMap(f => f.g));
   for (const why of await page.locator('.sug-topic .why').allInnerTexts()) {
-    const m = why.match(/^Not one (.+?) film made your ten/);
+    const m = why.match(/^Not one (.+?) movie made your ten/);
     if (m) check(![...genres].some(g => g.toLowerCase() === m[1].toLowerCase()), `"${why}" is true of these ten`);
   }
   const levels = new Set(await page.locator('.sug-topic .lvl').allInnerTexts());
   check(levels.size >= 3, `suggestions span three specificity levels (${[...levels].join(', ')})`);
+  check(/Your 10 favorite/.test(finishedText) || (await page.locator('.sug-topic').count()) > 0,
+    'the finished screen is written in the new voice');
+  await noBritishSpelling('the finished screen');
   await page.screenshot({ path: SHOTS + '/6-finished.png', fullPage: true });
 
   const topicName = await page.locator('.sug-topic .t').first().innerText();
@@ -389,7 +476,7 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
 
   // ── A second list unlocks discovery, and TV is a real shelf ─────────────
   await page.evaluate(() => {
-    const tv = { id: 'tv', domain: 'tv', title: 'TV shows', prompt: 'Your ten favourite TV shows of all time.' };
+    const tv = { id: 'tv', domain: 'tv', title: 'TV shows', prompt: 'Your 10 favorite TV shows of all time.' };
     window.S.topic = tv; window.S.tray = []; window.S.q = '';
     window.S.graph = { nodes: {}, roots: [], focus: null };
     window.S.filters = { services: [], genre: null, director: null, actor: null };
@@ -401,7 +488,14 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   const tvOnly = await page.evaluate(() => [...document.querySelectorAll('.rail .card')]
     .every(c => (window.byId.get(+c.dataset.card) || {}).dm === 'tv'));
   check(tvOnly, 'the TV topic offers only shows — a Ten never mixes domains');
-  check(await page.locator('.rail .card').count() > 0, 'and the TV shelf is populated');
+  check(await page.locator('.rail .card').count() > 0, 'and the TV collection is populated');
+  // The domain noun follows the domain: a TV Ten must never say "movies".
+  const tvText = await page.locator('body').innerText();
+  check(/All \d+ shows in our collection/.test(tvText),
+    'a TV Ten counts shows, not movies, in the Now showing bar');
+  check(!/\bmovies?\b/i.test(await page.locator('#q').getAttribute('placeholder')),
+    'and searches "shows", not "movies"');
+  await noBritishSpelling('a TV Ten');
 
   while (await page.evaluate(() => window.S.tray.length) < 10) {
     const free = page.locator('.rail .card[data-in="0"]').first();
@@ -429,6 +523,7 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   // badge — the gate is per topic, which is what makes it worth crossing.
   const lockedOnList = await page.locator('.lockedbadge').count();
   check(lockedOnList > 0, `their badges are locked until you take on their topic (${lockedOnList} locked)`);
+  await noBritishSpelling('other people\'s Tens');
   await page.screenshot({ path: SHOTS + '/9-discover.png', fullPage: true });
   await page.locator('.other-ten').first().click();
   await page.waitForTimeout(250);
@@ -467,7 +562,7 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   await page.reload({ waitUntil: 'networkidle' });
   await page.waitForTimeout(300);
   check((await page.locator('.dock-top .n').innerText()) === '0 of 10',
-    'films the shelf no longer holds are dropped from the draft, not counted');
+    'movies the collection no longer holds are dropped from the draft, not counted');
   check(await page.evaluate(() => Object.keys(window.S.graph.nodes).length) === 0,
     'and from the map graph');
   check(await page.locator('.rail .card').count() > 0, 'the screen still builds');

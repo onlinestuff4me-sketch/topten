@@ -371,12 +371,14 @@ The Prestige and the rest of Nolan's work.
 while a rail rendered a truncated ten, so a count of 2 could sit above a single
 card. There is one function behind both now.
 
-**"Everything" was a lie.** The shelf is finite and the bar said otherwise. It
-states the shelf's real size when nothing is applied.
+**"Everything" was a lie.** The catalog is finite and the bar said otherwise.
+It states the catalog's real size when nothing is applied. *(Wording updated
+2026-08-15: the line now reads "All 940 movies in our collection" — see "Voice
+and spelling". The decision is unchanged; only the nouns are.)*
 
 **A dead end hands you the door.** At zero results the app works out what each
 clause is individually costing and offers the escapes, sorted by how much they
-open up: *Without Horror · 7 films*. A wall that only reports itself is a wall.
+open up: *Without Horror · 7 movies*. A wall that only reports itself is a wall.
 
 **Free is a way to watch.** TMDB keeps ad-supported and free listings in
 buckets the first pass never read, so Inception being free on YouTube in the US
@@ -397,6 +399,112 @@ Prestige?"* — it was not in the catalog, and neither were Dunkirk, Oppenheimer
 or Tenet. A rabbit hole into a director is worthless if their work is missing,
 so the build now pulls the fuller filmography of every director who appears
 more than once. 220 films became 620.
+
+## Voice and spelling (2026-08-15, Mischa — standing rule, applies to all future copy)
+
+**US English, everywhere a user can read it.** *Favorite, color, canceled,
+toward* — never *favourite, colour, cancelled, towards*. And US **vocabulary**,
+not only US orthography: the app says **movies**, never *films*.
+
+Reasoning: the first market is the US, and a British spelling in an American
+product does not read as neutral — it reads as *written somewhere else*. This
+is an identity app whose whole proposition is that the list sounds like the
+person who made it; copy that sounds imported undercuts that before the user
+has picked anything. One dialect, chosen once, is cheaper than arguing it per
+string. *Movies* over *films* for the same reason plus one more: *films* is the
+word a critic uses and *movies* is the word a person uses, and this product is
+built for the second one.
+
+**Scope: user-facing strings only.** CSS class names, JS identifiers, code
+comments, TMDB genre values, and catalog data fields are unaffected — `addFilm`,
+`F.films`, `.map-node`, and the "Science Fiction" genre stay exactly as they
+are. Renaming code to chase a copy decision buys nothing and breaks the diff.
+Two kinds of on-screen text are also **not ours to spell**: catalog titles,
+which keep their makers' spelling (*The Favourite*, 2018), and whatever the
+user typed into search, which the Now showing bar quotes back at them.
+
+**"Shelf" is an internal word.** It survives in code and in these specs as the
+name for the catalog behind a domain, but the user never sees it. On screen the
+noun is **collection**: *All 940 movies in our collection*.
+
+**One noun per domain, and never hard-coded.** `DOMAINS` carries `noun` and
+`one` (plural and singular) for each domain, and every count, placeholder,
+heading, badge inscription, and generated topic title is built from them.
+Before this pass a TV Ten said *"All 940 films on the shelf"* and *"Not one
+Horror film made your ten"* — a movie word on a TV screen, which is the same
+class of dishonesty round 3 fixed when *"Everything"* was a lie. Books and
+games inherit correct copy the day their catalogs land, with no new strings to
+write.
+
+**Enforced, not remembered.** `docs/prototype/drive.js` asserts, on the intro,
+the build screen, the finished screen, a TV Ten, and Discover, that nothing a
+user reads matches `favourite|colour|centre|organis|apologise` — visible text
+*and* `aria-label`/`placeholder`/`title`/`alt`, because a British word in an
+accessibility string is still shipped copy. A standing rule with no test is a
+rule that lasts one session.
+
+*Known gap, flagged not fixed:* the empty-state count is `CAT.length` (940 —
+the whole catalog, movies and shows together), while every filtered count is
+domain-scoped (620 movies / 320 shows). The wording is now right; the number is
+a behavior question, not a copy one, and changing it would have changed the
+line Mischa specified.
+
+### The intro screen — three claims, one line each (2026-08-15, Mischa)
+
+*"Too much text. Each bullet must be ONE line at iPhone width."*
+
+| | |
+|---|---|
+| Headline | What's your Top 10? |
+| Sub-line | The list you would defend to the death |
+| 10 | Ten and only ten. The limit is the point. |
+| ★ | Finish it and earn a secret badge. |
+| 0 | Free. No ads. No subscription. Ever. |
+
+What changed and why:
+
+- **The bold lead-in is gone from each bullet.** The old bullets were a bold
+  claim followed by a sentence explaining it, which is two lines minimum at
+  13px in a 339px text column. A claim that needs a second line to land is a
+  claim that has not been written yet.
+- **One line is a measurement, not a taste.** A test compares each bullet's
+  rendered height against its own computed line-height *and* counts its line
+  boxes — two instruments, because a height ratio can be fooled by a short wrap
+  and a line-box count depends on the text being one node. Measured at both
+  ends of the supported range: 17px against a 16.9px line-height, one line box
+  each, at 393pt (iPhone 15 Pro) **and** at 375pt (SE 3rd gen / 13 mini, the
+  narrowest iPhone iOS 26 runs on).
+
+  **The headroom, because the next edit needs it.** Spare width per bullet:
+
+  | Bullet | 393pt | 375pt |
+  |---|---|---|
+  | Ten and only ten. The limit is the point. | 25px | **7px** |
+  | Finish it and earn a secret badge. | 62px | 44px |
+  | Free. No ads. No subscription. Ever. | 49px | 31px |
+
+  Bullet 1 clears the SE by seven pixels — roughly one character. That is why
+  the test runs at 375pt too: a future word added to bullet 1 breaks there long
+  before it breaks on the Pro, and a suite that only drives the Pro would call
+  it fine. Below 375pt (a width no supported iPhone has) all three wrap; if a
+  narrower target ever appears, the fix is the marker column and gutter, not
+  smaller type — 13px is already the floor this screen should use.
+- **The cost line under the CTA is deleted.** It said *"Free. No account needed
+  to make one."* Bullet 3 now carries it and says more (no ads, no
+  subscription, ever), so keeping both would have been the same promise twice —
+  and the CTA gets its area back.
+- **The third marker is `0`, not `→`.** The glyphs are 10 / ★ / 0: the count,
+  the reward, the price. The old `→` meant *one list leads to the next*, which
+  is the bullet that was cut; an arrow above a sentence about money means
+  nothing. `0` is chosen so the marker column keeps saying something.
+- **"What's your Top 10?" in the headline; a list is still a Ten everywhere
+  else.** The headline is the one place the product name and the number do the
+  work of explaining what this is to someone who has never seen it. Past the
+  door — *Make your first Ten*, *Your Ten*, *their Ten* — the noun is unchanged
+  (AGENTS.md, 2026-08-14).
+
+Unchanged and re-verified: the two drifting artwork rows, exactly one CTA, no
+Skip, and zero API calls on the first screen.
 
 ## Amendments from the M1.5 prototype (2026-08-14, Claude)
 
