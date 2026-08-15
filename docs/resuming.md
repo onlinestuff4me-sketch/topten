@@ -64,7 +64,7 @@ Mischa's notes, and where each landed:
 
 | Note | Outcome |
 |---|---|
-| Build the mind-map view | Built — `Where you have been`, a tidy tree of every followed and picked film |
+| Build the mind-map view | Built — a tidy tree of every followed and picked film (titled `Map of your selections` since round 4) |
 | Going back destroys the branch ahead of it | Exploration is a persistent graph; navigating never removes a node |
 | Didn't know how to add vs what the chevron did | Two named buttons per card: `+ Add` and `Similar ›` |
 | Can't tell what a filter did | The **Now showing** bar states every clause of the query plus the match count |

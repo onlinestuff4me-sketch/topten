@@ -342,7 +342,23 @@ footer.notes .build { color: var(--text-disabled); margin-top: var(--s2); }
 .map-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); padding: calc(env(safe-area-inset-top) + var(--s4)) var(--margin) var(--s3); }
 .map-head h2 { font-family: var(--serif); font-weight: 600; font-size: 1.25rem; margin: 0; }
 .map-head .done { color: var(--accent); font-weight: 700; min-height: 44px; display: inline-flex; align-items: center; }
-.map-legend { padding: 0 var(--margin) var(--s3); color: var(--text-secondary); font-size: 0.8125rem; }
+/* The key. Each state carries a SHAPE as well as a colour, because in the
+   vault theme --accent and --accent-bright are the same gold: a key that told
+   "you are here" from "in your Ten" by colour alone would tell them apart for
+   nobody, in either theme, and the quality gate says AA and not colour-only. */
+.map-key { display: flex; flex-wrap: wrap; gap: var(--s2) var(--s4); padding: 0 var(--margin) var(--s3); }
+.map-key li { display: inline-flex; align-items: center; gap: 7px; color: var(--text-secondary); font-size: 0.8125rem; }
+.map-key svg { display: block; flex: 0 0 auto; }
+.key-plate { fill: var(--bg-surface); stroke: var(--border-subtle); stroke-width: 1.5; }
+/* The block that stands for artwork. .75 rather than a lighter wash because
+   it is the whole difference between "path you took" and "not explored yet",
+   and WCAG 1.4.11 wants 3:1 for a graphic that carries meaning — it measures
+   3.1:1 on gallery paper and 4.6:1 in the vault. */
+.key-art { fill: var(--text-secondary); opacity: .75; }
+.key-here .key-plate { stroke: var(--accent); stroke-width: 2.5; }
+.key-ten .key-plate { stroke: var(--accent-bright); stroke-width: 2.5; }
+.key-next .key-plate { fill: var(--bg-recessed); stroke: var(--text-secondary); stroke-dasharray: 3 2.5; }
+.key-check { fill: none; stroke: #17140B; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
 .map-scroll { flex: 1; overflow: auto; -webkit-overflow-scrolling: touch; padding: 0 var(--margin) calc(env(safe-area-inset-bottom) + var(--s6)); }
 .map-node { cursor: pointer; }
 .map-node .plate { fill: var(--bg-surface); stroke: var(--border-subtle); stroke-width: 1; }
@@ -351,14 +367,31 @@ footer.notes .build { color: var(--text-disabled); margin-top: var(--s2); }
 .map-node text { font-family: var(--sans); font-size: 9px; fill: var(--text-secondary); }
 .map-node.focus text { fill: var(--text-primary); font-weight: 700; }
 .map-edge { fill: none; stroke: var(--border-subtle); stroke-width: 2; }
-.map-tick { fill: var(--accent-bright); }
-.map-empty { color: var(--text-secondary); padding: var(--s6) 0; }
+.map-tick, .key-tick { fill: var(--accent-bright); }
+/* "You are here" is a caret above the plate, not a coloured ring — the ring
+   it used to rely on is the same gold as a pick in the vault theme. */
+.map-here, .key-here-mark { fill: var(--accent); }
 .map-context { padding: 0 var(--margin) var(--s3); color: var(--text-secondary); font-size: 0.8125rem; }
 .map-context strong { color: var(--accent); }
-.map-node.ghost .plate { stroke-dasharray: 4 3; stroke: var(--text-disabled); }
-.map-node.ghost image { opacity: .42; }
-.map-node.ghost text { fill: var(--text-disabled); font-style: italic; }
+/* A next step is NOT a selection, so it is not drawn like one: no artwork at
+   all, a dashed empty well, and a + where the poster would be. The old
+   treatment faded a real poster to 42%, which left four full-colour films
+   hanging under the topic reading as four picks nobody made (2026-08-15). */
+.map-node.ghost .plate { fill: var(--bg-recessed); stroke: var(--text-secondary); stroke-width: 1.5; stroke-dasharray: 4 3; }
+.map-node.ghost text { fill: var(--text-secondary); font-style: italic; }
+.map-plus, .key-plus { fill: none; stroke: var(--text-secondary); stroke-width: 2; stroke-linecap: round; }
 .map-edge.ghost { stroke-dasharray: 4 4; opacity: .6; }
+
+/* The empty state. Not an origin with speculative children — a designed page
+   that says what the map is for and what puts something on it. */
+.map-empty { padding: var(--s4) 0 0; color: var(--text-secondary); max-width: 34em; }
+.map-empty .blank-art { display: block; margin: 0 0 var(--s6); fill: none; stroke: var(--text-disabled); stroke-width: 1.5; }
+.map-empty h3 { font-family: var(--serif); font-weight: 600; font-size: 1.125rem; color: var(--text-primary); margin: 0 0 var(--s2); }
+.map-empty p { margin: 0 0 var(--s4); }
+.map-empty ul { display: grid; gap: var(--s3); margin: 0 0 var(--s4); }
+.map-empty li { display: grid; grid-template-columns: auto 1fr; gap: var(--s3); align-items: baseline; }
+.map-empty li .m { font-weight: 700; color: var(--accent); white-space: nowrap; }
+.map-empty .hint { font-style: italic; margin: 0; }
 
 .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 </style>
@@ -742,7 +775,6 @@ function showingBar(q, results) {
   // The count is of everything that matches, not of the cards a rail happened
   // to render. Those were different numbers, which read as a bug (round 3).
   const n = matching().length;
-  const hasMap = Object.keys(S.graph.nodes).length > 0;
 
   return `<div class="showing">
     <div class="lead">Now showing</div>
@@ -753,7 +785,7 @@ function showingBar(q, results) {
         // what is actually there.
         : `<span class="count">All ${CAT.length} ${nounFor()} in our collection</span>`}
       ${clauses.length ? `<span class="count">${countNoun(n)}</span>` : ''}
-      ${hasMap ? `<button class="mapbtn" data-act="openmap">Map</button>` : ''}
+      <button class="mapbtn" data-act="openmap">Map</button>
     </div>
     ${n === 0 ? deadEnd() : ''}
   </div>`;
@@ -1050,24 +1082,31 @@ const MAP = { w: 56, h: 84, gx: 26, gy: 58, pad: 14, originH: 44 };
 // about 4.6px a character, so a 56px node holds ~12 before it has to stop.
 const mapLabel = t => (t.length > 12 ? t.slice(0, 11) + '…' : t);
 
-/* Unexplored next steps, drawn faintly off whatever is focused. Without
-   these the map is a history log; with them it is somewhere you can actually
-   go (round 3: "no ways to drill more into anything"). */
+/* Unexplored next steps, drawn off whatever is focused. Without these the map
+   is a history log; with them it is somewhere you can actually go (round 3:
+   "no ways to drill more into anything").
+
+   They hang off a film you have ACTUALLY FOLLOWED, and never off the origin.
+   The old fallback answered "what next" with the top four films of the shelf
+   and drew them as children of the topic plate, which is precisely the
+   phantom selection Mischa hit: "what could come next" needs a "now", and at
+   the origin the whole build screen already is that. (2026-08-15) */
 function ghostsFor(focusId) {
-  const seed = focusId == null ? null : byId.get(focusId);
+  if (focusId == null || !node(focusId)) return [];
+  const seed = byId.get(focusId);
+  if (!seed) return [];
   const known = new Set(Object.keys(S.graph.nodes).map(Number));
-  const pick = seed ? similarTo(seed, known, 4).map(r => r.f) : pool().filter(f => !known.has(f.id)).slice(0, 4);
-  return pick.map(f => f.id);
+  return similarTo(seed, known, 4).map(r => r.f.id);
 }
 
-function layoutMap(ghosts) {
+function layoutMap(ghosts, focus) {
   const placed = [];
   let cursor = 0;
   const walk = (id, depth) => {
     // A ghost is a film that is not in the graph yet, so it has no children —
     // it just takes a slot. Treating one as a real node threw here.
     const n = node(id);
-    const kids = n ? n.kids.filter(k => node(k)).concat(id === S.graph.focus ? ghosts : []) : [];
+    const kids = n ? n.kids.filter(k => node(k)).concat(id === focus ? ghosts : []) : [];
     let slot;
     if (!kids.length) { slot = cursor++; }
     else {
@@ -1077,10 +1116,10 @@ function layoutMap(ghosts) {
     placed.push({ id, depth, slot, ghost: !node(id) });
     return slot;
   };
-  const rootIds = S.graph.roots.filter(r => node(r));
-  // With nothing explored yet the map still has somewhere to point: the
-  // ghosts hang straight off the origin.
-  const rootSlots = (rootIds.length ? rootIds : ghosts).map(r => walk(r, 1));
+  // Only real roots. There is no "walk the ghosts as though they were roots"
+  // case any more: with nothing explored the map does not draw a graph at
+  // all, it draws its empty state (2026-08-15).
+  const rootSlots = S.graph.roots.filter(r => node(r)).map(r => walk(r, 1));
   // A single origin so the whole thing reads as one map rather than several.
   const origin = { id: null, depth: 0, slot: rootSlots.length ? (rootSlots[0] + rootSlots[rootSlots.length - 1]) / 2 : 0 };
   placed.push(origin);
@@ -1094,15 +1133,75 @@ function layoutMap(ghosts) {
   return { placed, pos, width, height };
 }
 
-function renderMap() {
-  const ghosts = ghostsFor(S.graph.focus);
-  const { placed, pos, width, height } = layoutMap(ghosts);
+/* The map's four states, each with a marker whose SHAPE says which it is, so
+   the map reads the same to someone who cannot separate the two golds. */
+const KEY_SWATCH = {
+  here: `<svg width="24" height="34" viewBox="0 0 26 36" aria-hidden="true" focusable="false">
+      <path class="key-here-mark" d="M6 1 L20 1 L13 8 Z"/>
+      <rect class="key-plate" x="3.5" y="10.5" width="19" height="24" rx="4"/>
+      <rect class="key-art" x="6" y="13" width="14" height="19" rx="2"/></svg>`,
+  plain: `<svg width="24" height="34" viewBox="0 0 26 36" aria-hidden="true" focusable="false">
+      <rect class="key-plate" x="3.5" y="10.5" width="19" height="24" rx="4"/>
+      <rect class="key-art" x="6" y="13" width="14" height="19" rx="2"/></svg>`,
+  ten: `<svg width="24" height="34" viewBox="0 0 26 36" aria-hidden="true" focusable="false">
+      <rect class="key-plate" x="3.5" y="10.5" width="19" height="24" rx="4"/>
+      <rect class="key-art" x="6" y="13" width="14" height="19" rx="2"/>
+      <circle class="key-tick" cx="19.5" cy="13.5" r="5.5"/>
+      <path class="key-check" d="M17 13.6 L19 15.6 L22 11.9"/></svg>`,
+  next: `<svg width="24" height="34" viewBox="0 0 26 36" aria-hidden="true" focusable="false">
+      <rect class="key-plate" x="3.5" y="10.5" width="19" height="24" rx="4"/>
+      <path class="key-plus" d="M13 17 v11 M7.5 22.5 h11"/></svg>`,
+};
+const MAP_KEY = [
+  ['here', 'You are here'],
+  ['plain', 'Path you took'],
+  ['ten', 'In your Ten'],
+  ['next', 'Not explored yet'],
+];
+/* Only the states actually on screen. A key is a reading aid for what is
+   drawn; a marker listed but absent sends the reader hunting for it. */
+function mapKey(states) {
+  const items = MAP_KEY.filter(([k]) => states.has(k));
+  if (!items.length) return '';
+  return `<ul class="map-key" aria-label="What the marks mean">${items
+    .map(([k, label]) => `<li class="key-${k}">${KEY_SWATCH[k]}<span>${label}</span></li>`).join('')}</ul>`;
+}
+
+/* Nothing explored: a designed page, not an origin with speculative children.
+   It says what the map records and what puts something on it, and it promises
+   the thing the bug broke — that the map only ever draws your own path. */
+const MAP_BLANK = `<div class="map-empty">
+  <svg class="blank-art" width="188" height="106" viewBox="0 0 188 106" aria-hidden="true" focusable="false">
+    <rect x="66" y="2" width="56" height="26" rx="8"/>
+    <path d="M94 28 C94 48, 41 44, 41 62"/>
+    <path d="M94 28 C94 48, 147 44, 147 62"/>
+    <rect x="18" y="63" width="46" height="41" rx="8"/>
+    <rect x="124" y="63" width="46" height="41" rx="8"/>
+  </svg>
+  <h3>Your map is empty</h3>
+  <p>This is the record of where you have actually been. It draws your own path
+     and nothing else, so it stays blank until you go somewhere.</p>
+  <ul>
+    <li><span class="m">+ Add</span><span>puts a film here the moment it joins your Ten.</span></li>
+    <li><span class="m">Similar</span><span>follows a film, and the map keeps whatever led you to it — stepping back never erases a branch.</span></li>
+  </ul>
+  <p class="hint">Nothing on this map is ever a film you did not choose.</p>
+</div>`;
+
+// "You are here", as a shape. Sits above the plate, clear of every label.
+const hereMark = (cx, top) => `<path class="map-here" d="M${cx - 7} ${top - 9} L${cx + 7} ${top - 9} L${cx} ${top - 2} Z"/>`;
+
+/* Draw the explored graph. Returns the svg and the set of states it used, so
+   the key can list exactly what is on screen. */
+function drawMap(ghosts, focus) {
+  const { placed, pos, width, height } = layoutMap(ghosts, focus);
   const at = new Map(placed.map(p => [p.id, pos(p)]));
+  const states = new Set();
 
   const ghostSet = new Set(ghosts);
   const edges = placed.filter(p => p.id != null).map(p => {
     const n = node(p.id);
-    const parentId = n ? (n.parent ?? null) : S.graph.focus;
+    const parentId = n ? (n.parent ?? null) : focus;
     const from = at.get(parentId), to = at.get(p.id);
     if (!from || !to) return '';
     // The origin's plate is shorter than a poster's, so its edges have to
@@ -1116,18 +1215,40 @@ function renderMap() {
   const nodes = placed.map(p => {
     const c = at.get(p.id);
     if (p.id == null) {
-      return `<g class="map-node ${S.graph.focus == null ? 'focus' : ''}" data-mapnode="home" tabindex="0" role="button" aria-label="All of ${esc(S.topic.title)}">
-        <rect class="plate" x="${c.cx - MAP.w / 2}" y="${c.cy - MAP.originH / 2}" width="${MAP.w}" height="${MAP.originH}" rx="10"/>
+      const isFocus = focus == null;
+      if (isFocus) states.add('here');
+      const top = c.cy - MAP.originH / 2;
+      return `<g class="map-node ${isFocus ? 'focus' : ''}" data-mapnode="home" tabindex="0" role="button"
+          aria-label="All of ${esc(S.topic.title)}${isFocus ? ', where you are' : ''}">
+        ${isFocus ? hereMark(c.cx, top) : ''}
+        <rect class="plate" x="${c.cx - MAP.w / 2}" y="${top}" width="${MAP.w}" height="${MAP.originH}" rx="10"/>
         <text x="${c.cx}" y="${c.cy + 4}" text-anchor="middle">${esc(mapLabel(S.topic.title))}</text></g>`;
     }
     const f = byId.get(p.id);
     if (!f) return '';                       // never let one unknown id blank the map
-    const picked = S.tray.includes(p.id), isGhost = ghostSet.has(p.id) && !node(p.id);
-    const label = mapLabel(f.t);
-    return `<g class="map-node ${S.graph.focus === p.id ? 'focus' : ''} ${picked ? 'picked' : ''} ${isGhost ? 'ghost' : ''}"
-        data-mapnode="${p.id}" ${isGhost ? 'data-mapghost="1"' : ''} tabindex="0" role="button"
-        aria-label="${esc(f.t)}${picked ? ', in your Ten' : isGhost ? ', not explored yet' : ''}">
-      <rect class="plate" x="${c.cx - MAP.w / 2 - 2}" y="${c.cy - MAP.h / 2 - 2}" width="${MAP.w + 4}" height="${MAP.h + 4}" rx="8"/>
+    const label = mapLabel(f.t), top = c.cy - MAP.h / 2 - 2;
+
+    // A step you have not taken carries NO artwork. A poster is what a node
+    // on this map means — "a film that is on your path" — so lending one to a
+    // speculation is the map claiming a selection you never made.
+    if (ghostSet.has(p.id) && !node(p.id)) {
+      states.add('next');
+      return `<g class="map-node ghost" data-mapnode="${p.id}" data-mapghost="1" tabindex="0" role="button"
+          aria-label="${esc(f.t)}, not explored yet. Follow it to put it on your map.">
+        <rect class="plate" x="${c.cx - MAP.w / 2 - 2}" y="${top}" width="${MAP.w + 4}" height="${MAP.h + 4}" rx="8"/>
+        <path class="map-plus" d="M${c.cx} ${c.cy - 10} v20 M${c.cx - 10} ${c.cy} h20"/>
+        <text x="${c.cx}" y="${c.cy + MAP.h / 2 + 14}" text-anchor="middle">${esc(label)}</text>
+      </g>`;
+    }
+
+    const picked = S.tray.includes(p.id), isFocus = focus === p.id;
+    states.add(picked ? 'ten' : 'plain');
+    if (isFocus) states.add('here');
+    return `<g class="map-node ${isFocus ? 'focus' : ''} ${picked ? 'picked' : ''}"
+        data-mapnode="${p.id}" tabindex="0" role="button"
+        aria-label="${esc(f.t)}${picked ? ', in your Ten' : ', followed'}${isFocus ? ', where you are' : ''}">
+      ${isFocus ? hereMark(c.cx, top) : ''}
+      <rect class="plate" x="${c.cx - MAP.w / 2 - 2}" y="${top}" width="${MAP.w + 4}" height="${MAP.h + 4}" rx="8"/>
       <image href="${IMG}w185${f.p}" x="${c.cx - MAP.w / 2}" y="${c.cy - MAP.h / 2}" width="${MAP.w}" height="${MAP.h}"
         preserveAspectRatio="xMidYMid slice" style="clip-path:inset(0 round 6px)"/>
       ${picked ? `<circle class="map-tick" cx="${c.cx + MAP.w / 2 - 4}" cy="${c.cy - MAP.h / 2 + 4}" r="8"/>
@@ -1136,17 +1257,25 @@ function renderMap() {
     </g>`;
   }).join('');
 
+  return { states, svg: `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}"
+    role="group" aria-label="Your exploration map">${edges}${nodes}</svg>` };
+}
+
+function renderMap() {
+  // A focus that no longer resolves to a node (a rebuilt shelf, a pruned
+  // draft) is the origin, not a dangling id.
+  const focus = node(S.graph.focus) ? S.graph.focus : null;
+  const explored = S.graph.roots.some(r => node(r));
+  const ghosts = explored ? ghostsFor(focus) : [];
+  const drawn = explored ? drawMap(ghosts, focus) : null;
+
   const v = document.createElement('div');
   v.className = 'mapview';
   v.innerHTML = `
-    <div class="map-head"><h2>Where you have been</h2><button class="done" data-act="closemap">Done</button></div>
-    <p class="map-legend">Solid: followed or picked. Faint: where you could go next — tap one to follow it without leaving. Gold: in your Ten.</p>
+    <div class="map-head"><h2>Map of your selections</h2><button class="done" data-act="closemap">Done</button></div>
     ${mapContext()}
-    <div class="map-scroll">
-      ${placed.length > 1
-        ? `<svg width="${width}" height="${height}" viewBox="0 0 ${width} ${height}" role="group" aria-label="Your exploration map">${edges}${nodes}</svg>`
-        : `<p class="map-empty">Nothing followed yet. Tap “Similar” on a ${domainMeta().one} and it will appear here.</p>`}
-    </div>`;
+    ${drawn ? mapKey(drawn.states) : ''}
+    <div class="map-scroll">${drawn ? drawn.svg : MAP_BLANK}</div>`;
   document.body.appendChild(v);
   setBackgroundInert(true);
 
@@ -1171,7 +1300,10 @@ function mapContext() {
   if (F.services.length) bits.push('On ' + F.services.map(sid => (SERVICES.find(x => x[0] === sid) || [, sid])[1]).join(', '));
   for (const k of ['genre', 'director', 'actor']) if (F[k]) bits.push(F[k]);
   if (!bits.length) return '';
-  return `<p class="map-context">Next steps below are filtered by <strong>${esc(bits.join(' · '))}</strong></p>`;
+  // True of every state of this screen, including the empty one: a filter
+  // changes what is offered next, never what the map has recorded.
+  return `<p class="map-context">Filtered by <strong>${esc(bits.join(' · '))}</strong> — filters
+    change what is offered next, never the path the map records.</p>`;
 }
 
 function closeMap() {

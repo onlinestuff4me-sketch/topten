@@ -292,10 +292,11 @@ branch moves focus to the parent; the branch you left is still on the map, and
 tapping it there re-enters it. This is the difference between a path you are
 walking and a path you are consuming.
 
-**The map** (`Where you have been`) draws the whole graph — origin at the top,
-each followed film below whatever led to it, picks marked gold. It is the
-answer to *how do I get forward again*, and it doubles as the record of the
-session: you can see that three of your ten came out of one Nolan detour.
+**The map** (titled `Map of your selections` — renamed from `Where you have
+been` in round 4, 2026-08-15) draws the whole graph — origin at the top, each
+followed film below whatever led to it, picks marked gold. It is the answer to
+*how do I get forward again*, and it doubles as the record of the session: you
+can see that three of your ten came out of one Nolan detour.
 
 Layout is a tidy tree: leaves take the next slot, parents centre over their
 children, and labels are clamped to what a node's width can hold — two
@@ -388,11 +389,16 @@ nothing is at least as good an answer to "tonight" as a thing you pay for, and
 conflating them would be dishonest.
 
 **The map is somewhere you can go.** It drew only history, so with one node it
-looked broken. It now draws unexplored next steps as faint nodes off whatever
-is focused; following one stays inside the map, so a path can be built there
-rather than only reviewed. It states the active filters, and it opens centred
-on where you are — a map that opens at its top-left corner drops you in blank
-space as soon as the graph outgrows the screen.
+looked broken. It now draws unexplored next steps as distinct nodes off
+whatever is focused; following one stays inside the map, so a path can be built
+there rather than only reviewed. It states the active filters, and it opens
+centred on where you are — a map that opens at its top-left corner drops you in
+blank space as soon as the graph outgrows the screen.
+
+*(Amended in round 4, 2026-08-15: "off whatever is focused" now means off a
+film you actually followed, never off the origin, and the faint treatment those
+nodes wore is replaced. See below — as first built this is what put films on
+the map that the user had not chosen.)*
 
 **The shelf itself was the bug behind the sharpest question.** *"What about The
 Prestige?"* — it was not in the catalog, and neither were Dunkirk, Oppenheimer
@@ -505,6 +511,94 @@ What changed and why:
 
 Unchanged and re-verified: the two drifting artwork rows, exactly one CTA, no
 Skip, and zero API calls on the first screen.
+### The map claimed a selection nobody made (2026-08-15, Mischa)
+
+*"I opened the map having selected nothing, and it showed Interstellar hanging
+under Movies as though I had selected it."*
+
+**The diagnosis.** Three separate decisions compounded into one lie.
+
+1. `ghostsFor(null)` — the speculative "next steps" — had a fallback for the
+   case where nothing is focused: with no seed film to be similar to, it
+   returned *the top four films of the shelf*. Those are not next steps from
+   anywhere; they are simply what the build screen was already showing.
+2. `layoutMap` had a matching fallback: with no real roots it walked the ghosts
+   **as though they were roots**, which placed them at depth 1 — the row
+   directly under the origin, exactly where a film you had followed goes.
+   `renderMap` then gave each of them a parent of `S.graph.focus` (null, the
+   origin) and drew a real edge from the topic plate down to each one.
+3. The "faint" treatment was a 1px dashed plate behind a **full-colour poster
+   at 42% opacity**. On a warm background that is a brightness difference, not
+   a categorical one — and a poster is precisely what a node on this map
+   *means*. So four films the user had never touched sat under "Movies", on
+   edges, wearing their artwork, beneath a title that said this screen records
+   where you have been.
+
+The empty state written for this exact case (`Nothing followed yet…`) was
+unreachable dead code, because its guard was `placed.length > 1` and the
+origin-plus-four-ghosts arrangement always cleared it. Two of the same
+fallbacks also had the mirror-image failure: with a graph but focus at the
+origin, ghosts were computed and then never placed, so the work was silently
+discarded and the map offered nothing.
+
+**The fix, and the rule behind it.** *Artwork on this map means "this film is
+on your path."* Nothing that is not on your path may wear it.
+
+- **A next step hangs off a film you actually followed, never off the origin.**
+  "What could come next" needs a "now"; at the origin the whole build screen
+  already is that answer. Both root fallbacks are deleted.
+- **A next step carries no artwork at all** — a dashed empty well with a `+`
+  where the poster would be. Fading a poster says *less of this film*; an empty
+  well says *not a film yet*. That is the difference between a state and a
+  volume knob.
+- **Nothing explored draws no graph.** The map renders a designed empty state
+  instead: *"Your map is empty — this is the record of where you have actually
+  been. It draws your own path and nothing else, so it stays blank until you go
+  somewhere,"* then what fills it (`+ Add` puts a film here the moment it joins
+  your Ten; `Similar` follows a film and keeps whatever led you to it), and the
+  promise the bug broke: *"Nothing on this map is ever a film you did not
+  choose."*
+- **The way in is always there.** The Map entry in the Now showing bar used to
+  appear only once the graph had a node. An empty state nobody can reach is not
+  a fix, and the same reasoning already governs the domain picker — a named
+  thing that is not ready yet is a promise, an absent one is nothing.
+- **Title: `Map of your selections`** (was `Where you have been`).
+
+**The legend is a visual key, not a sentence.** It was one run-on line —
+*"Solid: followed or picked. Faint: where you could go next… Gold: in your
+Ten"* — which asked the reader to hold three colour words in their head while
+looking at a tree. It is now four keys, each a drawn swatch beside a
+three-word name: **You are here**, **Path you took**, **In your Ten**, **Not
+explored yet**. It lists only the states actually on screen, because a key is a
+reading aid for what is drawn and a marker listed but absent sends the reader
+hunting for it.
+
+**Every state carries a shape, not only a colour** — the accessibility gate,
+and not a theoretical one. In the vault theme `accent.laurel` and
+`accent.laurelBright` are **the same gold** (`#D9B23A`), so "where you are" and
+"in your Ten" were the same ring in dark mode and told apart by nothing. The
+markers now are: a **caret above the plate** for where you are, a **tick disc**
+for a pick, a **dashed empty plate with a `+`** for an unexplored step, and
+**plain artwork** for a step you took. All four survive greyscale, and a test
+asserts it by comparing swatch geometry with the colour thrown away.
+
+Two contrast fixes came with it: the unexplored-node label moved from
+`text.disabled` to `text.secondary` (`text.disabled` on `bg.base` is 3.3:1 in
+the vault, below AA for text), and the key's artwork block sits at 75% of
+`text.secondary` so it measures 3.1:1 on gallery paper and 4.6:1 in the vault —
+it is the whole difference between "path you took" and "not explored yet", so
+WCAG 1.4.11's 3:1 for meaningful graphics applies to it.
+
+**The filter line says something true in every state.** It read *"Next steps
+below are filtered by X"*, which is false on a map with no next steps. It now
+reads *"Filtered by X — filters change what is offered next, never the path the
+map records"*, which also answers the question a filtered map raises: no, your
+history has not been filtered away.
+
+Everything the map already got right is asserted and unchanged: navigating
+never destroys a node, tapping a real node re-enters the path there, following
+an unexplored step stays inside the map, the active filters are stated, it
+opens centred on where you are, and no two labels overlap.
 
 ## Amendments from the M1.5 prototype (2026-08-14, Claude)
 
