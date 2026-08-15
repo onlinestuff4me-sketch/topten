@@ -178,35 +178,58 @@ public enum BadgePrePass {
         // `uniquingKeysWith`, not `uniqueKeysWithValues`: a badge case can hold
         // the same shape twice, and the strict initialiser traps on a
         // duplicate key. Keep the most recent appearance.
-        let recent = Dictionary(recentShapes.enumerated().map { ($1, $0) },
-                                uniquingKeysWith: min)
-        let shapes = BadgeShape.allCases
-            .map { shape -> (BadgeShape, Double) in
-                var weight = shape.affinity.isEmpty ? 1.0 : (shape.affinity.contains(topic.domain) ? 2.0 : 0.35)
-                if let index = recent[shape] { weight *= 0.15 + 0.1 * Double(index) }
-                return (shape, weight * (0.75 + Double(rng.next() % 500) / 1000))
+        var recent: [BadgeShape: Int] = [:]
+        for (index, shape) in recentShapes.enumerated() where recent[shape] == nil {
+            recent[shape] = index
+        }
+
+        // Written as loops with annotated types rather than as `map`/`sorted`
+        // chains: the chained form pushed Swift 6.2's type checker past its
+        // budget and failed to build at all. A long chain over tuple literals
+        // with mixed Double arithmetic is a lot of inference for one
+        // expression, and this is the version that compiles.
+        var shapeWeights: [(shape: BadgeShape, weight: Double)] = []
+        for shape in BadgeShape.allCases {
+            var weight: Double = 1
+            if !shape.affinity.isEmpty {
+                weight = shape.affinity.contains(topic.domain) ? 2.0 : 0.35
             }
-            .sorted { $0.1 > $1.1 || ($0.1 == $1.1 && $0.0.rawValue < $1.0.rawValue) }
-            .map(\.0)
+            if let index = recent[shape] {
+                weight *= 0.15 + 0.1 * Double(index)
+            }
+            let jitter: Double = 0.75 + Double(rng.next() % 500) / 1000
+            shapeWeights.append((shape, weight * jitter))
+        }
+        shapeWeights.sort { a, b in
+            a.weight == b.weight ? a.shape.rawValue < b.shape.rawValue : a.weight > b.weight
+        }
+        let shapes: [BadgeShape] = shapeWeights.map(\.shape)
 
         // Motifs: how many of the list's own tags a motif matches, then a
         // seeded tiebreak. The untagged `laurel-star` is the floor and always
         // survives, so a list whose metadata matches nothing still gets an
         // emblem rather than an empty middle.
         let listTags = facts.tags
-        let motifs = Self.motifs
-            .map { motif -> (Motif, Double) in
-                let hits = Double(motif.tags.intersection(listTags).count)
-                let base = motif.tags.isEmpty ? 0.4 : hits
-                return (motif, base + Double(rng.next() % 100) / 1000)
-            }
-            .sorted { $0.1 > $1.1 || ($0.1 == $1.1 && $0.0.id < $1.0.id) }
-            .map(\.0)
+        var motifWeights: [(motif: Motif, weight: Double)] = []
+        for motif in Self.motifs {
+            let hits: Double = Double(motif.tags.intersection(listTags).count)
+            let base: Double = motif.tags.isEmpty ? 0.4 : hits
+            let jitter: Double = Double(rng.next() % 100) / 1000
+            motifWeights.append((motif, base + jitter))
+        }
+        motifWeights.sort { a, b in
+            a.weight == b.weight ? a.motif.id < b.motif.id : a.weight > b.weight
+        }
+        let motifs: [Motif] = motifWeights.map(\.motif)
 
-        let materials = BadgeMaterial.allCases
-            .map { ($0, Double(rng.next() % 1000)) }
-            .sorted { $0.1 > $1.1 }
-            .map(\.0)
+        var materialWeights: [(material: BadgeMaterial, weight: UInt64)] = []
+        for material in BadgeMaterial.allCases {
+            materialWeights.append((material, rng.next() % 1000))
+        }
+        materialWeights.sort { a, b in
+            a.weight == b.weight ? a.material.rawValue < b.material.rawValue : a.weight > b.weight
+        }
+        let materials: [BadgeMaterial] = materialWeights.map(\.material)
 
         let tokens = facts.referenceTokens
         let inscriptions = Inscription.templates(facts: facts, topic: topic)
