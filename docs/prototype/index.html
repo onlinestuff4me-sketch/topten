@@ -462,7 +462,7 @@ const esc = s => String(s).replace(/[&<>"']/g, c => ({ '&':'&amp;','<':'&lt;','>
 const announce = m => { live.textContent = m; };
 const reduced = () => matchMedia('(prefers-reduced-motion: reduce)').matches;
 
-const KEY = 'topten.proto.v4';
+const KEY = 'topten.proto.v5';
 /* The domains, in the order Mischa set them (2026-08-15). Two are built; the
    rest are named rather than hidden, because a picker that shows only what
    exists tells the user the app is smaller than it is going to be — and a
@@ -475,7 +475,7 @@ const KEY = 'topten.proto.v4';
    drawn rather than opening onto an empty sheet. */
 const DOMAINS = [
   { id: 'movie', label: 'Movies', noun: 'movies', one: 'movie', ready: true,
-    topic: { id: 'movies', domain: 'movie', title: 'Movies', prompt: 'Your 10 favorite movies of all time.' } },
+    topic: { id: 'movie', domain: 'movie', title: 'Movies', prompt: 'Your 10 favorite movies of all time.' } },
   { id: 'tv', label: 'TV shows', noun: 'shows', one: 'show', ready: true,
     topic: { id: 'tv', domain: 'tv', title: 'TV shows', prompt: 'Your 10 favorite TV shows of all time.' } },
   // Books live in their own file, so this one domain can go missing on its
@@ -487,7 +487,7 @@ const DOMAINS = [
     ready: (window.CATALOG_BOOKS || []).length > 0,
     axes: { services: null, genre: 'Subject', director: 'Author', actor: null },
     sim: { rec: 'Often read together', with: 'Also by' },
-    topic: { id: 'books', domain: 'book', title: 'Books', prompt: 'Your 10 favorite books of all time.' } },
+    topic: { id: 'book', domain: 'book', title: 'Books', prompt: 'Your 10 favorite books of all time.' } },
   { id: 'games', label: 'Video games', noun: 'games', one: 'game', ready: false },
   { id: 'restaurants', label: 'Restaurants', noun: 'places', one: 'place', ready: false },
   { id: 'travel', label: 'Travel destinations', noun: 'places', one: 'place', ready: false },
@@ -506,9 +506,7 @@ const SIMWORDS = { rec: 'Often watched together', with: 'With' };
 const domain = (t) => DOMAINS.find(d => d.id === domainOf(t || S.topic)) || DOMAINS[0];
 const axes = () => ({ ...AXES, ...(domain().axes || {}) });
 const simwords = () => ({ ...SIMWORDS, ...(domain().sim || {}) });
-/* One of them, and ten of them. "0 books" and "1 book" are the same sentence
-   with the same rule, so the rule lives here. */
-const noun = (n, t) => n === 1 ? domain(t).noun.replace(/s$/, '') : domain(t).noun;
+// What this list can actually reach: one domain's worth of the collection.
 const shelfSize = () => CAT.filter(f => (f.dm || 'movie') === domainOf(S.topic)).length;
 
 /* Region decides which subscriptions are on offer. Guessed, never asked —
@@ -848,8 +846,11 @@ function showingBar(q, results) {
       ${clauses.length
         ? clauses.map(c => `<span class="clause"><button ${c.act}>${esc(c.label)}</button><button class="x" ${c.drop} aria-label="Remove ${esc(c.label)}">×</button></span>`).join('')
         // "Everything" was a lie about a 600-title catalog (round 3). Say
-        // what is actually there.
-        : `<span class="count">All ${CAT.length} ${nounFor()} in our collection</span>`}
+        // what is actually there — and only what is there for THIS list. The
+        // whole catalog holds movies, shows and books; a movie Ten can reach
+        // the movies. Counting all three and calling the total "movies" was
+        // the second lie in the same sentence.
+        : `<span class="count">All ${shelfSize()} ${nounFor()} in our collection</span>`}
       ${clauses.length ? `<span class="count">${countNoun(n)}</span>` : ''}
       <button class="mapbtn" data-act="openmap">Map</button>
     </div>
@@ -994,7 +995,7 @@ function notes() {
   return `<footer class="notes">
     <p>Structure prototype. Glass, haptics, and final motion are judged on
     device, not here. Judge the flow, the anatomy, and the words.</p>
-    <p class="build">build 0010 · intro copy · US voice · other Top 10 lists</p>
+    <p class="build">build 0011 · lists named by their criteria · books · 2,932 titles</p>
   </footer>`;
 }
 
@@ -1440,90 +1441,143 @@ function renderIntro() {
    filler: Req 12 promises a take unlocks EVERY list on that topic at once, and
    with one list per topic that promise is unobservable and untestable. */
 const PEOPLE = [
-  { name: 'Sam', bias: 'Crime' },
-  { name: 'Priya', bias: 'Science Fiction' },
-  { name: 'Marcus', bias: 'Animation' },
-  { name: 'Nour', bias: 'Thriller' },
-  { name: 'Theo', bias: 'Crime' },
-  { name: 'Eddie', bias: 'Comedy' },
-  { name: 'Rae', bias: 'Drama' },
-].map(p => ({ ...p, topic: { id: `movie:genre:${p.bias}`, domain: 'movie', genre: p.bias,
-  title: `${p.bias} movies`, prompt: `Your 10 favorite ${p.bias.toLowerCase()} movies.` } }));
+  { name: 'Sam', crit: { genre: 'Crime', decade: 1990 } },
+  { name: 'Priya', crit: { genre: 'Science Fiction' } },
+  { name: 'Marcus', crit: { genre: 'Animation', decade: 2000 } },
+  { name: 'Nour', crit: { director: 'Alfred Hitchcock' } },
+  { name: 'Theo', crit: { genre: 'Crime', decade: 1990 } },
+  { name: 'Eddie', crit: { actor: 'Al Pacino' } },
+  { name: 'Rae', crit: { domain: 'tv', genre: 'Drama' } },
+];
 
-/* ── Naming a list, from the list itself ──────────────────────────────────
-   A list's name is GENERATED from its contents. Nobody types it (PRD Req 12
-   amendment, 2026-08-15): free text on a social surface is a moderation and
-   safety surface, and this product does not need one to say what a list is.
+/* ── Naming a list: the name IS the criteria ──────────────────────────────
+   Corrected 2026-08-15 (Mischa), replacing a namer that read the ten and made
+   a claim about them. A list is named by the rule that every one of its ten
+   entries satisfies — "Top 10 Crime Movies of the 90s" — never by a fact that
+   is merely true of some of them. The two are easy to confuse and the
+   difference is the whole thing:
 
-   Every candidate below is a template plus the fact that licenses it, and the
-   fact is counted off the ten films themselves — so a name can be bland but
-   never wrong. `listNameCandidates` returns the whole ranked set; on device
-   the Foundation Models pass picks among exactly these candidates under the
-   badge-inscription rules in badges.md (id-constrained choice, relevancy and
-   safety checks, no free generation), and this deterministic ordering is the
-   fallback when the model is unavailable or its choice fails a check.
+     a NAME is a rule, true of 10 out of 10, because the rule is exactly what
+       filtered the shelf the list was built from (`inTopic`)
+     a REASON is a fraction, true of 4 out of 10, and it is why we offer you a
+       list you have not made yet
 
-   Ranking is by how much the fact DISTINGUISHES the list. A shared author is
-   the strongest claim a list can make (design.md, round 3: a shared name is a
-   reason a person would give out loud); genre purity is the floor, because on
-   a genre topic it only restates the topic. */
-const census = arr => { const m = new Map();
-  for (const x of arr) m.set(x, (m.get(x) || 0) + 1);
-  return [...m.entries()].sort((a, b) => b[1] - a[1] || String(a[0]).localeCompare(String(b[0]))); };
-const commonest = arr => { const c = census(arr);
-  return { value: c.length ? c[0][0] : null, n: c.length ? c[0][1] : 0, runnerUp: c[1] ? c[1][1] : 0 }; };
-// "Alfred Hitchcock" -> Hitchcock, but "Bong Joon Ho" stays whole: a two-letter
-// tail is a given name's second half, not a surname.
-const surname = name => { const p = String(name).split(/\s+/).filter(Boolean);
-  return p.length > 1 && p[p.length - 1].length > 3 ? p[p.length - 1] : String(name); };
-const shortBrand = b => String(b).replace(/^(Studio|Walt)\s+/, '').replace(/\s+(Animation|Pictures|Studios|Entertainment)$/, '');
-const shortGenre = g => (g === 'Science Fiction' ? 'Sci-fi' : g);
+   So "4 of your 10 were crime movies from the 1990s" is the reason the app
+   suggests the Crime-90s list. It is not what that list is called, and the
+   list it leads to holds ten crime movies from the 1990s, not four.
+
+   Nobody types a name (PRD Req 12 amendment): free text on a social surface is
+   a moderation surface this product does not need. Foundation Models still has
+   the job named in prd.md Req 5 — choosing WHICH criteria are worth offering,
+   and shortening a name the way a person would. It never writes one, because a
+   written name can be false. Below is the floor that runs without the model. */
+
+// "Alfred Hitchcock" -> Hitchcock, because that is the list people ask for.
+// Only when the collection holds exactly one person with that surname:
+// "Murphy" is Eddie, Cillian and Ryan, so Eddie Murphy stays whole.
+// A particle belongs to the name it precedes: "Robert De Niro" is a De Niro,
+// not a Niro, and "Vincent van Gogh" is a van Gogh.
+const PARTICLES = new Set(['de', 'del', 'della', 'der', 'di', 'du', 'da', 'das', 'do', 'dos',
+  'la', 'le', 'van', 'von', 'ter', 'ten', 'bin', 'al', 'st.']);
+function familyName(full) {
+  const parts = String(full).split(/\s+/).filter(Boolean);
+  if (parts.length < 2) return null;
+  let i = parts.length - 1;
+  while (i > 1 && PARTICLES.has(parts[i - 1].toLowerCase())) i--;
+  return parts.slice(i).join(' ');
+}
+let _surnames = null;
+function surnameIndex() {
+  if (_surnames) return _surnames;
+  _surnames = new Map();
+  for (const f of CAT) for (const p of [f.d, ...(f.ca || [])]) {
+    if (!p) continue;
+    const s = familyName(p);
+    // A short tail is the second half of a given name ("Bong Joon Ho"), not a
+    // surname anyone would use on its own.
+    if (!s || s.length <= 3) continue;
+    if (!_surnames.has(s)) _surnames.set(s, new Set());
+    _surnames.get(s).add(p);
+  }
+  return _surnames;
+}
+function personName(full) {
+  const s = familyName(full);
+  if (!s) return full;
+  const owners = surnameIndex().get(s);
+  return owners && owners.size === 1 ? s : full;
+}
+
+/* Some genres are already the plural noun for the thing itself — a person says
+   "Eddie Murphy comedies", not "Eddie Murphy comedy movies". The rest are
+   adjectives and take the domain's own noun after them: "Crime Movies". Only
+   movies get the shorthand: "Top 10 Romances" on the books shelf, or "Top 10
+   Comedies" on the TV shelf, both read as films. */
+const GENRE_HEAD = { Comedy: 'Comedies', Thriller: 'Thrillers', Drama: 'Dramas',
+  Documentary: 'Documentaries', Western: 'Westerns', Mystery: 'Mysteries', Romance: 'Romances' };
+const GENRE_ADJ = { 'Science Fiction': 'Sci-Fi', 'Sci-Fi & Fantasy': 'Sci-Fi',
+  'Action & Adventure': 'Action', Animation: 'Animated', History: 'Historical',
+  Music: 'Musical', 'War & Politics': 'War' };
+const cap = s => String(s).charAt(0).toUpperCase() + String(s).slice(1);
+// The word a genre goes by in a sentence, so a card's reason and the name
+// above it call the same thing the same thing.
+const genreWord = g => String(GENRE_ADJ[g] || g).toLowerCase();
 const decadeName = d => (d >= 2000 ? `${d}s` : `${String(d).slice(2)}s`);
-const THIS_YEAR = new Date().getFullYear();
 
-function listNameCandidates(films, topic) {
-  const out = [], push = (score, name, fact) => out.push({ score, name, fact });
-  if (!films || films.length < 2) return out;
-
-  const author = commonest(films.map(f => f.d).filter(Boolean));
-  if (author.n >= 3) push(60 + 4 * author.n,
-    author.n >= 4 ? `Everything ${surname(author.value)} touched` : `${surname(author.value)} keeps showing up`,
-    { kind: 'author', value: author.value, n: author.n });
-
-  const brand = commonest(films.flatMap(f => f.br || []));
-  if (brand.n >= 3) push(55 + 4 * brand.n, `Raised by ${shortBrand(brand.value)}`,
-    { kind: 'brand', value: brand.value, n: brand.n });
-
-  // Billed cast only: a face you would recognise on the poster, not the
-  // fourteenth name in the credits.
-  const face = commonest(films.flatMap(f => (f.ca || []).slice(0, 3)));
-  if (face.n >= 3) push(50 + 4 * face.n, `Whatever ${face.value} is in`,
-    { kind: 'cast', value: face.value, n: face.n });
-
-  const series = films.filter(f => f.col).length;
-  if (series >= 7) push(45, 'Nothing stands alone', { kind: 'series', value: null, n: series });
-
-  // A decade only "stands out" if it beats the next one by more than a nose.
-  const dec = commonest(films.map(f => Math.floor(f.y / 10) * 10));
-  if (dec.n >= 4 && dec.n - dec.runnerUp >= 2) push(40,
-    dec.value < 2000 ? `The ${decadeName(dec.value)} did it better` : `A very ${decadeName(dec.value)} list`,
-    { kind: 'era', value: dec.value, n: dec.n });
-
-  const old = films.filter(f => THIS_YEAR - f.y >= 25).length;
-  if (old >= 7) push(30, 'Nothing here is new', { kind: 'vintage', value: THIS_YEAR - 25, n: old });
-
-  const gen = commonest(films.flatMap(f => f.g || []));
-  if (gen.n === films.length) push(20, `${shortGenre(gen.value)}, and nothing but`,
-    { kind: 'purity', value: gen.value, n: gen.n });
-
-  return out.sort((a, b) => b.score - a.score || a.name.localeCompare(b.name));
+// One decomposition, two renderings. The title and the prompt are the same
+// sentence in two registers, so they cannot drift into describing different
+// lists — which is precisely how a list ends up misnamed.
+function nameParts(t) {
+  const meta = DOMAINS.find(d => d.id === domainOf(t)) || DOMAINS[0];
+  const head = (meta.id === 'movie' && t.genre && GENRE_HEAD[t.genre]) || null;
+  const bare = !t.genre && !t.director && !t.actor && !t.decade;
+  return {
+    person: t.director || t.actor || null,
+    adj: head ? null : (t.genre ? (GENRE_ADJ[t.genre] || t.genre) : null),
+    head: head || cap(meta.noun),
+    tail: t.decade ? ` of the ${decadeName(t.decade)}` : bare ? ' of All Time' : '',
+  };
 }
-// The chosen name. No candidate qualifying means no fact was strong enough to
-// claim anything, and the topic is the honest answer.
-function listName(films, topic) {
-  const c = listNameCandidates(films, topic);
-  return c.length ? c[0].name : (topic && topic.title) || 'A Top 10';
+function topicTitle(t) {
+  const p = nameParts(t);
+  return `Top 10 ${[p.person && personName(p.person), p.adj, p.head].filter(Boolean).join(' ')}${p.tail}`;
 }
+function topicPrompt(t) {
+  const p = nameParts(t);
+  const tail = p.tail.replace(' of All Time', ' of all time');
+  return `Your 10 favorite ${[p.person && personName(p.person), p.adj && p.adj.toLowerCase(), p.head.toLowerCase()]
+    .filter(Boolean).join(' ')}${tail}.`;
+}
+// Criteria in, a whole topic out: named, phrased and identified in one place,
+// with a stable id so the badge gate can ask "have you taken on THIS topic"
+// twice and get the same answer both times.
+function makeTopic(criteria) {
+  const t = { ...criteria, domain: (criteria && criteria.domain) || 'movie' };
+  return { ...t, id: topicId(t), title: topicTitle(t), prompt: topicPrompt(t) };
+}
+/* A list nobody can fill is not a list. A criteria name promises ten entries
+   that all satisfy it, so the criteria have to have ten to give. This gate is
+   what keeps that promise honest — "Top 10 Hitchcock Thrillers" is a fine name
+   and an unofferable list, because the collection holds eight. */
+const TEN = 10;
+const supply = t => CAT.filter(f => inTopic(f, t)).length;
+const offerable = t => supply(t) >= TEN;
+
+// The one place a list's displayed name comes from. There is nothing left to
+// derive: a list's name is its topic's name.
+function listName(films, topic) { return (topic && topic.title) || topicTitle(topic || {}); }
+
+// The three built domains name their all-time list through the same function
+// as everything else, rather than carrying a hand-written title that could
+// disagree with it.
+for (const d of DOMAINS) if (d.topic) {
+  d.topic.title = topicTitle(d.topic);
+  d.topic.prompt = topicPrompt(d.topic);
+}
+// The fixture people get their topics from the same function too. Assigned
+// here rather than at the declaration because the namer's tables are consts
+// further down the file, and a const is not readable before it is written.
+for (const p of PEOPLE) p.topic = makeTopic(p.crit);
 
 const lockedBadge = (big) => `<svg class="lockedbadge${big ? ' big' : ''}" viewBox="0 0 44 44"
   role="img" aria-label="Badge, locked">
@@ -1532,10 +1586,13 @@ const lockedBadge = (big) => `<svg class="lockedbadge${big ? ' big' : ''}" viewB
   <rect class="body" x="13" y="20.5" width="18" height="13.5" rx="3.5"/>
 </svg>`;
 
+// Their ten is drawn from the criteria their list is named for, so the name is
+// true of all ten of them — the same guarantee a real user gets, because the
+// build screen filters by exactly this predicate.
 function theirTen(person) {
   const dm = person.topic.domain;
   const seed = hash(person.name + dm);
-  const shelf = CAT.filter(f => (f.dm || 'movie') === dm && f.g.includes(person.bias));
+  const shelf = CAT.filter(f => inTopic(f, person.topic));
   const ranked = shelf
     .map((f, i) => [((hash(f.t + person.name) % 1000) / 1000) + f.v, f])
     .sort((a, b) => b[0] - a[0]).slice(0, 10).map(x => x[1]);
@@ -1554,17 +1611,19 @@ function renderDiscover() {
     ${tens.map((t, i) => {
       const open = unlocked.has(t.person.topic.id);
       const who = esc(t.person.name), topic = esc(t.person.topic.title);
+      // No topic line above the name any more: since the correction of
+      // 2026-08-15 the name IS the topic, and printing it twice is just
+      // printing it twice.
       return `<article class="other-ten" data-who="${who}" aria-labelledby="ln${i}">
-        <span class="topic">${topic}</span>
         <h2 class="listname" id="ln${i}">${esc(listName(t.ranked, t.person.topic))}</h2>
-        <span class="creator">A Ten by ${who}</span>
+        <span class="creator">A Top 10 by ${who}</span>
         <div class="strip">${t.ranked.slice(0, 6).map((f, j) =>
           `<span class="mini"><img src="${IMG}w185${f.p}" alt=""><b>${j + 1}</b></span>`).join('')}</div>
         <div class="badgecell ${open ? 'open' : 'locked'}">
           ${open ? badgeSVG(compose(t.ranked.map(f => f.id), t.person.topic), 200).replace(/class="layer"/g, 'class="layer on"')
                  : lockedBadge(false)}
           <span class="gate"><span class="state">${open ? 'Badge unlocked' : 'Badge locked'}</span>
-            <span class="how">${open ? `You have your own ${topic} Ten` : `Unlocks when you make your own ${topic} Ten`}</span></span>
+            <span class="how">${open ? `You have your own ${topic}` : `Unlocks when you make your own ${topic}`}</span></span>
         </div>
         <button class="cta" data-other="${who}">Read ${who}&rsquo;s Top 10</button>
       </article>`;
@@ -1582,7 +1641,7 @@ function renderOther(name) {
   const shared = t.ranked.filter(f => mineIds.has(f.id));
   app.innerHTML = `
     <div class="topbar"><h1 class="display-lg">${esc(listName(t.ranked, p.topic))}</h1><button class="link" data-act="discover">Back</button></div>
-    <p class="prompt">${esc(p.topic.title)} · a Ten by ${esc(p.name)}</p>
+    <p class="prompt">A Top 10 by ${esc(p.name)}</p>
     ${mine ? `<p class="prompt"><b>You share ${shared.length} of 10.</b>${shared.length === 0 ? ` Not one ${domainMeta(p.topic).one} in common. Incredible.` : ''}</p>` : ''}
     <section><ol>${t.ranked.map((f, i) => {
       const yours = mine ? (mine.ranked || []).indexOf(f.id) : -1;
@@ -1594,9 +1653,9 @@ function renderOther(name) {
       <div class="badge-inline">${open
         ? badgeSVG(compose(t.ranked.map(f => f.id), p.topic), 200).replace(/class="layer"/g, 'class="layer on"')
         : lockedBadge(true)}</div>
-      <p class="prompt">${open ? `Badge unlocked, because you made your own ${esc(p.topic.title)} Ten.`
-        : `Badge locked. It opens for every ${esc(p.topic.title)} list at once when you make your own.`}</p>
-      ${open ? '' : `<button class="btn gate-cta" data-topic='${esc(JSON.stringify(p.topic))}'>Make your ${esc(p.topic.title)} Ten</button>`}
+      <p class="prompt">${open ? `Badge unlocked, because you made your own ${esc(p.topic.title)}.`
+        : `Badge locked. It opens for every ${esc(p.topic.title)} at once when you make your own.`}</p>
+      ${open ? '' : `<button class="btn gate-cta" data-topic='${esc(JSON.stringify(p.topic))}'>Make your ${esc(p.topic.title)}</button>`}
     </section>
     ${notes()}`;
   dockEl.innerHTML = '';
@@ -1686,8 +1745,12 @@ function facts(ids) {
     const d = Math.floor(f.y / 10) * 10; dec[d] = (dec[d] || 0) + 1;
   }
   const top = o => Object.entries(o).sort((a, b) => b[1] - a[1])[0] || [null, 0];
-  const years = fs.map(f => f.y);
-  return { films: fs, genre: top(gc), director: top(dc), decade: top(dec), span: Math.max(...years) - Math.min(...years) };
+  // A decade is a number everywhere it is used — as a key it came back a
+  // string, and `inTopic` compares decades with !==, so "1990" matched nothing.
+  const topDec = top(dec), years = fs.map(f => f.y);
+  return { films: fs, genre: top(gc), director: top(dc),
+    decade: [topDec[0] === null ? null : Number(topDec[0]), topDec[1]],
+    span: Math.max(...years) - Math.min(...years) };
 }
 function compose(ids, topic) {
   const F = facts(ids), seed = hash(ids.join(',') + topic.title);
@@ -1844,7 +1907,7 @@ function otherDomains() {
     const already = doneDomains.has(d.id);
     return `<button class="sug-topic" data-topic='${esc(JSON.stringify(d.topic))}'>
       <div class="lvl">${already ? 'Another one' : 'A new kind of list'}</div>
-      <div class="t">Your top ten ${esc(d.noun)}</div>
+      <div class="t">${esc(d.topic.title)}</div>
       <div class="why">${already ? 'You have done one of these. Do another.' : 'Same ten slots, a different collection.'}</div></button>`;
   }).join('');
 }
@@ -1858,26 +1921,53 @@ function topicId(t) {
   return t.id || domainOf(t);
 }
 
+/* Every card here is a pair: criteria we will name the new list by, and the
+   fraction of the user's OWN ten that suggested those criteria. The fraction
+   is the reason, never the name (Mischa, 2026-08-15) — the card reads
+
+     Top 10 Crime Movies of the 90s
+     4 of your 10 were crime movies from the 90s.
+
+   and the list it opens holds ten of them. Which is why every candidate is put
+   through `offerable` before it is shown: naming a list by a rule is a promise
+   that ten things satisfy the rule, and offering one the collection cannot
+   fill would break that promise on the very next screen. */
 function rabbitHole() {
   const F = facts(S.ranked), out = [];
   const [g, gn] = F.genre, [d, dn] = F.director, [dec, decn] = F.decade;
-  const N = nounFor(S.topic), N1 = domainMeta(S.topic).one;
-  if (d && dn >= 2) out.push({ level: 'Very specific', title: `${d} ${N}`, director: d, prompt: `Your 10 favorite ${d} ${N}.`, why: `${dn} of your ten are ${d}. Prove it.` });
+  const dm = domainOf(S.topic), N = nounFor(S.topic), N1 = domainMeta(S.topic).one;
+  const add = (level, crit, why) => out.push({ level, crit: { ...crit, domain: dm }, why });
+  const count = pred => F.films.filter(pred).length;
+  const inDec = f => Math.floor(f.y / 10) * 10 === dec;
+
+  if (g && dec) add('Very specific', { genre: g, decade: dec },
+    `${count(f => f.g.includes(g) && inDec(f))} of your 10 were ${genreWord(g)} ${N} from the ${decadeName(dec)}.`);
+  // "By" covers a director and an author both, which a domain-specific verb
+  // would not — books have no directors and movies have no authors.
+  if (d && dn >= 2) add('Very specific', { director: d }, `${dn} of your 10 were by ${d}.`);
   const actorCounts = {};
   for (const f of F.films) for (const a of (f.ca || [])) actorCounts[a] = (actorCounts[a] || 0) + 1;
   const [actor, an] = Object.entries(actorCounts).sort((a, b) => b[1] - a[1])[0] || [null, 0];
-  if (actor && an >= 2) out.push({ level: 'Very specific', title: `${actor} ${N}`, actor, prompt: `Your 10 favorite ${actor} ${N}.`, why: `${actor} turns up ${an} times in your ten.` });
-  if (g && dec) out.push({ level: 'Very specific', title: `${g} of the ${dec}s`, genre: g, decade: dec, prompt: `Your 10 favorite ${g.toLowerCase()} ${N} of the ${dec}s.`, why: 'You keep going back to one decade.' });
-  if (g) out.push({ level: 'Specific', title: `${g} ${N}`, genre: g, prompt: `Your 10 favorite ${g.toLowerCase()} ${N}.`, why: `${gn} of your ten are ${g.toLowerCase()}. Commit.` });
+  if (actor && an >= 2) add('Very specific', { actor }, `${an} of your 10 starred ${actor}.`);
+  if (g) add('Specific', { genre: g }, gn >= 10
+    ? `All 10 of your 10 were ${genreWord(g)} ${N}. Make it official.`
+    : `${gn} of your 10 were ${genreWord(g)} ${N}. Commit.`);
   const present = new Set(F.films.flatMap(f => f.g));
   const absent = Object.keys(MOTIFS).find(x => !present.has(x) && CAT.filter(f => f.g.includes(x)).length > 12);
-  if (absent) out.push({ level: 'Specific', title: `${absent} ${N}`, genre: absent, prompt: `Your 10 favorite ${absent.toLowerCase()} ${N}.`, why: `Not one ${absent.toLowerCase()} ${N1} made your ten. Suspicious.` });
-  if (dec) out.push({ level: 'Broad', title: `The ${dec}s`, decade: dec, prompt: `Your 10 favorite ${N} of the ${dec}s.`, why: `${decn} of your ten came from the ${dec}s.` });
-  out.push({ level: 'Broad', title: `${domainMeta(S.topic).label}, again`, prompt: `Your 10 favorite ${N} of all time.`, why: 'Taste moves. Re-rank from scratch and see.' });
-  // Stable ids and a domain on every generated topic: the reveal gate asks
-  // "have you made a take on THIS topic", which needs the same topic to have
-  // the same name twice.
-  return out.slice(0, 6).map(t => ({ ...t, domain: domainOf(S.topic), id: topicId({ ...t, domain: domainOf(S.topic) }) }));
+  if (absent) add('Specific', { genre: absent },
+    `Not one ${genreWord(absent)} ${N1} made your 10. Suspicious.`);
+  if (dec) add('Broad', { decade: dec }, `${decn} of your 10 came from the ${decadeName(dec)}.`);
+  add('Broad', {}, 'Taste moves. Re-rank from scratch and see.');
+
+  const seen = new Set([S.topic.id]);
+  const offers = [];
+  for (const o of out) {
+    const t = { ...makeTopic(o.crit), level: o.level, why: o.why };
+    if (seen.has(t.id) || !offerable(t)) continue;
+    seen.add(t.id); offers.push(t);
+    if (offers.length === 6) break;
+  }
+  return offers;
 }
 
 /* ── Routing ──────────────────────────────────────────────────────────────── */
@@ -2004,7 +2094,10 @@ document.addEventListener('click', e => {
 // assert against a state the app has already left.
 Object.defineProperty(window, 'S', { get: () => S });
 window.byId = byId; window.PEOPLE = PEOPLE;
-window.theirTen = theirTen; window.listName = listName; window.listNameCandidates = listNameCandidates;
+window.theirTen = theirTen; window.listName = listName;
+window.topicTitle = topicTitle; window.topicPrompt = topicPrompt; window.makeTopic = makeTopic;
+window.supply = supply; window.offerable = offerable; window.inTopic = inTopic; window.KEY = KEY;
+window.rabbitHole = rabbitHole; window.CAT = CAT;
 render();
 </script>
 </body>

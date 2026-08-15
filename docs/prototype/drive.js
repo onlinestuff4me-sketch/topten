@@ -563,7 +563,7 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   await page.waitForSelector('.sug-topic', { timeout: 5000 });
   const finishedText = await page.locator('body').innerText();
   check(/or a different kind of list/i.test(finishedText), 'finishing offers other kinds of list, not just more films');
-  check(/Your top ten shows/i.test(finishedText), 'TV shows is offered as the next domain');
+  check(/Top 10 Shows of All Time/i.test(finishedText), 'TV shows is offered as the next domain');
   check(/coming next/i.test(finishedText), 'and the unbuilt domains are named rather than hidden');
   check(!/see other people/i.test(finishedText), 'discovery is NOT offered after the first list');
 
@@ -595,7 +595,7 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
 
   // ── A second list unlocks discovery, and TV is a real shelf ─────────────
   await page.evaluate(() => {
-    const tv = { id: 'tv', domain: 'tv', title: 'TV shows', prompt: 'Your 10 favorite TV shows of all time.' };
+    const tv = window.makeTopic({ domain: 'tv' });
     window.S.topic = tv; window.S.tray = []; window.S.q = '';
     window.S.graph = { nodes: {}, roots: [], focus: null };
     window.S.filters = { services: [], genre: null, director: null, actor: null };
@@ -639,11 +639,12 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   // is not on TMDB, so this block proves three things the other domains
   // cannot: that a domain can bring its own pictures, that the shelf is
   // really only books, and that none of the film vocabulary leaked in.
-  const booksOffer = page.locator('.sug-topic', { hasText: 'Your top ten books' }).first();
+  const booksOffer = page.locator('.sug-topic', { hasText: 'Top 10 Books of All Time' }).first();
   check(await booksOffer.count() === 1, 'books is offered as a real list to make, not a "coming next" row');
   await booksOffer.click();
   await page.waitForTimeout(300);
-  check(await page.locator('h1').innerText() === 'Books', 'and it lands on the Books build screen');
+  check(await page.locator('h1').innerText() === 'Top 10 Books of All Time',
+    'and it lands on the Books build screen, under the name the list will carry');
   check(await page.locator('.rail .card').count() > 0, 'the books shelf is populated');
 
   const booksOnly = await page.evaluate(() => [...document.querySelectorAll('.rail .card')]
@@ -672,8 +673,14 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   check(!bookChips.some(c => /Services|Actor|Director|Genre/.test(c)),
     'and a book is not offered a Director, an Actor, or a streaming service');
 
+  // Two things at once: the noun is the books shelf's noun, and the NUMBER is
+  // the books shelf's number. The bar used to count the whole catalog — all
+  // 2,932 movies, shows and books — and call the total "books".
   const bodyBooks = await page.locator('body').innerText();
-  check(/\d+ books on the shelf/.test(bodyBooks), 'the Now showing bar counts books, not films');
+  const bookCount = await page.evaluate(() => window.CAT.filter(f => f.dm === 'book').length);
+  const wholeCatalog = await page.evaluate(() => window.CAT.length);
+  check(new RegExp(`All ${bookCount} books in our collection`).test(bodyBooks),
+    `the Now showing bar counts this shelf's books (${bookCount}), not the whole catalog (${wholeCatalog})`);
   check(!/\bfilms?\b/i.test(bodyBooks), 'nothing on the books screen calls a book a film');
   check(!/\bnovels?\b/i.test(bodyBooks), 'and nothing calls it a novel');
 
@@ -735,49 +742,114 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   const type = await page.evaluate(() => [...document.querySelectorAll('.other-ten')].map(c => {
     const px = sel => parseFloat(getComputedStyle(c.querySelector(sel)).fontSize);
     return { name: c.querySelector('.listname').innerText.trim(), nameSize: px('.listname'),
-             creator: c.querySelector('.creator').innerText.trim(), creatorSize: px('.creator'),
-             topicSize: px('.topic') };
+             creator: c.querySelector('.creator').innerText.trim(), creatorSize: px('.creator') };
   }));
-  check(type.length === cardCount && type.every(t => t.nameSize > t.creatorSize
-        && t.nameSize > t.topicSize),
+  check(type.length === cardCount && type.every(t => t.nameSize > t.creatorSize),
     `the list name is the biggest type on every card (${type[0].nameSize}px name vs ` +
-    `${type[0].creatorSize}px creator, ${type[0].topicSize}px topic)`);
+    `${type[0].creatorSize}px creator)`);
   check(type.every(t => t.nameSize >= t.creatorSize * 1.5),
     'and dominant, not merely larger — at least half again the creator\'s size');
-  check(new Set(type.map(t => t.name)).size === type.length,
-    `every generated name is different (${type.map(t => t.name).join(' | ')})`);
+  // Since the correction of 2026-08-15 the name IS the topic, so it appears
+  // once. Two people on the same topic share a name and are told apart by the
+  // creator line — which is the point of Sam and Theo both being on Crime.
+  check(await page.locator('.other-ten .topic').count() === 0,
+    'the name is not repeated as a separate topic line above itself');
 
-  // ── Names are generated from metadata, and every one states a real fact ──
+  // ── A NAME IS A RULE, TRUE OF ALL TEN ───────────────────────────────────
+  // The correction Mischa made on 2026-08-15: a list called "Top 10 Crime
+  // Movies of the 90s" holds ten crime movies from the 90s, not four. The name
+  // comes from the criteria, the criteria filter the shelf, so the only way
+  // this can fail is if the two ever come apart.
   const named = await page.evaluate(() => window.PEOPLE.map(p => {
     const ten = window.theirTen(p);
-    const best = window.listNameCandidates(ten.ranked, p.topic)[0];
-    return { who: p.name, name: best.name, fact: best.fact,
-      films: ten.ranked.map(f => ({ d: f.d || null, y: f.y, g: f.g || [],
-        br: f.br || [], col: f.col || null, ca: (f.ca || []).slice(0, 3) })) };
+    return { who: p.name, name: window.listName(ten.ranked, p.topic), title: p.topic.title,
+      crit: p.crit, supply: window.supply(p.topic),
+      hold: ten.ranked.filter(f => window.inTopic(f, p.topic)).length, n: ten.ranked.length };
   }));
   check(named.length === cardCount, 'every card on screen is a generated name');
   for (const l of named) {
-    const f = l.fact, count = {
-      author: x => x.d === f.value, brand: x => x.br.includes(f.value),
-      cast: x => x.ca.includes(f.value), series: x => !!x.col,
-      era: x => Math.floor(x.y / 10) * 10 === f.value, vintage: x => x.y <= f.value,
-      purity: x => x.g.includes(f.value),
-    }[f.kind];
-    check(!!count, `"${l.name}" is built from a known kind of fact (${f.kind})`);
-    const real = l.films.filter(count).length;
-    check(real === f.n && real >= 3,
-      `"${l.name}" is true of ${l.who}'s ten — ${f.kind}${f.value === null ? '' : ' ' + f.value} in ${real} of 10`);
-    check(l.name.split(/\s+/).length <= 5, `and it is short (${l.name.split(/\s+/).length} words)`);
+    check(/^Top 10 /.test(l.name), `"${l.name}" is named for its criteria, not for its contents`);
+    check(l.name === l.title, `and the name shown is the topic's own name, nothing derived`);
+    check(l.n === 10 && l.hold === 10,
+      `"${l.name}" is true of ${l.who}'s list ${l.hold} times out of ${l.n} — all ten, by construction`);
+    check(l.supply >= 10,
+      `and the collection can supply it (${l.supply} candidates match ${JSON.stringify(l.crit)})`);
   }
-  // The generator ranks candidates; the on-device model would choose among
-  // them. What it may never do is invent one, so the choice must come out of
-  // the same set.
-  const chosenFromCandidates = await page.evaluate(() => window.PEOPLE.every(p => {
-    const ten = window.theirTen(p);
-    return window.listNameCandidates(ten.ranked, p.topic)
-      .some(c => c.name === window.listName(ten.ranked, p.topic));
+  // Two cards may share a name only by sharing a topic; two topics may never
+  // produce the same name, or the badge gate would be unreadable.
+  const byName = await page.evaluate(() => {
+    const m = {};
+    for (const p of window.PEOPLE) (m[p.topic.title] = m[p.topic.title] || new Set()).add(p.topic.id);
+    return Object.entries(m).map(([title, ids]) => [title, ids.size]);
+  });
+  check(byName.every(([, n]) => n === 1),
+    `no two different topics answer to the same name (${byName.length} names, ` +
+    `${byName.filter(([, n]) => n > 1).length} collisions)`);
+
+  // ── A list nobody can fill is never offered ─────────────────────────────
+  // "Top 10 Hitchcock Thrillers" is a perfectly good name for a list this
+  // collection cannot fill — it holds eight. The gate is what keeps a criteria
+  // name from becoming a promise the next screen breaks.
+  const fillable = await page.evaluate(() => {
+    const cases = [{ director: 'Alfred Hitchcock', genre: 'Thriller' },
+                   { actor: 'Eddie Murphy', genre: 'Comedy' },
+                   { genre: 'Crime', decade: 1990 }];
+    return cases.map(c => { const t = window.makeTopic(c);
+      return { title: t.title, supply: window.supply(t), offerable: window.offerable(t) }; });
+  });
+  for (const g of fillable) check(g.offerable === (g.supply >= 10),
+    `"${g.title}" is ${g.offerable ? 'offerable' : 'refused'} on ${g.supply} candidates`);
+  check(fillable.some(g => !g.offerable) && fillable.some(g => g.offerable),
+    'the gate is live in both directions — it refuses some lists and passes others');
+
+  // A decade arrived from `facts()` as an object key, so it was the STRING
+  // "1990", and `inTopic` compares decades with !==. Every decade-scoped list
+  // was silently empty and the gate refused all of them. Both halves are
+  // asserted: the type, and the effect the wrong type had.
+  const decades = await page.evaluate(() => {
+    const t = window.makeTopic({ genre: 'Crime', decade: 1990 });
+    const strT = window.makeTopic({ genre: 'Crime', decade: '1990' });
+    const ten = window.CAT.filter(f => (f.dm || 'movie') === 'movie' && f.g.includes('Crime'))
+      .sort((a, c) => c.v - a.v).slice(0, 10).map(f => f.id);
+    // The topic matters as much as the ten: rabbitHole builds criteria in the
+    // CURRENT domain, and by this point in the run the app is on books.
+    window.S.topic = window.makeTopic({ domain: 'movie' });
+    window.S.scene = 'done'; window.S.ranked = ten; window.S.tray = ten; window.S.badge = null;
+    const offered = window.rabbitHole();
+    return { supply: window.supply(t), strSupply: window.supply(strT),
+      decType: typeof offered.map(o => o.decade).find(d => d != null),
+      hasDecade: offered.some(o => o.decade != null), titles: offered.map(o => o.title) };
+  });
+  check(decades.supply >= 10, `a decade-scoped list finds its candidates (${decades.supply})`);
+  check(decades.strSupply === 0, 'and a string decade finds none — the bug, kept as the falsification');
+  check(decades.decType === 'number', `so a generated topic carries a real number (${decades.decType})`);
+  check(decades.hasDecade, `and a decade list is actually offered (${decades.titles.join(' | ')})`);
+
+  // "Robert De Niro" shortens to De Niro or not at all. It shortened to "Niro".
+  const people = await page.evaluate(() => ({
+    deNiro: window.makeTopic({ actor: 'Robert De Niro' }).title,
+    // Two Miyazakis on the shelf, so neither may claim the surname alone.
+    miyazaki: window.makeTopic({ director: 'Hayao Miyazaki' }).title,
+    hitchcock: window.makeTopic({ director: 'Alfred Hitchcock' }).title,
   }));
-  check(chosenFromCandidates, 'the name shown is always one of the generated candidates');
+  check(!/\bNiro\b/.test(people.deNiro) || /De Niro/.test(people.deNiro),
+    `a name particle stays with its name ("${people.deNiro}")`);
+  check(people.miyazaki === 'Top 10 Hayao Miyazaki Movies',
+    `an ambiguous surname stays whole ("${people.miyazaki}") — Hayao and Goro are both on the shelf`);
+  check(people.hitchcock === 'Top 10 Hitchcock Movies',
+    `an unambiguous one shortens the way people say it ("${people.hitchcock}")`);
+
+  // Every reason on the completion screen is a FRACTION of the user's own ten,
+  // and never the name of the list it is offering. This is the whole of
+  // Mischa's correction, stated once as a test.
+  const reasons = await page.evaluate(() => window.rabbitHole().map(t => ({ title: t.title, why: t.why })));
+  check(reasons.length >= 3, `the completion screen offers ${reasons.length} criteria lists`);
+  check(reasons.every(r => /^Top 10 /.test(r.title)), 'each named for its criteria');
+  const counted = reasons.filter(r => /\b(\d+|All 10) of your 10\b/.test(r.why));
+  check(counted.length >= reasons.length - 1,
+    `and each gives the count off your own ten as the reason ("${counted[0].why}")`);
+  check(reasons.every(r => !r.why.includes(r.title)),
+    'the reason is never the name — a fraction names nothing');
 
   // ── No user-entered text: a card carries metadata and nothing else ───────
   const strays = await page.evaluate(() => [...document.querySelectorAll('.other-ten')]
@@ -879,9 +951,12 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   // ── A draft saved by an earlier build must survive a rebuilt shelf ──────
   // The catalog is regenerated from TMDB, so ids can vanish between builds.
   // This exact state blanked the map and threw on 'reading t'.
+  // The key is read from the app, not written down here. It was written down
+  // here once, the app bumped it, and this whole regression quietly stopped
+  // testing anything — a test that cannot fail is worse than no test.
   await page.evaluate(() => {
-    localStorage.setItem('topten.proto.v4', JSON.stringify({
-      scene: 'build', topic: { id: 'movies', title: 'Movies', prompt: 'p' },
+    localStorage.setItem(window.KEY, JSON.stringify({
+      scene: 'build', topic: { id: 'movie', title: 'Top 10 Movies of All Time', prompt: 'p' },
       tray: [999999001, 999999002], q: '',
       graph: { nodes: { '999999001': { id: 999999001, parent: null, kids: [999999002], kind: 'followed' },
                         '999999002': { id: 999999002, parent: 999999001, kids: [], kind: 'picked' } },

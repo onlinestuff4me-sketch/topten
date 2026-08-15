@@ -141,12 +141,15 @@ points. Inputs never render below 16pt-equivalent (inherited Stack rule).
 - **Badge** (rendered per badges.md) and **Locked Badge** — locked state is
   the badge's plate in `status.locked` under frosted glass, wearing a
   keyhole-free lock glyph, with the state ("Badge locked") and the condition
-  that lifts it ("Unlocks when you make your own Crime films Ten") beside it.
+  that lifts it ("Unlocks when you make your own Top 10 Crime Movies of the
+  90s") beside it.
   The condition is phrased as a **condition**, never as an imperative: it sits
   next to a real CTA and must not read as a competing one.
-- **List Card** — the discovery unit: topic label, generated list name at
-  `display.md`, creator byline, ranked poster strip, badge state, and exactly
-  one 48pt CTA. Nothing on it is user-entered text (PRD Req 12 amendment).
+- **List Card** — the discovery unit: the list's name at `display.md`, creator
+  byline, ranked poster strip, badge state, and exactly one 48pt CTA. The name
+  states the criteria every one of the ten entries satisfies ("Top 10 Crime
+  Movies of the 90s"); nothing on the card is user-entered text (PRD Req 12
+  amendment).
 - **Badge Case** — profile hero: a wall grid of badges, drafts as ghost
   outlines (own profile only).
 - **Consensus Bar** — on topic pages: ten tiny artwork tiles composing "the
@@ -619,19 +622,32 @@ the person won by being first. The anatomy is now a hierarchy, top to bottom:
 
 | Part | Token | Why |
 |---|---|---|
-| Topic | `label.sm` (11pt, uppercase, `text.disabled`) | Scope, read at a glance |
 | **List name** | `display.md` (22pt New York Semibold) | The artifact — the reason to tap |
-| Creator | 12pt `text.secondary`, *"A Ten by Sam"* | Attribution, subordinate |
+| Creator | 12pt `text.secondary`, *"A Top 10 by Sam"* | Attribution, subordinate |
 | Six-poster strip | 40 × 60 minis, ranked | What the list actually contains |
 | Badge state | 44pt badge or lock + `label.sm` + one line | The gate, stated |
 | **One CTA** | 48pt full-width pill, accent outline | The single action |
 
-The name comes from the list's contents — nothing on the card is typed by a
-person (PRD Req 12 amendment). **Names for a design pass to look at:** *"The
-90s did it better"*, *"Nothing stands alone"*, *"Miyazaki keeps showing up"*,
-*"Everything Hitchcock touched"*, *"Whatever Al Pacino is in"*, *"Comedy, and
-nothing but"*, *"Nothing here is new"*. They run 3–5 words; the 22pt line is
-sized to hold two lines of that without the card changing shape.
+**The topic row above the name is gone (2026-08-15, Mischa).** It was there
+when a name was a claim about the list and the topic was its scope — two
+different strings worth two different rows. Since the naming correction the
+name *is* the criteria, so the topic row printed the name a second time in
+11pt. One row, one name.
+
+Nothing on the card is typed by a person, and the name states the rule all ten
+entries satisfy (PRD Req 12 amendment). **Names for a design pass to look
+at:** *"Top 10 Crime Movies of the 90s"*, *"Top 10 Hitchcock Movies"*, *"Top 10
+Animated Movies of the 2000s"*, *"Top 10 Sci-Fi Movies"*, *"Top 10 Pacino
+Movies"*, *"Top 10 Drama Shows"*, *"Top 10 Books of All Time"*. They run 4–7
+words — longer than the old claim-names, and the 22pt line must hold **two**
+lines of that without the card changing shape.
+
+**Two cards may carry the same name.** Two people who both made a *Top 10 Crime
+Movies of the 90s* have lists with the same name, and the creator byline is
+what tells them apart — which is the correct hierarchy for this app, where the
+list is the artifact and the person is the attribution. Design for it rather
+than around it: adjacent identical names on the discovery screen are a
+signal that a topic is popular, not a bug.
 
 **A card has one action, and the gate is not it.** The call to action was a
 line of secondary text sitting in the middle of the card with air on both

@@ -3,8 +3,8 @@
 *Session-handoff file, rewritten at the end of each session (Stack
 convention). Read this first, then `AGENTS.md`, then `specs/`.*
 
-**Last written:** 2026-08-14 · cloud session (Linux, no Xcode) · **M0 done,
-M1.5 prototype built and deployed, awaiting Mischa's first rounds**
+**Last written:** 2026-08-15 · cloud session (Linux, no Xcode) · **M0 done,
+M1.5 prototype through six rounds of feedback, three domains live**
 
 ---
 
@@ -38,7 +38,10 @@ before a line of Swift was written against it.
   4 tests, green. Falsified once on a throwaway branch to prove the gate can
   go red.
 - **Browser (Chromium, iPhone 15 Pro viewport, `docs/prototype/drive.js`):**
-  the prototype driven end to end — 84 assertions, zero page errors. These now
+  the prototype driven end to end — 229 assertions, zero page errors.
+  Playwright is installed globally here, so the suite needs
+  `NODE_PATH=/opt/node22/lib/node_modules` and a static server on 8788
+  (`python3 -m http.server 8788` from `docs/prototype`). These now
   include layout invariants Mischa reported by eye: every block shares one
   left edge, rails align to it, all ten slots fit without scrolling, and
   nothing is trapped behind the dock. Screenshots from the same run judge the
@@ -121,6 +124,54 @@ state that broke it.
 
 **Anything that rebuilds `catalog.js` must assume someone is holding a draft
 against the old one.**
+
+## Round 6 (2026-08-15) — books, copy, and the naming correction
+
+Five agents in parallel (copy, map, discover, books, catalog), integrated on
+one branch. What each landed:
+
+| Ask | Outcome |
+|---|---|
+| Intro: one line per bullet, "What's your Top 10?" | Rewritten; every claim now fits one line |
+| US voice — "movies" not "films", US spelling | `specs/design.md` standing rule; asserted on four screens |
+| "Other Top 10 Lists", lead with the name, no descriptions | Topic row dropped, creator demoted, blurbs gone |
+| "All 940 films in our collection" — and shouldn't it be thousands? | Both halves fixed: **2,000 movies + 700 shows + 232 books**, and the count is now scoped to the shelf you are on |
+| The map showed a selection nobody made; needs an empty state and a legend | Fixed, with a visual legend replacing the description line |
+| Build the books domain | 232 books with their own covers, Author/Subject axes, no streaming chip |
+| **List names must be criteria, satisfied 10/10** | The whole namer replaced — see below |
+
+### The naming correction (Mischa, 2026-08-15)
+
+The previous namer read a finished ten and made a claim about it: *"Everything
+Hitchcock touched"*, *"The 90s did it better"*. Every name it produced was
+true and every one was the wrong kind of thing. A list is named by **the
+criteria all ten of its entries satisfy** — *Top 10 Crime Movies of the 90s* —
+and the name is true of 10 of 10 not because anything re-checks it, but
+because the criteria are what filtered the shelf the list was built from.
+**Naming and scoping are the same act.**
+
+The census the old namer used is still exactly right for deciding *which list
+to offer next*. It was pointed at the wrong output. It now produces the
+**reason** on a completion-screen card:
+
+> **Top 10 Crime Movies of the 90s**
+> 5 of your 10 were crime movies from the 90s.
+
+A name is a rule; a fraction is a reason. Keeping them apart is the whole
+correction, and a test asserts a reason never contains the name it justifies.
+
+**A criteria name is a promise the next screen keeps, so a list the collection
+cannot fill is never offered** — every topic is gated on ≥10 matching
+candidates. The gate refuses *Top 10 Hitchcock Thrillers* (8 on the shelf) and
+*Top 10 Eddie Murphy Comedies* (6), and it earned its keep immediately: it
+exposed that `facts()` returned the top decade as the **string** `"1990"`,
+which `inTopic` compares with `!==`, so every decade-scoped list had silently
+been empty. Both the type and the effect are now regression-tested.
+
+Two smaller judgements inside the namer: surnames shorten only when unique on
+the shelf (*Hitchcock* yes; *Hayao Miyazaki* stays whole because Goro is there
+too, *Eddie Murphy* because Cillian and Ryan are), and particles stay attached
+(*Robert De Niro* → *De Niro*, which it briefly got wrong as *Niro*).
 
 ## Round 5 (2026-08-15) — onboarding, domains, discovery
 

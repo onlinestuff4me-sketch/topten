@@ -48,8 +48,9 @@ nothing catches it.
 - **No follower feeds, comments, DMs, or notifications** in P0 (see P1).
 - **No freeform/off-catalog topics** in P0 (see Requirement 6 and P1).
 - **No user-entered list names or descriptions** (2026-08-15, Mischa). A list's
-  name is generated from its own contents; there is no field to type one in,
-  and no blurb under it. Free text on a social surface is a moderation and
+  name is its criteria — *"Top 10 Crime Movies of the 90s"* — and every one of
+  its ten entries satisfies them; there is no field to type one in, and no
+  blurb under it. Free text on a social surface is a moderation and
   safety surface, and the app already knows more about a list than its author
   would type. See the Requirement 12 amendment for the generator and for where
   Foundation Models fit.
@@ -441,34 +442,64 @@ display-size type on the card** (22pt serif); the topic sits above it as an
 read a screen of these and know which lists you want before you have read a
 single name of a person.
 
-**2. Names are derived from the list's own metadata. User-entered free text is
-deliberately excluded.** Mischa's reasoning, and it is a product decision
-rather than a technical one: a free text field on a social surface is a
-moderation and safety surface — it invites the work of policing names, images
-and abuse, and it buys nothing this product needs, because the app already
-knows more about the list than the author would bother to type.
+**2. A list's name is its criteria. User-entered free text is deliberately
+excluded.** No-free-text is Mischa's product decision rather than a technical
+one: a free text field on a social surface is a moderation and safety surface
+— it invites the work of policing names, images and abuse, and it buys nothing
+this product needs, because the app already knows more about the list than the
+author would bother to type.
 
-So a name is a **template plus the fact that licenses it**, counted off the ten
-items: a concentrated director or creator, a studio whose name is a promise, a
-recurring billed face, a run of films that belong to series, a dominant decade,
-a list with nothing recent in it, and — as the floor — a genre the whole list
-shares. Facts are ranked by how much they **distinguish** the list, so on a
-genre topic the genre itself scores lowest: it only restates the topic. The
-register is a name a person would give a list, not a caption: *"Everything
-Hitchcock touched"*, *"The 90s did it better"*, *"Nothing stands alone"*.
+**Amended 2026-08-15 (Mischa), reversing this section's first answer.** The
+generator described here read a finished ten and made a *claim* about it —
+*"Everything Hitchcock touched"*, *"The 90s did it better"*. Every such name
+was true, and every one of them was the wrong kind of thing. A list is named by
+the **criteria all ten of its entries satisfy**:
 
-**No name may assert anything not in the data.** A template is only offered
-when its fact clears a threshold (an author in ≥3 of 10, a decade that beats
-the runner-up by ≥2, and so on), and the harness re-counts every shown name's
-fact against that list's ten films.
+> Top 10 Crime Movies of the 90s · Top 10 Sci-Fi Franchises · Top 10 Miyazaki
+> Movies · Top 10 Hitchcock Thrillers · Top 10 Al Pacino Movies · Top 10 Eddie
+> Murphy Comedies
 
-**Where Foundation Models fit — the same shape as the badge inscription.** The
-deterministic generator produces the *candidate set*, ranked. On device, the
-`@Generable` pass **chooses among exactly those candidates** (an id-constrained
-choice, plus the relevancy and safety checks in `specs/badges.md`) — it never
-writes a name freehand, so its failure mode is a duller choice, never a false
-or unsafe claim. The deterministic ordering is the fallback whenever the model
-is unavailable or its choice fails a check, and it is what ships first.
+A name is therefore a **rule, true of 10 out of 10** — not because anything
+re-checks it after the fact, but because the rule is exactly what filtered the
+shelf the list was built from. Naming and scoping are the same act. A list
+called *Top 10 Crime Movies of the 90s* that holds four crime movies from the
+1990s is not a badly-named list; it is a different list wearing the name.
+
+**The fraction is a REASON, and reasons live on the completion screen.** The
+census this section used to name lists with is still exactly the right input
+for deciding *which list to offer someone next* — it was only ever pointed at
+the wrong output. Where the old generator would have titled a list *"The 90s
+did it better"*, the completion screen now offers:
+
+> **Top 10 Crime Movies of the 90s**
+> 4 of your 10 were crime movies from the 90s.
+
+The name is the rule; the fraction is why we are suggesting it. Keeping those
+two apart is the whole of the amendment, and the harness asserts a reason never
+contains the name it justifies.
+
+**A criteria name is a promise the next screen has to keep, so an unfillable
+list is never offered.** *Top 10 Hitchcock Thrillers* is a perfectly good name
+for a list this collection cannot supply — it holds eight. Every offered
+topic is gated on **≥10 candidates** matching its criteria. This is a real
+gate with real refusals, not a formality: on the 2,700-title collection it
+passes Crime-of-the-90s (54) and Miyazaki (11), and refuses Hitchcock thrillers
+(8) and Eddie Murphy comedies (6). It also caught a live bug — a decade
+arriving as the string `"1990"` made every decade-scoped list silently empty,
+and the gate is what made the silence audible.
+
+**Shortening a name is the one judgement in it.** *Alfred Hitchcock* becomes
+*Hitchcock* because that is the list people ask for; *Eddie Murphy* stays whole
+because Cillian and Ryan Murphy are also on the shelf, and *Hayao Miyazaki*
+stays whole because Goro is. The deterministic rule is surname-if-unique, with
+particles kept attached (*Robert De Niro* → *De Niro*, never *Niro*).
+
+**Where Foundation Models fit.** Unchanged in shape, changed in job. The model
+no longer chooses among candidate *names* — there is nothing to choose, since
+the criteria name themselves. It chooses **which criteria are worth offering**,
+and may shorten a name the way a person would. It never writes one, because a
+written name can be false while a rule cannot. The deterministic namer is the
+floor and is what ships first.
 
 **3. Nothing on a card is a description.** The hand-written character lines
 ("Argues about endings.") are gone from the prototype entirely — they were the
@@ -488,8 +519,12 @@ made the old one unreadable.
 - Acceptance (added): every discovery card's list name renders larger than its
   creator's name; no card carries a description line or any user-entered text;
   each card has exactly one action, ≥44pt, fully inside the card, whose label
-  states the action; every generated name's supporting fact is true of that
-  list's ten items; the locked state names both the lock and its key.
+  states the action; the locked state names both the lock and its key.
+- Acceptance (amended 2026-08-15): every list name is its topic's own name and
+  begins *"Top 10 "*; every one of a list's ten entries satisfies the criteria
+  that name it; no two different topics render to the same name; no topic is
+  offered whose criteria the collection cannot fill ten times; and no
+  suggestion's reason contains the name of the list it is offering.
 
 **13. Accessibility & platform quality.** Dynamic Type through accessibility
 sizes, VoiceOver-complete (including a non-drag ranking path and meaningful
