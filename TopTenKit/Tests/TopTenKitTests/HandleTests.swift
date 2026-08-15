@@ -14,7 +14,11 @@ struct HandleTests {
             #expect(Handle.isValid(h), "database would refuse \"\(h)\"")
             // The constraint in supabase/migrations is ^[a-z0-9_]{3,24}$.
             #expect(h.count >= 3 && h.count <= 24, "\"\(h)\" is \(h.count) characters")
-            #expect(h.allSatisfy { $0.isLowercase || $0.isNumber || $0 == "_" }, h)
+            // Interpolated, not the bare variable: `#expect`'s second argument is
+            // a `Comment`, which a string LITERAL converts to and a `String`
+            // value does not.
+            #expect(h.allSatisfy { $0.isLowercase || $0.isNumber || $0 == "_" },
+                    "\"\(h)\" holds a character the constraint forbids")
         }
     }
 
