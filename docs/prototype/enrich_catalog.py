@@ -25,6 +25,7 @@ API = "https://api.themoviedb.org/3"
 HERE = os.path.dirname(os.path.abspath(__file__))
 CAT = os.path.join(HERE, "catalog.js")
 REGIONS = ("GB", "US")
+WORKERS = 16   # measured: TMDB from this container tops out ~25 req/s regardless
 
 
 def get(path, **params):
@@ -85,7 +86,7 @@ def fetch():
     order = [f["id"] for f in films]
     by_id = {f["id"]: f for f in films}
 
-    with ThreadPoolExecutor(max_workers=10) as pool:
+    with ThreadPoolExecutor(max_workers=WORKERS) as pool:
         for fid, sv in zip(order, pool.map(providers, order)):
             if sv:
                 by_id[fid]["sv"] = sv
@@ -257,7 +258,7 @@ def fetch_details():
         return col, brands
 
     order = [f["id"] for f in films]
-    with ThreadPoolExecutor(max_workers=10) as pool:
+    with ThreadPoolExecutor(max_workers=WORKERS) as pool:
         for fid, (col, brands) in zip(order, pool.map(one, order)):
             # Clear first. Setting without clearing left a corrected run's
             # rejects in place — "Paramount Animation" stayed on Shooter after
@@ -322,7 +323,7 @@ def refresh_providers():
 
     order = [f["id"] for f in films]
     by_id = {f["id"]: f for f in films}
-    with ThreadPoolExecutor(max_workers=10) as pool:
+    with ThreadPoolExecutor(max_workers=WORKERS) as pool:
         for fid, sv in zip(order, pool.map(one, order)):
             if sv:
                 by_id[fid]["sv"] = sv

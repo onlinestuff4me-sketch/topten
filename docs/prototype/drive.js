@@ -147,11 +147,28 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   check(branchCards >= 3, `the branch has ${branchCards} films to offer`);
   await page.screenshot({ path: SHOTS + '/2-branch.png' });
 
-  // Going deeper again extends the trail rather than replacing it.
-  await page.locator('.rail').first().locator('.card').first().locator('.do-similar').click();
+  // Going deeper again extends the trail rather than replacing it — into a film
+  // that is NOT already on the map. Re-entering a node you had already picked is
+  // a different, documented behaviour ("tapping a followed node re-enters the
+  // path there"), and taking that branch would make the walk-back assertion
+  // below vacuous: it re-roots you on a node whose trail is one long. Which film
+  // sits first in a rail is a fact about the shelf, not about the app, and the
+  // 2,000-film shelf duly put an already-picked Spider-Man there.
+  const fresh = await page.evaluate(() => {
+    const rail = document.querySelector('.rail');
+    for (const el of rail.querySelectorAll('.card')) {
+      const id = +el.dataset.card;
+      if (!window.S.graph.nodes[id]) return id;
+    }
+    return null;
+  });
+  check(fresh != null, 'the branch offers a film that is not already on the map');
+  const nodesBeforeDeeper = await page.evaluate(() => Object.keys(window.S.graph.nodes).length);
+  await page.locator('.rail').first().locator(`.card[data-card="${fresh}"]`).locator('.do-similar').click();
   await page.waitForTimeout(120);
   const explored = await page.evaluate(() => Object.keys(window.S.graph.nodes).length);
-  check(explored >= 2, `going deeper extends the path rather than replacing it (${explored} nodes)`);
+  check(explored === nodesBeforeDeeper + 1,
+    `going deeper extends the path rather than replacing it (${nodesBeforeDeeper} nodes \u2192 ${explored})`);
   const deepFocus = await page.evaluate(() => window.S.graph.focus);
 
   // THE round-2 defect: walking back used to delete everything ahead of the
