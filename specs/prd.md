@@ -189,6 +189,61 @@ existing topics, and constrained to v1 domains.
   completed; tapping one lands directly in Gather with the topic set; works
   offline; on non-FM devices a curated static suggestion tree engages instead.
 
+**Amendment 2026-08-15 (Mischa, round 4) — "more like this" has more than one
+answer, and the model's job is to pick which.**
+
+Similarity was one weighted formula, so every rail answered the same question.
+Mischa's observation is the requirement: *"In some cases it makes sense (eg
+when the director is well known and the movie is tied to that identity and
+authorship… and other cases where there isn't a clear authorship component and
+it's more about genre similarity or franchise or studio alignment (more like
+Toy Story should show Toy Story 2, 3, 4, 5, Buzz Lightyear, and then more
+classic Pixar movies)."*
+
+So a link is scored on **axes**, and the strongest axis both ranks the film and
+**labels it**, because *More Toy Story*, *Also Pixar*, *With Tom Cruise* and
+*Also Christopher Nolan* are different promises and the user is owed the one
+being made:
+
+| Axis | Weight | Why |
+|---|---|---|
+| Same series (`belongs_to_collection`) | 14 | The least ambiguous answer there is |
+| Shared lead actor | 6 | Top Gun: Maverick is a Cruise film before it is anything else |
+| Same director | 5 (×1.2 if prolific here) | Real, but no longer able to swamp a rail |
+| Brand studio (Pixar, Ghibli, A24, …) | 5 | Only where the name is a promise — an allowlist, verified against TMDB at build time |
+| Often watched together (TMDB) | 5 | Crowd behaviour: useful, not authoritative |
+| Shared genre / era | 1.5 / 1 | The floor |
+
+Plus a **diversity cap of four films per director per rail** — a rail that is
+one person's filmography answers a question the user did not ask, and *"Also
+Nolan"* is one tap away when it IS the question.
+
+**Where Foundation Models belong (decided 2026-08-15, and this is what to
+build towards).** The axes above are computable; *which axis matters for this
+film* is a cultural judgement that is not in the metadata. Nothing in TMDB
+says that a Safdie brothers film is an authored object while a Marvel entry is
+a franchise one, or that Top Gun: Maverick is sold on its star. That judgement
+is exactly what a language model knows and a weights table does not.
+
+The role is therefore **the model chooses the axis, never the films**:
+
+1. **Deterministic pre-pass (`TopTenKit`, testable, offline):** compute every
+   candidate link and its axis scores, as now. This alone must produce a good
+   rail — it is the fallback, and it is what ships first.
+2. **`@Generable` pass (on-device):** given the seed film and the *candidate
+   axes only*, the model returns a ranked axis choice plus the one-line reason
+   — an id-constrained enum, so it cannot invent a film, a director, or a
+   studio that is not in the candidate set. Same shape as the badge pipeline
+   in `badges.md`: constrained output means failure modes are "bland", never
+   "wrong".
+3. **Post-check:** an axis the pre-pass did not offer is discarded.
+
+This keeps the guarantee that matters — every film shown is a real film from
+the catalog with a real connection — while letting the model supply the part
+that is genuinely taste: *what kind of "more like this" this film deserves*.
+Reordering axes is cheap, low-latency, and degrades safely; asking a model to
+pick titles would risk hallucinated films and is explicitly not the plan.
+
 **6. Catalogs (v1 domains: movies + TV).** Items come from TMDB (search,
 metadata, artwork), reusing Stack's integration knowledge. TMDB attribution
 shown per licence. Topic scopes may bind to catalog filters (person, genre,

@@ -127,6 +127,7 @@ section { margin-top: var(--s8); }
 /* A reason you can act on. "Also Nolan" now narrows to Nolan rather than
    just explaining itself (Mischa, round 2). */
 .card .why { margin-top: 4px; }
+.card .why .static { display: inline-block; font-size: 0.6875rem; line-height: 1.2; color: var(--text-secondary); border: 1px solid var(--border-subtle); border-radius: 999px; padding: 5px 8px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .card .why button { font-size: 0.6875rem; line-height: 1.2; color: var(--accent); border: 1px solid var(--accent-muted); background: var(--accent-muted); border-radius: 999px; padding: 4px 8px; min-height: 28px; max-width: 100%; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* Two named controls per card. A bare chevron was a guess the user had to
    make (Mischa, round 2: "I didn't know how to add something to the 10 list
@@ -450,22 +451,64 @@ function facetValues(kind) {
    Inception under "more like Interstellar", which reads as the app not
    understanding the question. Genre alone is the weakest signal and is
    deliberately worth less than one shared name. */
-const SIM = { director: 10, rec: 5, cast: 3, genre: 1.5, era: 1 };
+/* Why one film is "like" another is not one question, and answering it with
+   one weight was the bug (Mischa, round 4).
+
+   Toy Story's answer is the series, then Pixar. Top Gun: Maverick's is Tom
+   Cruise. Interstellar's really is Nolan. So each link scores on its own axis
+   and the strongest one both ranks the film and labels it — the card says
+   which claim it is making, because "More Toy Story" and "Also Pixar" are
+   different promises and the user should be told which they are getting.
+
+   Where this stops: deciding whether authorship is even the point for a given
+   film is a judgement about culture, not a fact in the metadata. That is the
+   piece an on-device model is actually suited to — see specs/prd.md Req 5. */
+const SIM = { collection: 14, brand: 5, director: 5, prolific: 1.2, lead: 6, cast: 2, rec: 5, genre: 1.5, era: 1 };
+
+// A rail that is one person's filmography answers a question you did not ask.
+const MAX_PER_DIRECTOR = 4;
+
+const dirCount = (() => { const c = {}; for (const f of CAT) if (f.d) c[f.d] = (c[f.d] || 0) + 1; return c; })();
+
+function link(f, seed) {
+  const parts = [];
+  if (f.col && f.col === seed.col) parts.push([SIM.collection, { label: `More ${f.col.replace(/ Collection$/, '')}`, jump: null }]);
+  const brand = (f.br || []).find(b => (seed.br || []).includes(b));
+  if (brand) parts.push([SIM.brand, { label: `Also ${brand}`, jump: null }]);
+  if (f.d && f.d === seed.d) parts.push([SIM.director * (dirCount[f.d] >= 4 ? SIM.prolific : 1),
+    { label: `Also ${f.d}`, jump: { kind: 'director', value: f.d } }]);
+  const shared = (f.ca || []).filter(c => (seed.ca || []).includes(c));
+  const lead = shared.find(c => c === (seed.ca || [])[0] || c === (f.ca || [])[0]);
+  if (lead) parts.push([SIM.lead, { label: `With ${lead}`, jump: { kind: 'actor', value: lead } }]);
+  const others = shared.filter(c => c !== lead);
+  if (others.length) parts.push([others.length * SIM.cast, { label: `With ${others[0]}`, jump: { kind: 'actor', value: others[0] } }]);
+  if ((seed.r || []).includes(f.id)) parts.push([SIM.rec, { label: 'Often watched together', jump: null }]);
+  const g = f.g.filter(x => seed.g.includes(x));
+  if (g.length) parts.push([g.length * SIM.genre, { label: `Also ${g[0].toLowerCase()}`, jump: { kind: 'genre', value: g[0] } }]);
+  if (Math.abs(f.y - seed.y) <= 6) parts.push([SIM.era, null]);
+  if (!parts.length) return null;
+  const total = parts.reduce((a, b) => a + b[0], 0);
+  const top = parts.slice().sort((a, b) => b[0] - a[0])[0];
+  return { total, why: top[1] };
+}
 
 function similarTo(seed, exclude, limit = Infinity) {
-  const scored = [];
+  const ranked = [];
   for (const f of pool()) {
     if (f.id === seed.id || exclude.has(f.id)) continue;
-    let s = 0;
-    if (f.d && f.d === seed.d) s += SIM.director;
-    if ((seed.r || []).includes(f.id)) s += SIM.rec;
-    s += (f.ca || []).filter(c => (seed.ca || []).includes(c)).length * SIM.cast;
-    s += f.g.filter(g => seed.g.includes(g)).length * SIM.genre;
-    if (Math.abs(f.y - seed.y) <= 6) s += SIM.era;
-    if (s > 0) scored.push([s, f]);
+    const l = link(f, seed);
+    if (l) ranked.push({ f, ...l });
   }
-  scored.sort((a, b) => b[0] - a[0] || b[1].v - a[1].v);
-  return scored.slice(0, limit).map(x => x[1]);
+  ranked.sort((a, b) => b.total - a.total || b.f.v - a.f.v);
+  const perDirector = {};
+  const out = [];
+  for (const r of ranked) {
+    const d = r.f.d || '—';
+    if ((perDirector[d] = (perDirector[d] || 0) + 1) > MAX_PER_DIRECTOR) continue;
+    out.push(r);
+    if (out.length >= limit) break;
+  }
+  return out;
 }
 
 /* Everything that satisfies the current query — the honest denominator for
@@ -477,20 +520,9 @@ function matching() {
   }
   if (S.graph.focus != null) {
     const seed = byId.get(S.graph.focus);
-    if (seed) return similarTo(seed, new Set());
+    if (seed) return similarTo(seed, new Set()).map(r => r.f);
   }
   return pool();
-}
-
-/* A reason is a claim AND a control: tapping it narrows to that thing, so
-   "Also Nolan" answers "what else of his?" without a trip to a filter sheet. */
-function whySimilar(f, seed) {
-  if (f.d && f.d === seed.d) return { label: `Also ${f.d}`, jump: { kind: 'director', value: f.d } };
-  const c = (f.ca || []).find(x => (seed.ca || []).includes(x));
-  if (c) return { label: `With ${c}`, jump: { kind: 'actor', value: c } };
-  const g = f.g.find(x => seed.g.includes(x));
-  if (g) return { label: `Also ${g.toLowerCase()}`, jump: { kind: 'genre', value: g } };
-  return null;
 }
 
 function sections() {
@@ -506,7 +538,7 @@ function sections() {
       const films = similarTo(seed, new Set(), 24);
       if (films.length) out.push({
         id: 'branch', title: `More like ${seed.t}`, branch: true,
-        cards: films.map(f => ({ f, why: whySimilar(f, seed) }))
+        cards: films.map(r => ({ f: r.f, why: r.why }))
       });
     }
   }
@@ -519,7 +551,7 @@ function sections() {
     const films = similarTo(seed, have, 12);
     if (films.length >= 3) out.push({
       id: 'because' + id, title: `Because you picked ${seed.t}`, seed: id,
-      cards: films.map(f => ({ f, why: whySimilar(f, seed) }))
+      cards: films.map(r => ({ f: r.f, why: r.why }))
     });
   }
 
@@ -555,7 +587,9 @@ function cardHTML(c) {
     </button>
     <span class="in" aria-hidden="true">✓</span>
     <div class="t">${esc(c.f.t)}</div>
-    ${c.why ? `<div class="why"><button data-facetjump='${esc(JSON.stringify(c.why.jump))}'>${esc(c.why.label)}</button></div>` : ''}
+    ${c.why ? (c.why.jump
+        ? `<div class="why"><button data-facetjump='${esc(JSON.stringify(c.why.jump))}'>${esc(c.why.label)}</button></div>`
+        : `<div class="why"><span class="static">${esc(c.why.label)}</span></div>`) : ''}
     <div class="acts">
       <button class="do-add" data-add="${c.f.id}">${inTen ? '✓ Added' : '+ Add'}</button>
       <button class="do-similar" data-deeper="${c.f.id}" aria-label="Show films like ${esc(c.f.t)}">Similar ${svgIcon('deeper')}</button>
@@ -751,7 +785,7 @@ function notes() {
   return `<footer class="notes">
     <p>Structure prototype. Glass, haptics, and final motion are judged on
     device, not here. Judge the flow, the anatomy, and the words.</p>
-    <p class="build">build 0006 · 620 films · ranking · dead ends · walkable map</p>
+    <p class="build">build 0007 · why-aware suggestions · series · studios · stars</p>
   </footer>`;
 }
 
@@ -912,7 +946,7 @@ const mapLabel = t => (t.length > 12 ? t.slice(0, 11) + '…' : t);
 function ghostsFor(focusId) {
   const seed = focusId == null ? null : byId.get(focusId);
   const known = new Set(Object.keys(S.graph.nodes).map(Number));
-  const pick = seed ? similarTo(seed, known, 4) : pool().filter(f => !known.has(f.id)).slice(0, 4);
+  const pick = seed ? similarTo(seed, known, 4).map(r => r.f) : pool().filter(f => !known.has(f.id)).slice(0, 4);
   return pick.map(f => f.id);
 }
 

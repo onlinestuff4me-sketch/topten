@@ -19,7 +19,7 @@ M1.5 prototype built and deployed, awaiting Mischa's first rounds**
   ten slots pinned in the dock, reorderable in place. Then the cut (only on overflow), the badge
   reveal, and the post-completion rabbit hole. 620-film catalog baked from
   TMDB with per-film streaming availability, cast, and recommendation edges.
-  **Round 4 is pending Mischa's next pass.**
+  **Round 5 is pending Mischa's next pass.**
 - **M1 — the brain: not started.** Deliberately resequenced after the
   prototype (see below).
 
@@ -38,7 +38,7 @@ before a line of Swift was written against it.
   4 tests, green. Falsified once on a throwaway branch to prove the gate can
   go red.
 - **Browser (Chromium, iPhone 15 Pro viewport, `docs/prototype/drive.js`):**
-  the prototype driven end to end — 57 assertions, zero page errors. These now
+  the prototype driven end to end — 61 assertions, zero page errors. These now
   include layout invariants Mischa reported by eye: every block shares one
   left edge, rails align to it, all ten slots fit without scrolling, and
   nothing is trapped behind the dock. Screenshots from the same run judge the
@@ -86,6 +86,28 @@ read, which would have meant a dead page for the one person using it.
 | Dead ends should suggest related paths | Escapes computed per clause: "Without Horror · 7 films" |
 | YouTube (thought to need Premium) | It is free with ads; availability now covers free listings, grouped apart from subscriptions |
 | Map has no breadcrumbs or way to drill in | Ghost nodes for unexplored steps, followable inside the map; states filters; opens centred on focus |
+
+## Round 4 feedback (2026-08-15) and what it changed
+
+| Note | Outcome |
+|---|---|
+| Lower the director weight | 10 → 5 (×1.2 when prolific), plus a cap of 4 films per director per rail |
+| Authorship matters sometimes, franchise/studio other times | Links score on axes: series 14, lead actor 6, director 5, brand studio 5, TMDB edge 5, genre 1.5 |
+| "More like Toy Story" should be the sequels, then Pixar | Series and brand-studio data added (`col`, `br`); Toy Story 2/3/4 lead, then Pixar |
+| Top Gun should show Tom Cruise | Shared *lead* actor scores above director; Cruise films follow Top Gun |
+| Could Foundation Models help? | Yes — recorded as the plan in prd.md Req 5: the model picks the **axis**, never the films |
+
+The strongest axis also **labels** the card — *More Toy Story*, *Also Pixar*,
+*With Tom Cruise* — because those are different promises and the user should
+be told which one is being made.
+
+Three data bugs found on the way: three of sixteen studio ids were wrong
+(6735 is Participant, not Disney Animation; 2452 is the UK Film Council, not
+Laika; 4 is Paramount Pictures, which put "Paramount Animation" under
+Collateral), and the detail fetch set fields without clearing them, so a
+corrected run left its own rejects in place. The build verifies brand ids
+against TMDB now and fails loudly if they drift — the inherited rule from
+tech-stack.md, finally applied to this data too.
 
 ## What the prototype changed in the specs
 

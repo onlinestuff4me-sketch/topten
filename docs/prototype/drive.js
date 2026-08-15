@@ -189,6 +189,43 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   check(await page.evaluate(() => window.S.graph.focus) === deepFocus, 'tapping a followed node re-enters the path there');
   check(await page.locator('.mapview').count() === 0, 'the map closes when you pick a node');
 
+  // ── Round 4: the reason differs per film, and a rail is not one filmography
+  const toy = await page.evaluate(() => {
+    const seed = [...window.byId.values()].find(f => f.t === 'Toy Story');
+    if (!seed) return null;
+    window.S.graph.nodes = {}; window.S.graph.roots = []; window.S.graph.focus = null;
+    window.S.filters = { services: [], genre: null, director: null, actor: null };
+    window.S.q = '';
+    return seed.id;
+  });
+  if (toy) {
+    await page.evaluate(id => { window.S.graph.nodes[id] = { id, parent: null, kids: [], kind: 'followed' };
+      window.S.graph.roots = [id]; window.S.graph.focus = id; }, toy);
+    await page.locator('.chip[data-sheet="genre"]').click();
+    await page.waitForTimeout(150);
+    await page.locator('.sheet [data-act="closesheet"]').click();
+    await page.waitForTimeout(350);
+    const first = await page.locator('.rail .card').first().locator('.t').innerText();
+    check(/^Toy Story \d/.test(first), `a series leads its own rail ("${first}" tops more-like-Toy-Story)`);
+    const firstWhy = (await page.locator('.rail .card').first().locator('.why').innerText()).trim();
+    check(/^More Toy Story/.test(firstWhy), `and says which claim it is making ("${firstWhy}")`);
+
+    // No rail may be dominated by one director.
+    const worst = await page.evaluate(() => {
+      let worst = 0;
+      for (const rail of document.querySelectorAll('.rail')) {
+        const counts = {};
+        for (const c of rail.querySelectorAll('.card')) {
+          const d = window.byId.get(+c.dataset.card)?.d || '-';
+          counts[d] = (counts[d] || 0) + 1;
+          worst = Math.max(worst, counts[d]);
+        }
+      }
+      return worst;
+    });
+    check(worst <= 4, `no rail is one person's filmography (most by a single director: ${worst})`);
+  }
+
   // ── Services filter: the top-priority refinement ─────────────────────────
   await page.locator('.chip[data-sheet="services"]').click();
   await page.waitForTimeout(250);

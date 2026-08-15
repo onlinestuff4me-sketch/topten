@@ -210,6 +210,81 @@ def canonicalise():
     print("size:", os.path.getsize(CAT))
 
 
+# Brands people actually follow. A production company is only a reason to
+# watch something when its name is a promise — Pixar and Ghibli are, "Legendary
+# Entertainment" is not — so this is an allowlist rather than a general
+# company field (2026-08-15, round 4).
+BRANDS = {
+    3: "Pixar", 10342: "Studio Ghibli", 41077: "A24", 420: "Marvel Studios",
+    1: "Lucasfilm", 3172: "Blumhouse", 297: "Aardman", 6704: "Illumination",
+    521: "DreamWorks Animation", 2: "Walt Disney Pictures",
+}
+
+
+def verify_brands():
+    """Assert every studio id resolves to the name we think it does.
+
+    Three of the first sixteen did not: 6735 is Participant, not Disney
+    Animation; 2452 is the UK Film Council, not Laika; and 4 is Paramount
+    Pictures, which put "studio: Paramount Animation" under Collateral. A
+    wrong label is worse than no label, and tech-stack.md already carries the
+    inherited rule — check ids, never trust them."""
+    bad = []
+    for cid, expected in BRANDS.items():
+        actual = (get(f"/company/{cid}") or {}).get("name") or "?"
+        if expected.lower() not in actual.lower() and actual.lower() not in expected.lower():
+            bad.append(f"{cid}: expected {expected!r}, TMDB says {actual!r}")
+    if bad:
+        raise SystemExit("Brand ids have drifted:\n  " + "\n  ".join(bad))
+    print(f"{len(BRANDS)} brand ids verified against TMDB")
+
+
+def fetch_details():
+    verify_brands()
+    """Collections and brand studios — the two things that say "more like
+    this" without any judgement about authorship.
+
+    A sequel is the least ambiguous answer to "more like Toy Story" there is,
+    and it was missing entirely: the catalog had no idea two films belonged to
+    the same series (Mischa, round 4)."""
+    head, films = read_catalog()
+    by_id = {f["id"]: f for f in films}
+
+    def one(fid):
+        d = get(f"/movie/{fid}")
+        col = (d.get("belongs_to_collection") or {}).get("name")
+        brands = [BRANDS[c["id"]] for c in (d.get("production_companies") or []) if c["id"] in BRANDS]
+        return col, brands
+
+    order = [f["id"] for f in films]
+    with ThreadPoolExecutor(max_workers=10) as pool:
+        for fid, (col, brands) in zip(order, pool.map(one, order)):
+            # Clear first. Setting without clearing left a corrected run's
+            # rejects in place — "Paramount Animation" stayed on Shooter after
+            # that id was removed from the allowlist.
+            by_id[fid].pop("col", None)
+            by_id[fid].pop("br", None)
+            if col:
+                by_id[fid]["col"] = col
+            if brands:
+                by_id[fid]["br"] = brands[:2]
+
+    tail = open(CAT).read()
+    services_js = tail[tail.index("window.SERVICES = "):]
+    with open(CAT, "w") as fh:
+        fh.write(head)
+        fh.write("window.CATALOG = ")
+        json.dump(films, fh, ensure_ascii=False, separators=(",", ":"))
+        fh.write(";\n")
+        fh.write(services_js)
+    ncol = sum(1 for f in films if f.get("col"))
+    nbr = sum(1 for f in films if f.get("br"))
+    print(f"collections: {ncol}/{len(films)} | brand studios: {nbr}/{len(films)}")
+    from collections import Counter
+    print("biggest series:", Counter(f["col"] for f in films if f.get("col")).most_common(8))
+    print("size:", os.path.getsize(CAT))
+
+
 def refresh_providers():
     """Re-read availability only, keeping cast and recommendations as they are.
 
@@ -279,5 +354,7 @@ if __name__ == "__main__":
         canonicalise()
     elif "--providers" in sys.argv:
         refresh_providers()
+    elif "--details" in sys.argv:
+        fetch_details()
     else:
         fetch()
