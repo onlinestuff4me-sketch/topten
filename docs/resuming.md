@@ -4,7 +4,7 @@
 convention). Read this first, then `AGENTS.md`, then `specs/`.*
 
 **Last written:** 2026-08-15 · cloud session (Linux, no Xcode) · **M0 done,
-M1.5 prototype through six rounds of feedback, three domains live**
+M1.5 prototype through seven rounds of feedback, three domains live**
 
 ---
 
@@ -38,7 +38,7 @@ before a line of Swift was written against it.
   4 tests, green. Falsified once on a throwaway branch to prove the gate can
   go red.
 - **Browser (Chromium, iPhone 15 Pro viewport, `docs/prototype/drive.js`):**
-  the prototype driven end to end — 229 assertions, zero page errors.
+  the prototype driven end to end — 262 assertions, zero page errors.
   Playwright is installed globally here, so the suite needs
   `NODE_PATH=/opt/node22/lib/node_modules` and a static server on 8788
   (`python3 -m http.server 8788` from `docs/prototype`). These now
@@ -124,6 +124,29 @@ state that broke it.
 
 **Anything that rebuilds `catalog.js` must assume someone is holding a draft
 against the old one.**
+
+## Round 7 (2026-08-15) — the splash in thirds, and a screen you can browse
+
+| Ask | Outcome |
+|---|---|
+| Poster scroll bigger — top 40% | Splash is three bands, `flex: 40/40/20` with **basis 0**; posters size off their band (123pt on an SE, 171pt on a Pro Max) |
+| Bullets and sub-line bigger — next 40% | Headline `clamp(2rem, 9.5vw, 2.75rem)`, sub-line `clamp(1rem, 4.4vw, 1.1875rem)`. Bullets are capped — see below |
+| CTA last 20%, "Make your first list" | Done |
+| "All 2000+ movies in our collection" | A floor, not a count — the round step is chosen by what it costs |
+| Far more browsing on the first screen | 11 rows, ~220 titles: Recent releases, Popular, then a row per genre in the collection's own order |
+| Search and filters sticky | Sticky query bar (123pt); the Now showing readout deliberately stays out of it |
+| Tooltip on Services | Coach mark with an arrow at the chip; retires on first pick, dismissal is permanent |
+| Services sheet jitters on tap | It was re-rendering the whole sheet on every tap. Chips toggle in place now |
+
+**The one thing that could not be done as asked.** Round 5 fixed *one line per
+bullet* and a test enforces it; round 7 asked for bigger bullets. They meet at
+a ceiling set by the longest sentence — *"Ten and only ten. The limit is the
+point."*, 41 characters beside a numeral on a 375pt screen. Measured ceilings
+are 13.5px at 375, 14.25px at 393, 16px at 430, and the ramp sits ~2% under
+each. So bullets went from a flat 13px to 13.2–15.4px, and the real growth
+went into the headline and sub-line, which are allowed to wrap. **Flagged to
+Mischa** — if bigger bullets matter more than one line, the copy has to get
+shorter, and that is his call.
 
 ## Round 6 (2026-08-15) — books, copy, and the naming correction
 

@@ -134,6 +134,32 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   });
   check(ctaVisible, 'the CTA is on screen without scrolling');
 
+  // ── The splash is three bands: 40% artwork, 40% pitch, 20% CTA ───────────
+  // Mischa, 2026-08-15. Measured as a share of the viewport rather than in
+  // pixels, because the whole point of the change is that the ratio holds on
+  // any phone. Tolerance is +/-5 points: the gaps between bands are real
+  // pixels and come out of the three shares.
+  for (const [w, h, label] of [[393, 852, 'iPhone 15 Pro'], [375, 667, 'SE'], [430, 932, 'Pro Max']]) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.waitForTimeout(150);
+    const band = await page.evaluate(() => {
+      const vh = window.innerHeight, pct = sel =>
+        Math.round(document.querySelector(sel).getBoundingClientRect().height / vh * 100);
+      return { art: pct('.intro .art'), copy: pct('.intro-copy'), cta: pct('.intro .cta'),
+        tile: Math.round(document.querySelector('.marquee .tile').getBoundingClientRect().height),
+        over: document.querySelector('.intro').scrollHeight > vh + 2 };
+    });
+    const near = (got, want) => Math.abs(got - want) <= 5;
+    check(near(band.art, 40) && near(band.copy, 40) && near(band.cta, 20),
+      `the splash holds 40/40/20 on the ${label} (${band.art}/${band.copy}/${band.cta})`);
+    check(!band.over, `and nothing overflows the screen on the ${label}`);
+    check(band.tile >= 96, `the artwork fills its band on the ${label} (${band.tile}px posters)`);
+  }
+  await page.setViewportSize({ width: 393, height: 852 });
+  await page.waitForTimeout(150);
+  check((await page.locator('.intro [data-act="begin"]').innerText()).trim() === 'Make your first list',
+    'the CTA says "Make your first list"');
+
   await page.locator('[data-act="begin"]').click();
   await page.waitForTimeout(200);
 
@@ -203,13 +229,122 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   // The query must be stated, not inferred.
   check(await page.locator('.showing').count() === 1, 'a Now showing bar states what is on screen');
 
+  // ── The first screen is a place to browse, not a page with one shelf ─────
+  // Mischa, 2026-08-15: "the first screen doesn't have nearly enough
+  // browsing". The collection holds two thousand movies and the screen used to
+  // offer sixteen of them under a single heading.
+  const headings = await page.evaluate(() =>
+    [...document.querySelectorAll('.section-h')].map(h => h.innerText.trim()));
+  check(headings.length >= 8, `the first screen offers ${headings.length} rows to browse, not one`);
+  check(headings[0] === 'RECENT RELEASES', `and it opens on "${headings[0]}"`);
+  check(headings[1] === 'POPULAR', `then "${headings[1]}"`);
+  check(headings.filter(h => /^POPULAR .+/.test(h)).length >= 5,
+    `then a row per genre (${headings.filter(h => /^POPULAR .+/.test(h)).length}: ` +
+    `${headings.filter(h => /^POPULAR .+/.test(h)).slice(0, 4).join(', ')}…)`);
+  // The genre rows are named with the same vocabulary a list name uses, so
+  // "Science Fiction" is "sci-fi movies" in both places and "Comedy" is
+  // "comedies" in both. A browse row inventing its own word for a genre is how
+  // two parts of one app end up disagreeing about what they hold.
+  check(headings.includes('POPULAR COMEDIES') && headings.includes('POPULAR SCI-FI MOVIES'),
+    'genre rows use the list-name vocabulary, not raw catalog labels');
+  // Each row must actually be full, or a browse screen is a screen of stubs.
+  const railSizes = await page.evaluate(() =>
+    [...document.querySelectorAll('.rail')].map(r => r.querySelectorAll('.card').length));
+  check(railSizes.every(n => n >= 6), `every row is stocked (smallest ${Math.min(...railSizes)} cards)`);
+  check(railSizes.reduce((a, b) => a + b, 0) >= 150,
+    `${railSizes.reduce((a, b) => a + b, 0)} titles are reachable without searching`);
+  // Rows overlap on purpose — a popular drama belongs in both Popular and
+  // Popular dramas. What must NOT repeat is a row that is a copy of another.
+  const railIds = await page.evaluate(() => [...document.querySelectorAll('.rail')].map(r =>
+    [...r.querySelectorAll('.card')].map(c => c.dataset.card).join(',')));
+  check(new Set(railIds).size === railIds.length,
+    `no two rows hold the same ${railIds.length} titles in the same order`);
+
+  // ── Search and the refinements stay put while you browse ─────────────────
+  const stickyBefore = await page.evaluate(() =>
+    Math.round(document.querySelector('.stickybar').getBoundingClientRect().top));
+  await page.evaluate(() => window.scrollTo(0, 1600));
+  await page.waitForTimeout(250);
+  const stuck = await page.evaluate(() => {
+    const r = document.querySelector('.stickybar').getBoundingClientRect();
+    const q = document.querySelector('#q').getBoundingClientRect();
+    return { top: Math.round(r.top), qTop: Math.round(q.top), qBottom: Math.round(q.bottom),
+      chips: document.querySelectorAll('.stickybar .chip').length, y: Math.round(window.scrollY) };
+  });
+  check(stuck.y > 800, `scrolled ${stuck.y}px down the browse screen`);
+  check(stuck.top <= 1, 'the search bar and filters are still pinned to the top');
+  check(stuck.qTop >= 0 && stuck.qBottom <= 852, 'the search field itself is on screen, not just its container');
+  check(stuck.chips >= 3, `and the refinements came with it (${stuck.chips} chips)`);
+  check(stickyBefore > 0, 'it starts in the flow rather than permanently overlaying the title');
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.waitForTimeout(200);
+
+  // ── The Services coach mark ──────────────────────────────────────────────
+  // "Services" names a control; it does not say what the control gets you.
+  const tip = await page.evaluate(() => {
+    const t = document.querySelector('.tip'); if (!t) return null;
+    const chip = [...document.querySelectorAll('.chip')].find(c => /Services/.test(c.innerText));
+    const a = t.querySelector('.arrow').getBoundingClientRect(), c = chip.getBoundingClientRect();
+    const x = t.querySelector('.tipx').getBoundingClientRect();
+    return { text: t.innerText.replace(/\s+/g, ' ').trim(),
+      pointsAtServices: a.left >= c.left - 2 && a.right <= c.right + 2,
+      below: a.top >= c.bottom - 12, dismiss: Math.min(x.width, x.height) };
+  });
+  check(!!tip, 'a tip is shown before any service has been picked');
+  check(/streaming services/i.test(tip.text) && /subscription/i.test(tip.text),
+    `and it says what the filter gets you ("${tip.text.replace(' ×', '')}")`);
+  check(tip.pointsAtServices && tip.below, 'its arrow points up at the Services chip');
+  check(tip.dismiss >= 44, `dismissing it meets the 44pt target (${Math.round(tip.dismiss)}pt)`);
+
+  // ── The services sheet must not jump when you tap a service ──────────────
+  // It used to re-render itself on every tap, so the sheet replayed its enter
+  // transition and appeared to fall away and come back (Mischa: "a weird
+  // jitter"). The sheet element must survive the tap, and stay where it is.
+  await page.locator('.chip', { hasText: 'Services' }).first().click();
+  await page.waitForSelector('.sheet.on', { timeout: 4000 });
+  await page.waitForTimeout(420);
+  const svcChip = page.locator('.sheet [data-toggle-service]').first();
+  const tappedService = (await svcChip.innerText()).trim();
+  const settled = () => page.evaluate(() => {
+    const sh = document.querySelector('.sheet');
+    return { id: sh.dataset.probe, top: Math.round(sh.getBoundingClientRect().top),
+      on: sh.classList.contains('on') };
+  });
+  await page.evaluate(() => { document.querySelector('.sheet').dataset.probe = 'same-element'; });
+  const sheetBefore = await settled();
+  await svcChip.click();
+  // Sample across the whole window a re-render would have animated through.
+  const frames = [];
+  for (let i = 0; i < 8; i++) { frames.push(await settled()); await page.waitForTimeout(45); }
+  check(frames.every(f => f.id === 'same-element'),
+    'tapping a service leaves the sheet element in place — it is not rebuilt');
+  check(frames.every(f => f.top === sheetBefore.top),
+    `and the sheet does not move a pixel (tops: ${[...new Set(frames.map(f => f.top))].join(',')})`);
+  check(frames.every(f => f.on), 'nor does it drop its open state and re-enter');
+  check(await page.locator(`.sheet [data-toggle-service][aria-pressed="true"]`).count() === 1,
+    `while the service itself did toggle on ("${tappedService}")`);
+  await page.locator('.sheet [data-act="closesheet"]').click();
+  await page.waitForTimeout(420);
+  check(await page.locator('.tip').count() === 0,
+    'and the tip retires once a service has been chosen, without being dismissed');
+  // Put the filter back so the rest of the run sees the unfiltered shelf.
+  await page.evaluate(() => { window.S.filters.services = []; window.S.tipDone = true; window.renderBuild(); });
+  await page.waitForTimeout(200);
+
   // ── Copy regression: the repeated meaningless caption is gone ────────────
   const bodyText = await page.locator('body').innerText();
   check(!/widely called great/i.test(bodyText), 'no "Widely called great" caption under every poster');
   check(!/keep going and make the cut/i.test(bodyText), 'the "or keep going and make the cut" line is gone');
   // Round 3: "Everything" was a lie about a catalog of a few hundred titles.
   check(!/Everything —/.test(bodyText), 'the Now showing bar does not claim to show "Everything"');
-  check(/All \d+ movies in our collection/.test(bodyText), 'it states the size of the collection instead');
+  // A round figure and a "+" (Mischa, 2026-08-15): an exact count reads as the
+  // end of the shelf, a floor reads as a collection that is still growing. The
+  // figure must be a true floor — never larger than what is actually there.
+  const shelfClaim = bodyText.match(/All ([\d,]+)\+ movies in our collection/);
+  check(!!shelfClaim, `it states the size of the collection instead ("${(bodyText.match(/All [^\n]*collection/) || ['none'])[0]}")`);
+  const claimed = shelfClaim ? Number(shelfClaim[1].replace(/,/g, '')) : Infinity;
+  const realShelf = await page.evaluate(() => window.CAT.filter(f => (f.dm || 'movie') === 'movie').length);
+  check(claimed <= realShelf, `and the figure is a floor, not a boast (${claimed} claimed, ${realShelf} on the shelf)`);
   // 2026-08-15: "shelf" is not a word the user ever sees.
   check(!/\bshelf\b/i.test(bodyText), 'the word "shelf" is gone from the build screen');
   await noBritishSpelling('the build screen');
@@ -610,7 +745,7 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   check(await page.locator('.rail .card').count() > 0, 'and the TV collection is populated');
   // The domain noun follows the domain: a TV Ten must never say "movies".
   const tvText = await page.locator('body').innerText();
-  check(/All \d+ shows in our collection/.test(tvText),
+  check(/All [\d,]+\+ shows in our collection/.test(tvText),
     'a TV Ten counts shows, not movies, in the Now showing bar');
   check(!/\bmovies?\b/i.test(await page.locator('#q').getAttribute('placeholder')),
     'and searches "shows", not "movies"');
@@ -679,8 +814,11 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   const bodyBooks = await page.locator('body').innerText();
   const bookCount = await page.evaluate(() => window.CAT.filter(f => f.dm === 'book').length);
   const wholeCatalog = await page.evaluate(() => window.CAT.length);
-  check(new RegExp(`All ${bookCount} books in our collection`).test(bodyBooks),
-    `the Now showing bar counts this shelf's books (${bookCount}), not the whole catalog (${wholeCatalog})`);
+  const bookClaim = bodyBooks.match(/All ([\d,]+)\+ books in our collection/);
+  const bookN = bookClaim ? Number(bookClaim[1].replace(/,/g, '')) : Infinity;
+  check(bookN <= bookCount && bookN >= bookCount * 0.9,
+    `the Now showing bar counts this shelf's books (${bookN}+ of ${bookCount}), not the whole ` +
+    `catalog (${wholeCatalog}) — and rounding never costs more than a tenth of the shelf`);
   check(!/\bfilms?\b/i.test(bodyBooks), 'nothing on the books screen calls a book a film');
   check(!/\bnovels?\b/i.test(bodyBooks), 'and nothing calls it a novel');
 

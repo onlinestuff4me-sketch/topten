@@ -610,6 +610,109 @@ never destroys a node, tapping a real node re-enters the path there, following
 an unexplored step stays inside the map, the active filters are stated, it
 opens centred on where you are, and no two labels overlap.
 
+### Round 7 (2026-08-15, Mischa) — the splash in thirds, and a screen you can browse
+
+**The splash is three bands: artwork 40%, pitch 40%, CTA 20%.** Stated as
+shares of the viewport rather than pixels, because the point is that the
+composition holds on every iPhone. In CSS that is `flex: 40 1 0` / `40 1 0` /
+`20 1 0` on the three children — **basis `0`, not `auto`**, which is the whole
+mechanic: with `auto` each band first takes what its content wants and the
+ratio only describes the leftovers, so the copy block silently claims more on a
+tall phone and less on a short one. Measured 38/38/19 at 393×852 and 375×667
+and 430×932, the missing points being the real gaps between bands.
+
+Posters size off the band that holds them (`--tile-h: clamp(96px, 18.4svh,
+190px)`, width `h ÷ 1.5`), so two rows plus one gap fill the artwork 40%:
+123pt tall on an SE, 171pt on a Pro Max. A fixed poster size would have left
+a third of that band empty on the big phone.
+
+**What the bullets can weigh is arithmetic, not taste.** Round 5 promised one
+line per bullet and a test enforces it; round 7 asked for bigger text. Those
+two meet at a ceiling, and the ceiling is set by the longest sentence — *"Ten
+and only ten. The limit is the point."*, 41 characters, beside a numeral, on a
+375pt screen. Measured ceilings: **13.5px at 375, 14.25px at 393, 16px at
+430**. The ramp `clamp(0.8125rem, calc(4vw - 1.8px), 1rem)` sits about 2% under
+each. The growth this screen actually needed went where nothing caps it — the
+headline to `clamp(2rem, 9.5vw, 2.75rem)` and the sub-line to `clamp(1rem,
+4.4vw, 1.1875rem)`, both of which may wrap.
+
+The numeral column (`1.6em`) and its gap (`--s2`) are part of that arithmetic:
+every pixel they give back is a pixel of sentence.
+
+**The CTA reads "Make your first list."**
+
+### Round 7 — a collection you can browse, and controls that stay put
+
+*"The first screen doesn't have nearly enough browsing."* The shelf holds two
+thousand movies and the screen offered sixteen of them under one heading.
+
+**Rows, in the collection's own order.** *Recent releases* first, then
+*Popular*, then one row per genre — and the genre order is `facetValues`, which
+already counts how much of the shelf each genre holds. So the rows come from
+the collection rather than from a list somebody typed, and the TV and books
+shelves get their own rows without a second implementation. 11 rows, 20 cards
+each, ~220 titles reachable without typing anything.
+
+**Rows overlap on purpose.** A popular drama belongs in *Popular* and in
+*Popular dramas* both. Suppressing the second because the first got there
+first is how a browse screen ends up with rows that are technically distinct
+and practically empty. Only the user's own picks are held back — those have a
+home already. What may never repeat is a whole row that duplicates another,
+and that is what the test checks.
+
+**Genre headings use the list-name vocabulary.** *Popular comedies*, *Popular
+sci-fi movies* — built from `nameParts`, the same decomposition that names a
+list, so a genre cannot go by two different words in two parts of one app.
+
+**The query bar is sticky; the readout is not.** Search and the four
+refinement chips pin to the top (`position: sticky; top: 0`, 123pt tall) — with
+a dozen rows below, a search field that scrolls away is one you have to scroll
+back up to find. The **Now showing** bar deliberately stays out of it: it is a
+readout of what those controls did, and freezing a readout above a scrolling
+page makes it compete with the thing it describes.
+
+### Round 7 — the Services coach mark
+
+*"Services"* names a control. It does not say what the control gets you, and
+what it gets you is the app's actual value promise — the reason the catalog
+carries per-title availability at all. A callout sits under the chip row with
+an arrow pointing up at the Services chip:
+
+> Tell us your streaming services and we will show what is already included in
+> your subscriptions.
+
+Three rules keep a coach mark from becoming nagware, and all three are tested:
+it appears **only while no service has been chosen**, **only on a domain that
+has services** (a book is not on Netflix, so the books shelf never shows it),
+and dismissing it is **permanent** — `tipDone` survives starting a new list,
+because it is something the person has read, not something this list has done.
+
+### Round 7 — a shelf size is a floor, not a limit
+
+*"All 2,000+ movies in our collection."* An exact count reads as the end of the
+shelf; a floor reads as a collection still growing. Which round figure is the
+whole question — choosing the step by size alone put 232 books at "200+", giving
+away a seventh of the shelf to look tidy. The step is chosen by what it
+**costs**: the roundest one that still keeps nine tenths of what is really
+there. 2,000 stays 2,000+, 700 stays 700+, 232 lands on 230+. The test asserts
+the figure is never larger than the shelf and never rounds away more than a
+tenth of it.
+
+### Round 7 — a sheet does not move when you tap something inside it
+
+Tapping a service re-rendered the whole sheet, so the new element entered from
+its off state and the sheet appeared to fall away and come back on every tap
+(Mischa: *"a weird jitter"*). **Nothing about choosing a service asks the sheet
+to move**, so the chip now toggles in place — class, `aria-pressed`, and a live
+announcement, and no re-render.
+
+The general rule, worth stating once: **re-render the smallest thing that
+changed.** A container that owns an enter transition must not be rebuilt to
+express a change to one of its children — the transition is state, and
+rebuilding resets it. The regression test samples the sheet's identity and
+position across eight frames after the tap, which is the window a replayed
+transition would have animated through.
+
 ### Round 5 (2026-08-15, Mischa) — the discovery card is a list, not a person
 
 *"Other Tens" → **"Other Top 10 Lists"**, and the blurb under it is gone.* A
