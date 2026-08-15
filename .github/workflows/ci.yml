@@ -65,6 +65,10 @@ jobs:
   web-prototype:
     name: Prototype and share pages (Chromium)
     runs-on: ubuntu-latest
+    # Both suites together run in a few minutes locally and slower on a shared
+    # runner; a bound means a hang fails the job rather than holding a runner
+    # for six hours, which is the default.
+    timeout-minutes: 25
     # The two browser suites. `drive.js` drives the app someone builds a Ten
     # in; `drive_share.js` drives the pages a stranger lands on. Both run
     # against the same static directory Vercel publishes, so what CI exercises
