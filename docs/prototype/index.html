@@ -581,7 +581,10 @@ function showingBar(q, results) {
   const F = S.filters, clauses = [];
   for (const id of trail()) {
     const f = byId.get(id); if (!f) continue;
-    clauses.push({ label: `Like ${f.t}`, act: `data-focusnode="${id}"`, drop: `data-dropfocus="${id}"` });
+    // A long title wraps the chip onto two lines and makes the bar look
+    // broken; the full name is one tap away on the chip itself.
+    const short = f.t.length > 26 ? f.t.slice(0, 25) + '…' : f.t;
+    clauses.push({ label: `Like ${short}`, act: `data-focusnode="${id}"`, drop: `data-dropfocus="${id}"` });
   }
   if (F.services.length) {
     const names = F.services.map(sid => (SERVICES.find(x => x[0] === sid) || [, sid])[1]).join(', ');
@@ -748,7 +751,7 @@ function notes() {
   return `<footer class="notes">
     <p>Structure prototype. Glass, haptics, and final motion are judged on
     device, not here. Judge the flow, the anatomy, and the words.</p>
-    <p class="build">build 0005 · the map · named actions · now showing</p>
+    <p class="build">build 0006 · 620 films · ranking · dead ends · walkable map</p>
   </footer>`;
 }
 
@@ -839,11 +842,14 @@ function openSheet(kind) {
         ${S.tray.length === 10 ? `<button class="btn" data-act="finish">This is my Ten</button>` : ''}
       </div>`;
   } else if (kind === 'services') {
-    inner = `<div class="sheet-head"><h2>Your subscriptions</h2><button class="done" data-act="closesheet">Done</button></div>
-      <p class="prompt" style="margin:0 0 var(--s4)">Pick what you pay for and the suggestions lean towards what you can actually watch tonight.</p>
-      <div class="chips" style="flex-wrap:wrap;overflow:visible;margin:0;padding:0;gap:var(--s2)">
-        ${SERVICES.map(([id, label]) => `<button class="chip ${S.filters.services.includes(id) ? 'on' : ''}" data-toggle-service="${id}" aria-pressed="${S.filters.services.includes(id)}">${esc(label)}</button>`).join('')}
-      </div>`;
+    const group = free => SERVICES.filter(row => Boolean(row[2]) === free)
+      .map(([id, label]) => `<button class="chip ${S.filters.services.includes(id) ? 'on' : ''}" data-toggle-service="${id}" aria-pressed="${S.filters.services.includes(id)}">${esc(label)}</button>`).join('');
+    inner = `<div class="sheet-head"><h2>Where you can watch</h2><button class="done" data-act="closesheet">Done</button></div>
+      <p class="prompt" style="margin:0 0 var(--s4)">Pick what you have and the suggestions lean towards what you could actually watch tonight.</p>
+      <p class="section-h">Subscriptions</p>
+      <div class="chips" style="flex-wrap:wrap;overflow:visible;margin:var(--s2) 0 var(--s6);padding:0;gap:var(--s2)">${group(false)}</div>
+      <p class="section-h">Free with ads</p>
+      <div class="chips" style="flex-wrap:wrap;overflow:visible;margin:var(--s2) 0 0;padding:0;gap:var(--s2)">${group(true)}</div>`;
   } else {
     const vals = facetValues(kind);
     const cur = S.filters[kind];
@@ -914,8 +920,10 @@ function layoutMap(ghosts) {
   const placed = [];
   let cursor = 0;
   const walk = (id, depth) => {
+    // A ghost is a film that is not in the graph yet, so it has no children —
+    // it just takes a slot. Treating one as a real node threw here.
     const n = node(id);
-    const kids = n.kids.filter(k => node(k)).concat(id === S.graph.focus ? ghosts : []);
+    const kids = n ? n.kids.filter(k => node(k)).concat(id === S.graph.focus ? ghosts : []) : [];
     let slot;
     if (!kids.length) { slot = cursor++; }
     else {
@@ -925,12 +933,10 @@ function layoutMap(ghosts) {
     placed.push({ id, depth, slot, ghost: !node(id) });
     return slot;
   };
-  // A ghost has no node of its own; give it a slot the same way.
-  const walkAny = (id, depth) => (node(id) ? walk(id, depth) : (placed.push({ id, depth, slot: cursor, ghost: true }), cursor++));
   const rootIds = S.graph.roots.filter(r => node(r));
-  const rootSlots = rootIds.length
-    ? rootIds.map(r => walk(r, 1))
-    : ghosts.map(g => walkAny(g, 1));
+  // With nothing explored yet the map still has somewhere to point: the
+  // ghosts hang straight off the origin.
+  const rootSlots = (rootIds.length ? rootIds : ghosts).map(r => walk(r, 1));
   // A single origin so the whole thing reads as one map rather than several.
   const origin = { id: null, depth: 0, slot: rootSlots.length ? (rootSlots[0] + rootSlots[rootSlots.length - 1]) / 2 : 0 };
   placed.push(origin);
@@ -988,7 +994,7 @@ function renderMap() {
   v.className = 'mapview';
   v.innerHTML = `
     <div class="map-head"><h2>Where you have been</h2><button class="done" data-act="closemap">Done</button></div>
-    <p class="map-legend">Solid films are ones you followed or picked — tap to go back there. Faint ones are where you could go next; tap to follow one without leaving this map. Gold means it is in your Ten.</p>
+    <p class="map-legend">Solid: followed or picked. Faint: where you could go next — tap one to follow it without leaving. Gold: in your Ten.</p>
     ${mapContext()}
     <div class="map-scroll">
       ${placed.length > 1
@@ -997,6 +1003,20 @@ function renderMap() {
     </div>`;
   document.body.appendChild(v);
   setBackgroundInert(true);
+
+  // Centre on where you are. A map that opens at its top-left corner drops
+  // you in blank space the moment the graph is wider than the screen.
+  // Measured deltas, not scrollIntoView — that does nothing for an SVG group
+  // in Chromium — and run on a second frame too, because on the first the
+  // scroller has not yet taken the SVG's width and the scroll clamps to zero.
+  const centre = () => {
+    const el = $('.map-node.focus', v), sc = $('.map-scroll', v);
+    if (!el || !sc) return;
+    const a = el.getBoundingClientRect(), b = sc.getBoundingClientRect();
+    sc.scrollLeft += (a.left + a.width / 2) - (b.left + b.width / 2);
+    sc.scrollTop += (a.top + a.height / 2) - (b.top + b.height / 2);
+  };
+  requestAnimationFrame(() => { centre(); requestAnimationFrame(centre); });
 }
 /* The map has to say what it is filtered by, or it looks like it has lost
    your context (round 3: "doesn't have accurate breadcrumbs"). */

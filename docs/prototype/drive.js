@@ -157,6 +157,18 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   check(!collide, 'no two map labels overlap');
   // Round 3: the map must be somewhere you can go, not just a log.
   check(await page.locator('.map-node.ghost').count() > 0, 'the map offers unexplored next steps');
+  // The map must open where you are, not at its corner.
+  await page.waitForTimeout(120);
+  const fv = await page.evaluate(() => {
+    const el = document.querySelector('.map-node.focus');
+    const sc = document.querySelector('.map-scroll');
+    if (!el || !sc) return { ok: false, why: 'no focus node rendered' };
+    const a = el.getBoundingClientRect(), b = sc.getBoundingClientRect();
+    return { ok: a.left >= b.left - 1 && a.right <= b.right + 1 && a.top >= b.top - 1 && a.bottom <= b.bottom + 1,
+      why: `el ${Math.round(a.left)}-${Math.round(a.right)}; view ${Math.round(b.left)}-${Math.round(b.right)}; ` +
+           `scrollLeft ${sc.scrollLeft}, scrollWidth ${sc.scrollWidth}, clientWidth ${sc.clientWidth}` };
+  });
+  check(fv.ok, `the map opens centred on where you are (${fv.why})`);
   const ghostId = await page.locator('.map-node.ghost').first().getAttribute('data-mapnode');
   const beforeWalk = await page.evaluate(() => Object.keys(window.S.graph.nodes).length);
   await page.locator(`.map-node[data-mapnode="${ghostId}"]`).click();
@@ -202,6 +214,35 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   await page.locator('.chip[data-sheet="services"] [data-clear]').click();
   await page.waitForTimeout(150);
   check(await page.evaluate(() => window.S.filters.services.length) === 0, 'the filter chip clears in place');
+
+  // ── Dead ends must hand you the way out (round 3) ───────────────────────
+  await page.evaluate(() => {
+    // Force a query that cannot match: a director filter that contradicts the
+    // genre filter is the shape of dead end a real user stumbles into.
+    window.S.filters.genre = 'Horror';
+    window.S.filters.director = 'Christopher Nolan';
+    window.S.filters.services = [];
+    window.dispatchEvent(new Event('resize'));
+  });
+  await page.locator('.chip[data-sheet="genre"]').click();
+  await page.waitForTimeout(200);
+  await page.locator('.sheet [data-act="closesheet"]').click();
+  await page.waitForTimeout(350);
+  const zero = await page.evaluate(() => window.S ? document.querySelector('.showing').innerText : '');
+  check(/0 films/.test(zero), `the dead end is reported honestly (${zero.split('\n').pop()})`);
+  const escapes = await page.locator('.escape').count();
+  check(escapes >= 2, `it offers ${escapes} ways out rather than just a wall`);
+  const escapeText = await page.locator('.escape').first().innerText();
+  check(/\d+ films?$/.test(escapeText.trim()), `each way out says what it would get you ("${escapeText}")`);
+  await page.screenshot({ path: SHOTS + '/8-deadend.png' });
+  await page.locator('.escape').first().click();
+  await page.waitForTimeout(250);
+  check(await page.locator('.rail .card').count() > 0, 'taking a way out actually produces films');
+  await page.evaluate(() => { window.S.filters.genre = null; window.S.filters.director = null; });
+  await page.locator('.chip[data-sheet="genre"]').click();
+  await page.waitForTimeout(200);
+  await page.locator('.sheet [data-act="closesheet"]').click();
+  await page.waitForTimeout(350);
 
   // ── Search: live, debounced, clearable ──────────────────────────────────
   await page.fill('#q', 'godfather');

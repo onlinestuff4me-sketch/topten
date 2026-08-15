@@ -357,6 +357,47 @@ rebuilds the screen behind it.
 
 Reduced motion: no travel, no draw, same end state, same ring.
 
+### Round 3 (2026-08-15, Mischa) — what a suggestion is worth, and saying so honestly
+
+**A shared author beats crowd behaviour.** *"More like Interstellar starts with
+2 films that are not Nolan films?"* TMDB's recommendation edge was scored above
+a shared director, so *people also watched* outranked *the same person made
+it*. Weights are now director 10, TMDB edge 5, shared cast 3, shared genre 1.5,
+same era 1 — a shared name is a reason a person would give out loud, and genre
+alone is the weakest claim available. "More like Interstellar" now opens with
+The Prestige and the rest of Nolan's work.
+
+**One number, not two.** The Now showing count measured everything matching
+while a rail rendered a truncated ten, so a count of 2 could sit above a single
+card. There is one function behind both now.
+
+**"Everything" was a lie.** The shelf is finite and the bar said otherwise. It
+states the shelf's real size when nothing is applied.
+
+**A dead end hands you the door.** At zero results the app works out what each
+clause is individually costing and offers the escapes, sorted by how much they
+open up: *Without Horror · 7 films*. A wall that only reports itself is a wall.
+
+**Free is a way to watch.** TMDB keeps ad-supported and free listings in
+buckets the first pass never read, so Inception being free on YouTube in the US
+was invisible and unrepresentable. Availability now covers subscriptions *and*
+free-with-ads, grouped separately in the picker — a thing you can watch for
+nothing is at least as good an answer to "tonight" as a thing you pay for, and
+conflating them would be dishonest.
+
+**The map is somewhere you can go.** It drew only history, so with one node it
+looked broken. It now draws unexplored next steps as faint nodes off whatever
+is focused; following one stays inside the map, so a path can be built there
+rather than only reviewed. It states the active filters, and it opens centred
+on where you are — a map that opens at its top-left corner drops you in blank
+space as soon as the graph outgrows the screen.
+
+**The shelf itself was the bug behind the sharpest question.** *"What about The
+Prestige?"* — it was not in the catalog, and neither were Dunkirk, Oppenheimer
+or Tenet. A rabbit hole into a director is worthless if their work is missing,
+so the build now pulls the fuller filmography of every director who appears
+more than once. 220 films became 620.
+
 ## Amendments from the M1.5 prototype (2026-08-14, Claude)
 
 Built and driven end to end in a browser at iPhone size. These are structure

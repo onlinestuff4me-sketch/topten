@@ -146,7 +146,23 @@ CANON = [
     ("film4",     "Channel 4",      r"^channel 4|^film4"),
     # Added round 3 (Mischa): a YouTube Premium subscription genuinely carries
     # films, and leaving it out made a real subscription unrepresentable.
-    ("youtube",   "YouTube Premium", r"^youtube premium"),
+]
+
+# Ways to watch that cost nothing. TMDB keeps these in separate buckets
+# ("free" and "ads") which the first pass never read, so an ad-supported
+# option was invisible — Inception is on YouTube free with ads in the US, and
+# the app could not say so (Mischa, round 3; he guessed it needed Premium, it
+# does not). Free is arguably a better answer to "what can I watch tonight"
+# than any subscription, so it is first-class here rather than a footnote.
+FREE = [
+    ("youtube",  "YouTube (free)", r"^youtube"),
+    ("tubi",     "Tubi",           r"^tubi"),
+    ("pluto",    "Pluto TV",       r"^pluto"),
+    ("plex",     "Plex",           r"^plex"),
+    ("roku",     "The Roku Channel", r"^the roku channel"),
+    ("iplayer",  "BBC iPlayer",    r"bbc iplayer"),
+    ("itvx",     "ITVX",           r"^itvx"),
+    ("film4",    "Channel 4",      r"^channel 4|^film4"),
 ]
 STOREFRONT = r"amazon channel|roku premium channel|apple tv channel|plus channel"
 
@@ -194,6 +210,74 @@ def canonicalise():
     print("size:", os.path.getsize(CAT))
 
 
+def refresh_providers():
+    """Re-read availability only, keeping cast and recommendations as they are.
+
+    Subscriptions come from `flatrate`; `free` and `ads` become the free
+    services above. Storefront rows are dropped either way — a "Paramount+
+    Amazon Channel" listing is not a Prime subscription (Stack, 43% false
+    positives)."""
+    import re
+    head, films = read_catalog()
+    used = {}
+
+    def one(fid):
+        res = get(f"/movie/{fid}/watch/providers").get("results") or {}
+        out = {}
+        for region in REGIONS:
+            r = res.get(region) or {}
+            ids = []
+            def collect(bucket, table):
+                for p in (r.get(bucket) or []):
+                    name = p["provider_name"]
+                    if re.search(STOREFRONT, name, re.I):
+                        continue
+                    for sid, label, pat in table:
+                        if re.search(pat, name, re.I):
+                            if sid not in ids:
+                                ids.append(sid)
+                                used[sid] = label
+                            break
+            collect("flatrate", CANON)
+            collect("free", FREE)
+            collect("ads", FREE)
+            if ids:
+                out[region] = ids
+        return out
+
+    order = [f["id"] for f in films]
+    by_id = {f["id"]: f for f in films}
+    with ThreadPoolExecutor(max_workers=10) as pool:
+        for fid, sv in zip(order, pool.map(one, order)):
+            if sv:
+                by_id[fid]["sv"] = sv
+            else:
+                by_id[fid].pop("sv", None)
+
+    free_ids = {sid for sid, _, _ in FREE}
+    services = ([[sid, label, 0] for sid, label, _ in CANON if sid in used]
+                + [[sid, label, 1] for sid, label, _ in FREE if sid in used])
+    with open(CAT, "w") as fh:
+        fh.write(head)
+        fh.write("window.CATALOG = ")
+        json.dump(films, fh, ensure_ascii=False, separators=(",", ":"))
+        fh.write(";\nwindow.SERVICES = ")
+        json.dump(services, fh, ensure_ascii=False, separators=(",", ":"))
+        fh.write(";\n")
+    print("subscriptions:", [s[1] for s in services if not s[2]])
+    print("free:", [s[1] for s in services if s[2]])
+    for region in REGIONS:
+        n = sum(1 for f in films if (f.get("sv") or {}).get(region))
+        nf = sum(1 for f in films if any(x in free_ids for x in (f.get("sv") or {}).get(region, [])))
+        print(f"{region}: {n}/{len(films)} watchable, of which {nf} free with ads")
+    print("size:", os.path.getsize(CAT))
+
+
 if __name__ == "__main__":
     import sys
-    canonicalise() if "--canonical" in sys.argv else fetch()
+    if "--canonical" in sys.argv:
+        canonicalise()
+    elif "--providers" in sys.argv:
+        refresh_providers()
+    else:
+        fetch()

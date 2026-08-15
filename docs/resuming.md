@@ -17,9 +17,9 @@ M1.5 prototype built and deployed, awaiting Mischa's first rounds**
   search with live results, refinements (services, genre, director, actor),
   branching suggestions backed by a persistent graph with a map view, and the
   ten slots pinned in the dock, reorderable in place. Then the cut (only on overflow), the badge
-  reveal, and the post-completion rabbit hole. 220-film catalog baked from
+  reveal, and the post-completion rabbit hole. 620-film catalog baked from
   TMDB with per-film streaming availability, cast, and recommendation edges.
-  **Round 3 is pending Mischa's next pass.**
+  **Round 4 is pending Mischa's next pass.**
 - **M1 — the brain: not started.** Deliberately resequenced after the
   prototype (see below).
 
@@ -38,7 +38,7 @@ before a line of Swift was written against it.
   4 tests, green. Falsified once on a throwaway branch to prove the gate can
   go red.
 - **Browser (Chromium, iPhone 15 Pro viewport, `docs/prototype/drive.js`):**
-  the prototype driven end to end — 48 assertions, zero page errors. These now
+  the prototype driven end to end — 57 assertions, zero page errors. These now
   include layout invariants Mischa reported by eye: every block shares one
   left edge, rails align to it, all ten slots fit without scrolling, and
   nothing is trapped behind the dock. Screenshots from the same run judge the
@@ -74,6 +74,18 @@ Mischa's notes, and where each landed:
 Storage key moved to `topten.proto.v4` and `load()` now normalises against a
 fresh state — a v3 draft had no graph in it and would have thrown on first
 read, which would have meant a dead page for the one person using it.
+
+## Round 3 feedback (2026-08-15) and what it changed
+
+| Note | Outcome |
+|---|---|
+| "More like Interstellar" led with non-Nolan films | Similarity reweighted: director 10 > TMDB edge 5 > cast 3 > genre 1.5 |
+| "What about The Prestige?" | It was not on the shelf. Catalog 220 → 620, with full filmographies for repeat directors |
+| Count said 2, one card shown | One `matching()` behind both the count and the rail |
+| "Now showing — Everything" is strange | States the shelf's real size instead |
+| Dead ends should suggest related paths | Escapes computed per clause: "Without Horror · 7 films" |
+| YouTube (thought to need Premium) | It is free with ads; availability now covers free listings, grouped apart from subscriptions |
+| Map has no breadcrumbs or way to drill in | Ghost nodes for unexplored steps, followable inside the map; states filters; opens centred on focus |
 
 ## What the prototype changed in the specs
 
