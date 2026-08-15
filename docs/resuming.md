@@ -40,8 +40,11 @@ before a line of Swift was written against it.
   4 tests, green. Falsified once on a throwaway branch to prove the gate can
   go red.
 - **Browser (Chromium, iPhone 15 Pro viewport, `docs/prototype/drive.js`):**
-  the prototype driven end to end — 312 assertions in `drive.js`, plus 45 in
+  the prototype driven end to end — 313 assertions in `drive.js`, plus 45 in
   `drive_share.js` for the public pages, zero page errors. Both now run in CI.
+- **Postgres (`supabase/tests/run.sh`):** the schema and every RLS policy,
+  executed as an anonymous visitor, the author, and a different signed-in user
+  — 30 checks. Runs in CI on the plain runner, which ships PostgreSQL 16.
   Playwright is installed globally here, so the suite needs
   `NODE_PATH=/opt/node22/lib/node_modules` and a static server on 8788
   (`python3 -m http.server 8788` from `docs/prototype`). These now
@@ -177,6 +180,33 @@ Three defects the work turned up, all now guarded:
 
 **CI grew two jobs**: the Postgres policy suite, and a Chromium job running
 both browser suites against the directory Vercel publishes.
+
+## Decisions from the M5 check-in (2026-08-15)
+
+Four answers, three of them built in the same session:
+
+| Question | Answer | Where it lives |
+|---|---|---|
+| Supabase project | **Mischa creates it, Claude writes the client** | `supabase/README.md` says exactly what to paste |
+| Identity model | **Handles generated, changeable later** | `TopTenKit/Handle.swift` + 8 tests |
+| Analytics | **Aggregate, server-side** | `migrations/0002_aggregate_stats.sql`, as views |
+| What next | **More prototype rounds**, not M2's SwiftUI | awaiting feedback |
+
+**A correction worth carrying.** The aggregate views were shipped with a
+comment claiming `security_invoker = true` was load-bearing, and a test
+supposedly proving it. The falsification pass showed the test passed *with the
+setting removed* — each view's own `WHERE` clause already excluded the rows RLS
+would have hidden, so RLS never entered into it. The claim was wrong and the
+test proved nothing.
+
+Both were corrected rather than quietly dropped: the setting is defence in
+depth for the **next** view, and the check is now structural — every view in
+`public` must carry it. Removing it now genuinely turns the suite red.
+
+The general lesson, and it is the second time this session: **a test that has
+never been seen to fail is not known to test anything.** The first was M1's
+comparison floor, where the assertion said `min >= floor` and the floor is a
+worst-case bound. Both were caught by trying to break the thing on purpose.
 
 ## M1 — the brain (2026-08-15)
 
