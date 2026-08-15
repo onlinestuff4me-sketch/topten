@@ -177,6 +177,112 @@ Two environment facts worth keeping:
   needs no secrets and works offline. Poster dominant colours are computed at
   build time too, which is why badge palettes genuinely derive from artwork.
 
+### Prototype catalog: how big, and how it is chosen (2026-08-15, Claude)
+
+Mischa, on reading "All 940 films on the shelf": *"shouldn't there be
+thousands?"* He is right, and it is the same complaint as round 3, where
+following Interstellar could not reach The Prestige because The Prestige was
+not in the shelf. **620 films + 320 shows → 2,000 films + 700 shows.**
+
+The pipeline, in order — each step reads and rewrites `catalog.js`, so the
+order is not optional:
+
+```
+python3 build_catalog.py               # films: select, poster colour, director
+python3 enrich_catalog.py              # cast, in-catalog recs, raw providers
+python3 enrich_catalog.py --details    # series (col) + brand studio (br)
+python3 enrich_catalog.py --providers  # canonical sv, incl. free-with-ads
+python3 build_tv.py                    # shows, appended in the same shape
+```
+
+Selection is unchanged **in kind** — canon-weighted, `standing = rating ×
+log10(votes)`, so the shelf reads as a canon rather than a new-releases rail.
+Four things changed to make it work at scale, each because the old shape
+broke when stretched:
+
+- **The candidate pool is now the whole eligible universe, not a sample.**
+  TMDB holds 9,306 films with 400+ votes and 3,114 shows with 150+; both
+  sweep completely (466 and 156 discover pages, ~20s each). Approximating
+  "the canon" by walking genre pages made sense when the shelf was 220; with
+  the full field in hand the trim ranks the real population.
+- **Named canon is PINNED past the trim.** The by-name lists exist because
+  standing buries these titles — so letting them compete against standing
+  defeated the list. Measured: 17 of the 49 named films were being trimmed
+  out of the 620 build, including The Master, Drive My Car and Past Lives.
+  Named titles now skip the trim — in the build that shipped, 66 of 239 films
+  and 74 of 179 shows were below the standing cutoff and survive only because
+  they are named. The lists themselves were widened toward the eras and
+  languages vote counts bury hardest: pre-1980 films went 52 → 209, and the
+  film shelf now opens on A Trip to the Moon (1902) rather than the 1920s.
+  This is the only hand on the scale, and
+  unresolved names are printed loudly rather than swallowed, because a name
+  that stops resolving is the list rotting. Two are currently unresolved and
+  deliberately so: *This Country* (58 votes) and *Stath Lets Flats* (49) sit
+  under the 60-vote canon floor, which is the floor working — a show with
+  fifty votes has no cast, no creator and no recommendation edges to give.
+- **Title matching is exact, accent-folded, highest-vote-wins.** A fuzzy top
+  hit is how you pin the 2019 remake. `8½` needed a separate search term
+  (`QUERY_FOR`) because TMDB's own search cannot find that title from
+  itself — it returns Code 8 and 8 Mile.
+- **Authorship expansion is bounded and id-based.** Directors/creators are
+  resolved on a shortlist (pinned canon + top 2×target by standing) rather
+  than on all ~10,000 candidates, because a credits call per candidate is six
+  minutes of wall clock spent learning who directed films the trim will drop.
+  The TMDB person id now comes out of the credits row itself, so the
+  filmography expansion no longer needs a `/search/person` per name — which
+  also removes the chance of expanding the wrong Michael Bay. TV has no crew
+  filter on `/discover/tv`, so its equivalent walks
+  `/person/{id}/tv_credits` and keeps the `Creator` credits.
+
+Two defects the rebuild exposed and fixed:
+
+- **TV had no streaming availability at all.** `build_tv.py` wrote raw TMDB
+  provider names to `svraw`, a field nothing in `index.html` reads, so every
+  show in the app was unwatchable everywhere while the field looked present.
+  TV now canonicalises through the *same* tables the film side uses —
+  imported from `enrich_catalog.py`, not copied, so the two domains cannot
+  drift — and writes `sv`. `svraw` is gone. Any service only TV carries is
+  merged into `window.SERVICES` so it has a chip in the filter sheet.
+- **A quarter of shows had no creator.** `created_by` is empty for most
+  British and nearly all Japanese shows, and `d` is what the creator facet and
+  the "Also <author>" branch label are built from. The `aggregate_credits`
+  call already being made for the cast also carries a `Creator` job, so it is
+  used as the fallback; coverage went 77% (245/320) → 82% (572/700). The
+  remainder are genuinely authorless in TMDB — miniseries like Band of
+  Brothers, and most anime.
+
+**Id verification is unchanged and non-negotiable** (`verify_brands`,
+`verify_networks`): every brand studio and TV network id is checked against
+TMDB by name before use and the build dies if one has drifted. The seven
+networks added for the bigger shelf (FX, USA Network, Syfy, STARZ, Disney
+Channel, Disney XD, Nickelodeon) were taken from a census of the networks
+actually carrying the top 600 shows, not guessed — a guessed id is exactly
+what that check exists to catch.
+
+**Page weight is the constraint that caps this.** `catalog.js` is loaded on
+every visit, so the shelf size is bounded by bytes, not by taste. Measured at
+2,700 items: **969,882 bytes (0.92 MB), 359 bytes an item**, against a ~1.5 MB
+ceiling — so nothing was dropped and the field shape is unchanged. When that
+ceiling is reached, the lever is per-item payload, not the number of titles,
+because the number of titles is the whole point of this change. Measured on
+this file: dropping `pop` saves 3.0%, `vc` 2.8% (5.8% together), and `tmdb`
+another 0.9%. All three are build-time-only — `index.html` reads none of them;
+`pop` sets the written order, `vc` feeds `standing`, both before the file is
+written, and `tmdb` is derivable as `id - 10_000_000`. That budget puts the
+ceiling near 4,500 items, which is where the next conversation starts.
+
+**A harness lesson from this rebuild.** `drive.js` drilled into *the first
+card* of a branch rail and then asserted that walking back moved the focus up
+the path. On the 2,000-film shelf the first card became a film the test had
+already added, and following an existing node re-enters it where it already
+sits (documented behaviour — "tapping a followed node re-enters the path
+there") rather than hanging a new child off the current focus, so the trail
+was one node long and there was nowhere to walk back to. The assertion was
+right and the setup was wrong: it now drills into the first card that is *not*
+already on the map, and asserts that it added exactly one node. **Which title
+sits first in a rail is a fact about the shelf, not about the app** — a
+harness step that depends on it will break every time the catalog is rebuilt.
+
 ## Distribution
 
 - **TestFlight** via GitHub Actions (fastlane or Xcode Cloud — decide and

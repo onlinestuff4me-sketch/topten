@@ -21,6 +21,10 @@ out/
 test-results/
 playwright-report/
 
+# Python (the catalog build scripts; build_tv imports enrich_catalog)
+__pycache__/
+*.pyc
+
 # macOS
 .DS_Store
 
