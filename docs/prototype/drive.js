@@ -421,33 +421,158 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   check(/See other people/i.test(await page.locator('body').innerText()),
     'discovery IS offered after the second list');
 
-  // ── Discovery, and the reveal gate ──────────────────────────────────────
+  // ── Discovery: other people's Top 10 lists, and the reveal gate ─────────
   await page.locator('[data-act="discover"]').click();
   await page.waitForTimeout(250);
-  check(await page.locator('.other-ten').count() >= 5, 'other people have Tens to look at');
-  // Each of them has their own TOPIC, so a Movies take does not open a Crime
-  // badge — the gate is per topic, which is what makes it worth crossing.
+  const cardCount = await page.locator('.other-ten').count();
+  check(cardCount >= 5, `other people have Top 10 lists to look at (${cardCount})`);
+  check((await page.locator('h1').innerText()) === 'Other Top 10 Lists',
+    'the screen is called Other Top 10 Lists');
+  // Round 5: the blurb under the title described what the cards below it were
+  // already showing, so it only pushed the first card down the screen.
+  check(await page.locator('.prompt').count() === 0, 'and carries no blurb under the title');
+
+  // ── The LIST NAME leads, the creator is subordinate (Mischa, round 5) ────
+  const type = await page.evaluate(() => [...document.querySelectorAll('.other-ten')].map(c => {
+    const px = sel => parseFloat(getComputedStyle(c.querySelector(sel)).fontSize);
+    return { name: c.querySelector('.listname').innerText.trim(), nameSize: px('.listname'),
+             creator: c.querySelector('.creator').innerText.trim(), creatorSize: px('.creator'),
+             topicSize: px('.topic') };
+  }));
+  check(type.length === cardCount && type.every(t => t.nameSize > t.creatorSize
+        && t.nameSize > t.topicSize),
+    `the list name is the biggest type on every card (${type[0].nameSize}px name vs ` +
+    `${type[0].creatorSize}px creator, ${type[0].topicSize}px topic)`);
+  check(type.every(t => t.nameSize >= t.creatorSize * 1.5),
+    'and dominant, not merely larger — at least half again the creator\'s size');
+  check(new Set(type.map(t => t.name)).size === type.length,
+    `every generated name is different (${type.map(t => t.name).join(' | ')})`);
+
+  // ── Names are generated from metadata, and every one states a real fact ──
+  const named = await page.evaluate(() => window.PEOPLE.map(p => {
+    const ten = window.theirTen(p);
+    const best = window.listNameCandidates(ten.ranked, p.topic)[0];
+    return { who: p.name, name: best.name, fact: best.fact,
+      films: ten.ranked.map(f => ({ d: f.d || null, y: f.y, g: f.g || [],
+        br: f.br || [], col: f.col || null, ca: (f.ca || []).slice(0, 3) })) };
+  }));
+  check(named.length === cardCount, 'every card on screen is a generated name');
+  for (const l of named) {
+    const f = l.fact, count = {
+      author: x => x.d === f.value, brand: x => x.br.includes(f.value),
+      cast: x => x.ca.includes(f.value), series: x => !!x.col,
+      era: x => Math.floor(x.y / 10) * 10 === f.value, vintage: x => x.y <= f.value,
+      purity: x => x.g.includes(f.value),
+    }[f.kind];
+    check(!!count, `"${l.name}" is built from a known kind of fact (${f.kind})`);
+    const real = l.films.filter(count).length;
+    check(real === f.n && real >= 3,
+      `"${l.name}" is true of ${l.who}'s ten — ${f.kind}${f.value === null ? '' : ' ' + f.value} in ${real} of 10`);
+    check(l.name.split(/\s+/).length <= 5, `and it is short (${l.name.split(/\s+/).length} words)`);
+  }
+  // The generator ranks candidates; the on-device model would choose among
+  // them. What it may never do is invent one, so the choice must come out of
+  // the same set.
+  const chosenFromCandidates = await page.evaluate(() => window.PEOPLE.every(p => {
+    const ten = window.theirTen(p);
+    return window.listNameCandidates(ten.ranked, p.topic)
+      .some(c => c.name === window.listName(ten.ranked, p.topic));
+  }));
+  check(chosenFromCandidates, 'the name shown is always one of the generated candidates');
+
+  // ── No user-entered text: a card carries metadata and nothing else ───────
+  const strays = await page.evaluate(() => [...document.querySelectorAll('.other-ten')]
+    .reduce((n, c) => n + c.querySelectorAll('p, .ln, .desc, .blurb').length, 0));
+  check(strays === 0, 'no card carries a description line');
+  const discoverText = await page.locator('body').innerText();
+  check(!/Argues about endings|practical effects|Cries at Pixar|Watches everything twice|Quotes films at you|Reads the credits/i.test(discoverText),
+    'and the hand-written character blurbs are gone from the app entirely');
+
+  // ── One CTA per card: 44pt, inside the card, saying what it does ─────────
+  const ctas = await page.evaluate(() => [...document.querySelectorAll('.other-ten')].map(card => {
+    const b = card.querySelector('.cta');
+    const r = b && b.getBoundingClientRect(), c = card.getBoundingClientRect();
+    return { buttons: card.querySelectorAll('button').length,
+      label: b ? b.innerText.replace(/\s+/g, ' ').trim() : '',
+      h: r ? r.height : 0, w: r ? r.width : 0,
+      inside: !!r && r.left >= c.left - 1 && r.right <= c.right + 1
+                  && r.top >= c.top - 1 && r.bottom <= c.bottom + 1 };
+  }));
+  check(ctas.every(c => c.buttons === 1), 'each card offers exactly one action');
+  check(ctas.every(c => c.h >= 44 && c.w >= 44),
+    `every CTA meets the 44pt minimum (smallest ${Math.round(Math.min(...ctas.map(c => c.h)))}pt tall)`);
+  check(ctas.every(c => c.inside), 'and sits fully inside its card');
+  check(ctas.every(c => /^Read .+Top 10$/.test(c.label)),
+    `and says what it does ("${ctas[0].label}")`);
+
+  // A CTA that only just fits at the default size is a CTA that breaks at the
+  // accessibility sizes this app must pass (AGENTS.md quality gate).
+  for (const root of [14, 24]) {
+    const dt = await page.evaluate(px => {
+      document.documentElement.style.fontSize = px + 'px';
+      const out = [...document.querySelectorAll('.other-ten')].map(card => {
+        const c = card.getBoundingClientRect(), cta = card.querySelector('.cta').getBoundingClientRect();
+        const spill = [...card.querySelectorAll('.topic, .listname, .creator, .strip, .badgecell, .cta')]
+          .some(e => { const b = e.getBoundingClientRect();
+            return b.left < c.left - 1 || b.right > c.right + 1 || b.bottom > c.bottom + 1; });
+        return { spill, h: cta.height };
+      });
+      document.documentElement.style.fontSize = '';
+      return out;
+    }, root);
+    check(dt.every(d => !d.spill && d.h >= 44),
+      `the card holds together at ${root}px root text (nothing spills, CTA still ` +
+      `${Math.round(Math.min(...dt.map(d => d.h)))}pt)`);
+  }
+
+  // ── Locked, and saying what unlocks it ──────────────────────────────────
   const lockedOnList = await page.locator('.lockedbadge').count();
-  check(lockedOnList > 0, `their badges are locked until you take on their topic (${lockedOnList} locked)`);
-  await page.screenshot({ path: SHOTS + '/9-discover.png', fullPage: true });
-  await page.locator('.other-ten').first().click();
+  check(lockedOnList === cardCount, `every badge starts locked (${lockedOnList} of ${cardCount})`);
+  const gate = (await page.locator('.other-ten .badgecell').first().innerText()).replace(/\s+/g, ' ').trim();
+  check(/locked/i.test(gate) && /make your/i.test(gate),
+    `a locked card reads as locked and says what opens it ("${gate}")`);
+  await page.screenshot({ path: SHOTS + '/14-discover.png', fullPage: true });
+
+  await page.locator('.other-ten .cta').first().click();
   await page.waitForTimeout(250);
+  check((await page.locator('h1').innerText()) === type[0].name,
+    'the card opens the list it named — the page leads with the same name');
   check(/locked/i.test(await page.locator('body').innerText()), 'their Ten is fully readable, only the badge is gated');
   check(await page.locator('.tenrow').count() === 10, 'and the list itself is never hidden');
 
-  // A take on ONE topic opens every badge on that topic and no others.
-  const firstTopic = await page.evaluate(() => window.PEOPLE[0].topic);
+  // ── The gate: per topic, and retroactive across every list on it ─────────
+  const shared = await page.evaluate(() => {
+    const byTopic = {};
+    for (const p of window.PEOPLE) (byTopic[p.topic.id] = byTopic[p.topic.id] || []).push(p.name);
+    const id = Object.keys(byTopic).sort((a, b) => byTopic[b].length - byTopic[a].length)[0];
+    return { topic: window.PEOPLE.find(p => p.topic.id === id).topic, names: byTopic[id] };
+  });
+  check(shared.names.length >= 2,
+    `more than one person has taken on the same topic (${shared.names.join(' and ')} on ${shared.topic.title})`);
   await page.evaluate(t => {
     window.S.done.push({ topicId: t.id, title: t.title, domain: t.domain,
       ranked: window.S.done[0].ranked, badge: window.S.done[0].badge });
-  }, firstTopic);
+  }, shared.topic);
   // We are on a person's page; its Back returns to Discover and re-renders.
   await page.locator('[data-act="discover"]').click();
   await page.waitForTimeout(300);
   const lockedAfter = await page.locator('.lockedbadge').count();
-  check(lockedAfter === lockedOnList - 1,
-    `a take unlocks its own topic and only that one (${lockedOnList} locked → ${lockedAfter})`);
-  await page.screenshot({ path: SHOTS + '/10-unlocked.png', fullPage: true });
+  check(lockedAfter === lockedOnList - shared.names.length,
+    `one take opens every badge on that topic at once, and no others ` +
+    `(${lockedOnList} locked → ${lockedAfter}, ${shared.names.length} opened)`);
+  const opened = await page.evaluate(() => [...document.querySelectorAll('.other-ten')]
+    .filter(c => c.querySelector('.badgecell.open')).map(c => c.dataset.who));
+  check(opened.slice().sort().join(',') === shared.names.slice().sort().join(','),
+    `and exactly the lists on that topic opened, retroactively, without visiting them (${opened.join(', ')})`);
+  check(await page.locator('.other-ten .badgecell.open svg').count() === shared.names.length,
+    'each opened card shows the real badge where the lock was');
+  const openGate = (await page.locator('.other-ten .badgecell.open').first().innerText()).replace(/\s+/g, ' ').trim();
+  check(/unlocked/i.test(openGate), `and says so ("${openGate}")`);
+  const stillLocked = await page.evaluate(() => [...document.querySelectorAll('.other-ten')]
+    .filter(c => c.querySelector('.badgecell.locked')).map(c => c.dataset.who));
+  check(stillLocked.length === cardCount - shared.names.length,
+    `every other topic stays shut (${stillLocked.join(', ')})`);
+  await page.screenshot({ path: SHOTS + '/15-discover-unlocked.png', fullPage: true });
 
   // ── A draft saved by an earlier build must survive a rebuilt shelf ──────
   // The catalog is regenerated from TMDB, so ids can vanish between builds.
