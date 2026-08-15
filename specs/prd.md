@@ -145,12 +145,14 @@ Discovering lists from other users should be introduced to them after their
    confusing before it is — at list one the user has not yet made the thing
    they would be comparing against.
 
-**Domains (Mischa's order):** movies, **TV shows**, books, video games,
-restaurants, travel destinations. Movies and TV are built and share every
-mechanic — a Ten never mixes domains, and each domain's authorship axis is its
-own (a film's director and studio; a show's creator and network). The unbuilt
-domains are **named in the picker rather than hidden**: a list showing only
-what exists tells the user the app is smaller than it is going to be.
+**Domains (Mischa's order):** movies, **TV shows**, **books**, video games,
+restaurants, travel destinations. Movies, TV and books are built (books added
+2026-08-15 — see the amendment under Requirement 6) and share every mechanic —
+a Ten never mixes domains, and each domain's authorship axis is its own (a
+film's director and studio; a show's creator and network; a book's author,
+series and imprint). The unbuilt domains are **named in the picker rather than
+hidden**: a list showing only what exists tells the user the app is smaller
+than it is going to be.
 
 **The reveal gate, now real (Req 12).** Discovery shows other people's lists,
 each on a topic. Every list is fully readable; only the badge is locked, and it
@@ -307,6 +309,72 @@ collection) so suggestion rails can be auto-populated.
 - Acceptance: search + artwork for movies and TV; attribution present;
   missing-artwork items render a designed fallback, never a broken image.
 
+**Amendment 2026-08-15 (Claude, books) — the third catalog, and why it is not
+the one you would expect.**
+
+Books are now a built domain in the prototype (`ready`, with a topic of its
+own), the third after movies and TV. The mechanics are unchanged — a Ten never
+mixes domains, the same ten slots, the same rails, the same badge — so the
+amendment is only about where the books come from and what that costs.
+
+*Sources (verified reachable before anything was built).* The obvious catalogs
+are unusable from this build environment: the egress proxy refuses CONNECT to
+`openlibrary.org` and `covers.openlibrary.org` (403), and
+`www.googleapis.com/books/v1` answers every request, keyed or not, with
+`Quota exceeded … "Queries per day" … quota_limit_value "0"`. What is
+reachable is `raw.githubusercontent.com`, so the shelf is built from three
+public repositories: **goodbooks-10k** (the 10,000 most-rated books on
+Goodreads — original publication year, rating, rating count, and 6M user
+ratings for a real *often read together* edge), **Goodreads Best Books Ever**
+(genres, series, the edition's publisher), and **Standard Ebooks** (the cover
+artwork and Dublin Core metadata, one repository per book).
+
+*The trade, stated plainly.* Standard Ebooks publishes only US public-domain
+work, so **the books shelf is classics: 232 of them, none published after
+1930.** No Harry Potter, no Dune. This was chosen over a bigger shelf with no
+artwork, because a books screen IS artwork — every cover host carrying modern
+books (Goodreads' own, Amazon, Google Books, Open Library) is blocked here, and
+a shelf of grey rectangles would have tested nothing. Standard Ebooks covers
+are additionally CC0, which is why they can be mirrored into the repo at all;
+TMDB's licence forbids exactly that for the film posters, which is why those
+are still fetched at runtime. **If the egress policy ever allows Open Library
+or Google Books, the right move is to replace the source, not to grow this
+one** — the builder is a single file and nothing else in the app knows where
+books come from.
+
+*What is not there yet.* 232 books, not the ~500 asked for. The ceiling is not
+laziness: only goodbooks-10k carries a trustworthy *original* publication year
+(Best Books Ever stores `firstPublishDate` as `MM/DD/YY`, so Pride and
+Prejudice reads `01/28/13`), and the Standard Ebooks organisation cannot be
+enumerated from here — repository names are derived from author and title and
+then verified by asking for the cover, so a book only reaches the shelf if its
+cover really answered 200. Widening the shelf means finding a reachable source
+of original publication years for the other ~1,200 Standard Ebooks titles.
+
+*Fields, and which axis is which.* A book's authorship axis is the **author**
+(`d`), exactly where a film's director and a show's creator sit, so the
+existing rails, facets and rabbit-hole topics needed no new code. **Series**
+(`col`) comes from Standard Ebooks' own collection metadata — and only where
+that metadata says `collection-type="series"`, because the same tag also
+carries award lists, and taking the first one gave *Pride and Prejudice* a
+series of "The BBC's 100 Greatest British Novels (2015)". 34% of books have a
+series; those award sets are a good rail of their own one day, and are
+deliberately unused today. **Publisher** (`br`) is an allowlist of imprints a
+reader would follow (Penguin Classics, Oxford, Everyman's, Modern Library,
+Vintage, Signet, Dover, Norton …), each verified against the built shelf and
+dropped if it labels fewer than three books — Harper Perennial was dropped by
+that rule. It is the weakest of the axes and is treated as such: this is the
+*edition's* imprint, not the work's. **Related** (`r`) is co-reading computed
+from 6M real Goodreads ratings, the direct analogue of TMDB's recommendation
+edge. Coverage: author 100%, cover 100%, subjects 100%, related 100%, series
+34%, imprint 52%.
+
+*Copy.* US spelling throughout, matching this document rather than the
+prototype's earlier drift ("favourite" is now "favorite" everywhere in the
+prototype's copy). A book is a **book**, never a novel — the shelf holds
+essays, poetry and memoir too, and "novels" would be both wrong and a second
+word for the same thing.
+
 **7. Local-first, account-optional.** All drafting, completing, and badge
 reveals work with no account, stored on-device (SwiftData). Publishing to the
 web / discovery requires sign-in (magic link + 6-digit code, the flow proven
@@ -442,8 +510,10 @@ and reveal; badge generation off the main thread.
   notifications ("Mischa remixed your Tarantino Ten"), reactions. (Deferred
   deliberately — the Stack lesson: shape the schema for it now, build later.
   The remix edge and stable Ten ids are that shaping.)
-- **More domains:** music (Apple Music API — native, artwork-rich), books,
-  games; each is a catalog adapter + topic seeds.
+- **More domains:** music (Apple Music API — native, artwork-rich), games;
+  each is a catalog adapter + topic seeds. (Books moved out of P1 and into the
+  built set on 2026-08-15 — see the Requirement 6 amendment for what that
+  shelf is and is not.)
 - **Freeform topics** ("Top 10 sandwiches"): freeform items with LLM
   normalization and image search/moderation. Big; explicitly not v1.
 - **Widgets & App Intents:** a home-screen widget of a rotating badge/Ten;
