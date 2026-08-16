@@ -456,11 +456,20 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   const afterJump = await page.evaluate(() => ({
     scene: window.S.scene,
     filters: JSON.parse(JSON.stringify(window.S.filters)),
-    clauses: [...document.querySelectorAll('.showing .clause')].map(c => c.innerText.trim()),
+    // The facet chip is the query now: one row of chips, a summary beneath.
+    // Narrowing to a director used to print `Steven Spielberg ×` twice, in
+    // adjacent rows of a sticky header with a phone-sized budget.
+    chips: [...document.querySelectorAll('.chips .chip.on')].map(c => c.innerText.trim()),
+    summary: (document.querySelector('.showing .summary .count') || {}).innerText,
+    duplicated: document.querySelectorAll('.showing .clause').length,
   }));
   check(afterJump.scene === 'build', 'narrowing from a title page lands you back on the shelf');
-  check(afterJump.clauses.length >= 1,
-    `with the narrowing stated (${JSON.stringify(afterJump.clauses)})`);
+  check(afterJump.chips.length === 1,
+    `with the narrowing stated once, on the chip that set it (${JSON.stringify(afterJump.chips)})`);
+  check(afterJump.duplicated === 0,
+    'and NOT repeated as a second chip in a second row');
+  check(/\d/.test(afterJump.summary || ''),
+    `with a summary underneath saying what it adds up to ("${afterJump.summary}")`);
 
   // ── The filter must be visibly global (Mischa, 2026-08-16) ──────────────
   // "It is currently only filtering the movies in that row." It was not — but
@@ -525,14 +534,55 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   check(headings.length >= 8, `the first screen offers ${headings.length} rows to browse, not one`);
   check(headings[0] === 'RECENT RELEASES', `and it opens on "${headings[0]}"`);
   check(headings[1] === 'POPULAR', `then "${headings[1]}"`);
-  check(headings.filter(h => /^POPULAR .+/.test(h)).length >= 5,
-    `then a row per genre (${headings.filter(h => /^POPULAR .+/.test(h)).length}: ` +
-    `${headings.filter(h => /^POPULAR .+/.test(h)).slice(0, 4).join(', ')}…)`);
+  // "Popular" survives only on the row actually called Popular (Mischa,
+  // 2026-08-16). A row named Comedies is a shelf; "Popular comedies" is an
+  // argument nobody asked for.
+  const genreRows = headings.slice(2);
+  check(genreRows.length >= 5, `then a row per genre (${genreRows.length}: ${genreRows.slice(0, 4).join(', ')}…)`);
+  check(!genreRows.some(h => /^POPULAR\b/.test(h)),
+    'none of which says "Popular" a second time');
+
+  // Every film in a genre row is really OF that genre: TMDB lists genres
+  // primary-first, and membership-by-includes filed Pulp Fiction
+  // ([Thriller, Crime, Comedy]) under Comedies.
+  const fit = await page.evaluate(() => {
+    const rows = window.browseRows(new Set()).filter(r => r.id.startsWith('g:'));
+    const bad = [];
+    for (const r of rows) {
+      const g = r.id.slice(2);
+      for (const c of r.cards) if (c.f.g[0] !== g) bad.push(`${c.f.t} [${c.f.g.join(', ')}] in ${g}`);
+    }
+    return { rows: rows.length, bad: bad.slice(0, 3), n: bad.length };
+  });
+  check(fit.n === 0,
+    `and every film in a genre row leads with that genre (${fit.rows} rows, ${fit.n} mismatches${fit.n ? ': ' + fit.bad.join('; ') : ''})`);
+
+  // Adjacent rows showing the same three posters is what a screenshot caught.
+  const echoes = await page.evaluate(() => {
+    const rows = window.browseRows(new Set());
+    const generic = new Set(rows.filter(r => r.id === 'recent' || r.id === 'popular')
+      .flatMap(r => r.cards.map(c => c.f.id)));
+    const dupes = rows.filter(r => r.id.startsWith('g:'))
+      .flatMap(r => r.cards.filter(c => generic.has(c.f.id)).map(c => c.f.t));
+    return dupes;
+  });
+  check(echoes.length === 0,
+    `and no genre row echoes Recent releases or Popular (${echoes.length} repeats)`);
+
+  // Comedies rate lower than dramas, so ranking a Comedies row by acclaim
+  // quietly returns dramas with jokes.
+  const comedies = await page.evaluate(() => {
+    const r = window.browseRows(new Set()).find(x => x.id === 'g:Comedy');
+    return r ? r.cards.map(c => c.f.t) : [];
+  });
+  check(comedies.length > 0 && ['The Hangover', 'Zombieland', 'Home Alone', 'The Mask', 'Ted']
+      .some(t => comedies.includes(t)),
+    `and the Comedies row holds comedies people have heard of (${comedies.slice(0, 5).join(', ')}…)`);
   // The genre rows are named with the same vocabulary a list name uses, so
   // "Science Fiction" is "sci-fi movies" in both places and "Comedy" is
   // "comedies" in both. A browse row inventing its own word for a genre is how
   // two parts of one app end up disagreeing about what they hold.
-  check(headings.includes('POPULAR COMEDIES') && headings.includes('POPULAR SCI-FI MOVIES'),
+  check(headings.includes('COMEDIES') && headings.includes('SCI-FI MOVIES'),
     'genre rows use the list-name vocabulary, not raw catalog labels');
   // Each row must actually be full, or a browse screen is a screen of stubs.
   const railSizes = await page.evaluate(() =>

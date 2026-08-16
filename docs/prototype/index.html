@@ -244,6 +244,8 @@ section { margin-top: var(--s8); }
    Every clause of the current query is a chip you can drop, and the count is
    the proof it did something. */
 .showing { margin-top: var(--s2); }
+.showing .summary { display: flex; align-items: center; gap: var(--s3); }
+.showing .summary .count { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 /* One line that scrolls sideways rather than a block that grows downward:
    narrowing three times must not push the shelf off the screen. */
 .showing .clauses { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
@@ -963,6 +965,32 @@ function sections() {
 const ROW_SIZE = 20, MIN_ROW = 6, MAX_GENRE_ROWS = 9;
 const standing = f => f.v * Math.log10((f.vc || 0) + 10);
 
+/* How many people have seen it, not how highly they rated it.
+
+   `standing` is an ACCLAIM score and it was the wrong ruler for a browse row.
+   Comedies rate systematically lower than dramas, so ranking a Comedies row by
+   acclaim quietly returns dramas with jokes: The Truman Show and Life Is
+   Beautiful above The Hangover, and Dumb and Dumber nowhere at all (Mischa,
+   2026-08-16: "prioritize major popular comedies").
+
+   Vote count is the closest thing the shelf has to "would you recognise this",
+   which is the actual job of a row you are scanning. Acclaim still ranks the
+   suggestion rails, where the question really is "is this any good". */
+const reach = f => (f.vc || 0);
+
+/* A film belongs to ONE genre row: its first.
+
+   TMDB lists genres primary-first, and membership-by-`includes` put every film
+   in every genre it so much as touches. That is how Pulp Fiction
+   ([Thriller, Crime, Comedy]) and Green Book ([Drama, Comedy, History]) ended
+   up filed under Comedies — third and second on their own lists (Mischa,
+   2026-08-16: "the movies in those rows need to really fit").
+
+   Filtering is unchanged and still matches any position: narrowing to Comedy
+   should find every comedy. Only the browse ROW is exclusive, because a row is
+   a claim about what a film IS. */
+const primaryGenre = f => (f.g && f.g[0]) || null;
+
 function browseRows(have) {
   const shelf = pool().filter(f => !have.has(f.id));
   const rows = [], take = (list, n = ROW_SIZE) => list.slice(0, n).map(f => ({ f, why: '' }));
@@ -974,17 +1002,36 @@ function browseRows(have) {
   // Newest first, but a 2026 release with nine votes is not a release anybody
   // is looking for — within a year, order by how much the shelf has to say.
   add('recent', 'Recent releases',
-    [...shelf].sort((a, b) => b.y - a.y || standing(b) - standing(a)));
-  add('popular', 'Popular', [...shelf].sort((a, b) => standing(b) - standing(a)));
+    [...shelf].sort((a, b) => b.y - a.y || reach(b) - reach(a)));
+  add('popular', 'Popular', [...shelf].sort((a, b) => reach(b) - reach(a)));
 
-  // facetValues is already domain-scoped and already sorted by how much of the
-  // shelf each genre holds, so the row ORDER is the collection's own shape.
-  const seen = new Set();
-  for (const [g] of facetValues('genre')) {
+  /* Genre rows do NOT repeat what the two rows above just showed.
+
+     Overlap used to be deliberate — "a popular drama belongs in Popular and in
+     Popular dramas both" — and on screen it is three identical posters in
+     adjacent rows (Mischa, 2026-08-16, with a screenshot). Rows may still
+     overlap each OTHER, because a film has one primary genre and appears in one
+     genre row anyway; what they may not do is echo the generic rows directly
+     above them. */
+  const alreadyShown = new Set(rows.flatMap(r => r.cards.map(c => c.f.id)));
+
+  // Order the rows by how much of the shelf each genre actually leads, so the
+  // sequence is the collection's own shape rather than a list somebody typed.
+  const leads = new Map();
+  for (const f of shelf) {
+    const g = primaryGenre(f);
+    if (g) leads.set(g, (leads.get(g) || 0) + 1);
+  }
+  const byShare = [...leads.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
+
+  for (const [g] of byShare) {
     if (rows.length >= MAX_GENRE_ROWS + 2) break;
-    if (seen.has(g)) continue; seen.add(g);
-    add('g:' + g, `Popular ${genrePhrase(g)}`,
-      shelf.filter(f => f.g.includes(g)).sort((a, b) => standing(b) - standing(a)));
+    // "Popular" is dropped from every row but the one actually called Popular
+    // (Mischa, 2026-08-16). A row named Comedies is a shelf; a row named
+    // Popular comedies is an argument nobody asked for.
+    add('g:' + g, cap(genrePhrase(g)),
+      shelf.filter(f => primaryGenre(f) === g && !alreadyShown.has(f.id))
+           .sort((a, b) => reach(b) - reach(a)));
   }
 
   /* Narrow far enough and every row falls under MIN_ROW and silently
@@ -997,7 +1044,7 @@ function browseRows(have) {
      worth having, stop pretending to be a browse screen and be a result: one
      row, everything that matches, named after what you asked for. */
   if (narrowed() && rows.length < 3) {
-    const all = [...shelf].sort((a, b) => standing(b) - standing(a));
+    const all = [...shelf].sort((a, b) => reach(b) - reach(a));
     if (all.length) return [{
       id: 'narrowed', browse: true,
       title: `${all.length} ${all.length === 1 ? domainMeta().one : nounFor()}${rowSuffix()}`,
@@ -1103,40 +1150,49 @@ function rowHTML(f) {
    that proves it did something. Round 2: "Can't tell what selecting a Genre
    filter does… am I looking at movies like Spider-Man that are also in the
    Drama genre and on one of my 3 services?" — this is that sentence. */
+/* One row of chips, and a sentence underneath saying what they add up to.
+
+   There used to be two rows: the facet chips (Services / Genre / Director /
+   Actor) and, below them, a "Now showing" list that repeated every active one
+   as a second chip. Narrowing to a director put `Steven Spielberg ×` on the
+   screen twice, in adjacent rows, inside a sticky header with a phone-sized
+   budget (Mischa, 2026-08-16: "consolidate so there's just one row of chips").
+
+   So the chips ARE the query now. A facet chip already shows its value and
+   already carries an ×, which makes it the control and the readout at once.
+   The only clauses that still need their own chip are the ones no facet can
+   express — the branch you followed, and the words you typed.
+
+   The line beneath is the summary: what all of it adds up to, as a count. */
 function showingBar(q, results) {
-  const F = S.filters, clauses = [];
+  const F = S.filters, extra = [];
   for (const id of trail()) {
     const f = byId.get(id); if (!f) continue;
-    // A long title wraps the chip onto two lines and makes the bar look
-    // broken; the full name is one tap away on the chip itself.
+    // A long title wraps the chip and makes the row look broken; the full
+    // name is one tap away on the chip itself.
     const short = f.t.length > 26 ? f.t.slice(0, 25) + '…' : f.t;
-    clauses.push({ label: `Like ${short}`, act: `data-focusnode="${id}"`, drop: `data-dropfocus="${id}"` });
+    extra.push({ label: `Like ${short}`, act: `data-focusnode="${id}"`, drop: `data-dropfocus="${id}"` });
   }
-  if (F.services.length) {
-    const names = F.services.map(sid => (SERVICES.find(x => x[0] === sid) || [, sid])[1]).join(', ');
-    clauses.push({ label: `On ${names}`, act: 'data-sheet="services"', drop: 'data-clear="services"' });
-  }
-  for (const k of ['genre', 'director', 'actor']) {
-    if (F[k]) clauses.push({ label: F[k], act: `data-sheet="${k}"`, drop: `data-clear="${k}"` });
-  }
-  if (q) clauses.push({ label: `“${q}”`, act: '', drop: 'data-act="clearq"' });
+  if (q) extra.push({ label: `“${q}”`, act: '', drop: 'data-act="clearq"' });
 
   // The count is of everything that matches, not of the cards a rail happened
   // to render. Those were different numbers, which read as a bug (round 3).
   const n = matching().length;
+  const narrowedNow = narrowed() || extra.length;
 
   return `<div class="showing">
-    <div class="lead">Now showing</div>
-    <div class="clauses">
-      ${clauses.length
-        ? clauses.map(c => `<span class="clause"><button ${c.act}>${esc(c.label)}</button><button class="x" ${c.drop} aria-label="Remove ${esc(c.label)}">×</button></span>`).join('')
-        // "Everything" was a lie about a 600-title catalog (round 3). Say
-        // what is actually there — and only what is there for THIS list. The
-        // whole catalog holds movies, shows and books; a movie Ten can reach
-        // the movies. Counting all three and calling the total "movies" was
-        // the second lie in the same sentence.
+    ${extra.length ? `<div class="clauses">
+      ${extra.map(c => `<span class="clause"><button ${c.act}>${esc(c.label)}</button><button class="x" ${c.drop} aria-label="Remove ${esc(c.label)}">×</button></span>`).join('')}
+    </div>` : ''}
+    <div class="summary">
+      ${narrowedNow
+        ? `<span class="count">${countNoun(n)}${rowSuffix()}</span>`
+        // "Everything" was a lie about a 600-title catalog (round 3). Say what
+        // is actually there — and only what is there for THIS list. The whole
+        // catalog holds movies, shows and books; a movie Ten can reach the
+        // movies. Counting all three and calling the total "movies" was the
+        // second lie in the same sentence.
         : `<span class="count">All ${roughly(shelfSize())} ${nounFor()} in our collection</span>`}
-      ${clauses.length ? `<span class="count">${countNoun(n)}</span>` : ''}
       <button class="mapbtn" data-act="openmap">Map</button>
     </div>
     ${n === 0 ? deadEnd() : ''}
