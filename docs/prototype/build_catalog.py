@@ -262,6 +262,17 @@ print(f"{len(films)} candidates from {len(sources)} source pages")
 # it excludes Seven Samurai, Amélie, City of God, Oldboy, Shoplifters and Das
 # Boot, all of which were nominated and none of which won. They are absent on
 # purpose.
+# Films in English that TMDB tags as a foreign PRODUCTION. `original_language`
+# records where a film was made, not what is spoken in it, so these would be
+# deleted by the letter of "English-language films" against its plain meaning.
+# Kept deliberately short: each entry is a claim that a specific film is in
+# English despite its tag, and a list like this earns its keep only while every
+# line can still be checked by reading it.
+ENGLISH_MISTAGGED = (
+    "Léon: The Professional",   # tagged fr — French production, English film
+    "The Fifth Element",        # tagged fr — likewise
+)
+
 OSCAR_FOREIGN = (
     # Best International Feature Film (and its predecessors), by ceremony year.
     "Shoeshine",                        # 1947 Italy (honorary)
@@ -451,8 +462,9 @@ def resolve(title):
 # only difference is that OSCAR_FOREIGN is how a non-English film reaches an
 # English-language shelf at all, so an unresolved title there is a film simply
 # missing rather than a film ranked out.
-ALL_NAMED = CANON + OSCAR_FOREIGN
+ALL_NAMED = CANON + OSCAR_FOREIGN + ENGLISH_MISTAGGED
 pinned = set()
+exempt = set()          # …from the English-language rule. ONLY the Oscar list.
 unresolved = []
 with ThreadPoolExecutor(max_workers=WORKERS) as pool:
     for title, m in zip(ALL_NAMED, pool.map(resolve, ALL_NAMED)):
@@ -461,6 +473,8 @@ with ThreadPoolExecutor(max_workers=WORKERS) as pool:
             continue
         films.setdefault(m["id"], row(m))
         pinned.add(m["id"])
+        if title in OSCAR_FOREIGN or title in ENGLISH_MISTAGGED:
+            exempt.add(m["id"])
 print(f"named canon: {len(pinned)} pinned, {len(unresolved)} unresolved {unresolved}")
 
 
@@ -522,32 +536,31 @@ print(f"{len(_people)} directors expanded; {len(films)} films before trim")
 # After the expansion, not before it. The first version ran before, and the
 # expansion then walked pinned directors' full filmographies straight back
 # through the door: Miyazaki arrived via Spirited Away and brought Princess
-# Mononoke and Howl's Moving Castle, Park Chan-wook brought The Handmaiden,
-# Meirelles brought City of God. The script reported 152 non-English films and
-# the artifact held 217. Storing `lang` is what made that visible.
+# Mononoke and Howl's Moving Castle. The script reported 152 non-English films
+# and the artifact held 217. Storing `lang` is what made that visible.
 #
-# And the test is SPOKEN language, not `original_language`. That field is a
-# production tag: TMDB marks Léon: The Professional and The Fifth Element
-# `fr`, because they are French productions, though both are films in English.
-# Dropping them would enforce the letter of "English-language films" against
-# its plain meaning. So a film stays if English is among its spoken languages,
-# which costs one details call per non-English candidate and only for those.
-def speaks_english(fid):
-    langs = get(f"/movie/{fid}").get("spoken_languages") or []
-    return any(l.get("iso_639_1") == "en" for l in langs)
-
-
-_suspect = [i for i, f in films.items() if f.get("lang") != "en" and i not in pinned]
-with ThreadPoolExecutor(max_workers=WORKERS) as pool:
-    _english = set(i for i, ok in zip(_suspect, pool.map(speaks_english, _suspect)) if ok)
-_dropped = [i for i in _suspect if i not in _english]
+# Being PINNED does not exempt a film. That was the second leak and the larger
+# one: 96 of CANON's 239 titles are non-English, so Seven Samurai, Tokyo Story,
+# In the Mood for Love, Akira and Totoro all walked in under a rule that said
+# they should not. Only two things are exempt, and both are named lists rather
+# than a property some films happen to have:
+#
+#   OSCAR_FOREIGN        the stated exception — non-English Academy Award winners
+#   ENGLISH_MISTAGGED    films in English that TMDB tags as a foreign production
+#
+# `spoken_languages` was tried as the test and is not one. TMDB lists English
+# among the spoken languages of Parasite and Das Boot as readily as of Léon,
+# so it separates nothing. `original_language` is at least consistently wrong
+# in one direction — it is a production tag — which is exactly what a short,
+# readable exception list is for.
+_dropped = [i for i, f in films.items()
+            if f.get("lang") != "en" and i not in exempt]
 for i in _dropped:
     del films[i]
 _left = sum(1 for f in films.values() if f.get("lang") != "en")
-print(f"english-language rule: {len(_suspect)} non-English-tagged candidates, "
-      f"{len(_english)} of them spoken in English and kept, {len(_dropped)} dropped; "
-      f"{_left} remain (pinned Oscar winners, or English films with a foreign "
-      f"production tag)")
+print(f"english-language rule: dropped {len(_dropped)} non-English films "
+      f"(including {sum(1 for i in _dropped if i in pinned)} that were pinned canon); "
+      f"{_left} non-English remain, every one of them a named exception")
 
 # The trim: pinned canon first, then the field by standing, to exactly TARGET.
 _rest = sorted((kv for kv in films.items() if kv[0] not in pinned),
