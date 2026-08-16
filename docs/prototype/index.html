@@ -73,13 +73,52 @@ section { margin-top: var(--s8); }
 .chip[aria-pressed="true"], .chip.on { background: var(--accent-muted); border-color: var(--accent); color: var(--accent); }
 .chip .x { font-size: 1rem; line-height: 1; opacity: .7; }
 
+/* ── The title page ─────────────────────────────────────────────────────────
+   Artwork large enough to be the reason you are here, facts beside it, and
+   every fact a door. No ratings, no reviews (Mischa, 2026-08-16) — this
+   product has one opinion per person and it is a list. */
+.title-h1 { font-size: clamp(1.375rem, 6vw, 1.75rem); line-height: 1.15; }
+.title-hero { display: grid; grid-template-columns: minmax(120px, 38%) 1fr; gap: var(--s4);
+  align-items: start; margin-top: var(--s4); }
+.title-art { position: relative; border-radius: var(--r-art); overflow: hidden;
+  background: var(--bg-recessed); aspect-ratio: 2 / 3; }
+.title-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.title-facts { min-width: 0; }
+.title-facts .year { color: var(--text-secondary); font-size: 0.9375rem; font-weight: 600; }
+.title-facts .fact { margin-top: var(--s3); font-size: 0.875rem; line-height: 1.5; }
+.title-facts .k { display: block; font-size: 0.6875rem; font-weight: 700; letter-spacing: .04em;
+  text-transform: uppercase; color: var(--text-secondary); margin-bottom: 2px; }
+/* A fact that narrows is a link, and looks like one. Underlined rather than
+   chipped: four chips in a column is a menu, and this is prose. */
+.title-facts .linkish { color: var(--accent); font-weight: 600; text-align: left;
+  text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px;
+  min-height: 0; padding: 2px 0; }
+.title-facts .sep { color: var(--text-secondary); margin: 0 6px; }
+/* Each name carries its own separator so a break never leaves a dot leading a
+   line — punctuation must not decide where the text wraps. */
+.title-facts .nm { white-space: nowrap; }
+.title-facts .watch { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
+.title-facts .sv { font-size: 0.75rem; font-weight: 600; padding: 4px 8px; border-radius: 999px;
+  background: var(--accent-muted); color: var(--accent); }
+.title-facts .watch.none { color: var(--text-secondary); font-size: 0.8125rem; }
+.title-cta { margin-top: var(--s5); }
+.title-cta .btn { width: 100%; }
+
 /* ── The sticky query bar ───────────────────────────────────────────────────
    Search and the refinements stay reachable while you browse (Mischa,
    2026-08-15) — with a dozen browse rows below it, a search field that
    scrolls away is a search field you have to scroll back up to find. The Now
-   showing bar deliberately stays OUT of this: it is a readout of what the
-   controls did, and freezing a readout to the top of a scrolling page makes it
-   compete with the thing it is describing. */
+   Now showing bar is IN it, and the first version's reasoning for keeping it
+   out — "a readout should not compete with the thing it describes" — was
+   wrong in a way only using the app could show. Mischa tapped `With Guy
+   Pearce`, scrolled down, and reported that the other rows were unfiltered.
+   They were filtered. But the chip saying so had scrolled off the top
+   (measured at y=-958), the row headings still read `Popular dramas`, and
+   nothing on screen disagreed with "this only affected one row".
+
+   A filter you cannot see is a filter you cannot trust or undo. So the
+   clauses travel with the controls that set them, which is what makes them
+   controls rather than a readout. */
 .stickybar { position: sticky; top: 0; z-index: 30;
   margin: var(--s6) calc(var(--margin) * -1) 0; padding: var(--s3) var(--margin) var(--s2);
   background: var(--bg-base); border-bottom: 1px solid var(--border-subtle); }
@@ -146,6 +185,39 @@ section { margin-top: var(--s8); }
 /* Stacked, not side by side. Two labelled pills do not fit across a 120pt
    card, and a row that only just fits at the default text size is a row that
    breaks at the accessibility sizes this app has to pass. */
+/* The corner control. It is the whole add affordance: a `+` needs no label,
+   it sits where the eye already is, and it leaves a row of posters a row of
+   posters rather than a row of buttons. 44px of touch target around a 28px
+   glyph — the tap area is bigger than the thing you can see, which is the
+   only way a corner control is fair on a phone. */
+.card .pin { position: absolute; right: 0; top: 0; width: 44px; height: 44px;
+  display: grid; place-items: center; background: none; border: 0; z-index: 2; }
+.card .pin .glyph { width: 28px; height: 28px; border-radius: 999px;
+  display: grid; place-items: center; font-size: 0.9375rem; font-weight: 800; line-height: 1;
+  background: rgba(10,9,6,.62); color: #fff; backdrop-filter: blur(8px);
+  border: 1px solid rgba(255,255,255,.28);
+  transition: background var(--m-settle) var(--ease-out), color var(--m-settle) var(--ease-out),
+              transform var(--m-settle) var(--ease-out), border-color var(--m-settle) var(--ease-out); }
+.card[data-in="1"] .pin .glyph { background: var(--accent-bright); color: #17140B;
+  border-color: transparent; transform: scale(1.08); }
+.card .pin:active .glyph { transform: scale(.9); }
+@media (prefers-reduced-motion: reduce) { .card .pin .glyph { transition: none; } }
+
+/* The shimmer. One pass of light across the poster at the moment it joins the
+   Ten — the reward for the tap, and the reason the checkmark does not have to
+   shout. It runs once and only on the way in; undoing should not be
+   celebrated. */
+.card .sheen { position: absolute; inset: 0; pointer-events: none; opacity: 0;
+  background: linear-gradient(105deg, transparent 38%, rgba(255,255,255,.62) 50%, transparent 62%);
+  transform: translateX(-120%); }
+.card .sheen.run { animation: sheen var(--m-ring, 420ms) var(--ease-out) 1; }
+@keyframes sheen {
+  0%   { opacity: 0;   transform: translateX(-120%); }
+  22%  { opacity: 1; }
+  100% { opacity: 0;   transform: translateX(120%); }
+}
+@media (prefers-reduced-motion: reduce) { .card .sheen { animation: none !important; } }
+
 .card .acts { display: flex; flex-direction: column; gap: 6px; margin-top: var(--s2); }
 /* The one control a browse card ever shows, and only once it has been picked.
    It opens rather than appears — the card is answering, and an answer that
@@ -154,12 +226,7 @@ section { margin-top: var(--s8); }
 .card .acts.one.revealed { opacity: 1; transform: none; }
 @media (prefers-reduced-motion: reduce) { .card .acts.one { transition: none; } }
 .card .acts button { width: 100%; min-height: 34px; border-radius: 999px; font-size: 0.75rem; font-weight: 700; display: inline-flex; align-items: center; justify-content: center; gap: 4px; padding: 0 8px; }
-.card .acts .do-add { background: var(--accent); color: #fff; }
-@media (prefers-color-scheme: dark) { .card .acts .do-add { color: #17140B; } }
-.card[data-in="1"] .acts .do-add { background: var(--accent-muted); color: var(--accent); }
 .card .acts .do-similar { border: 1px solid var(--border-subtle); color: var(--text-secondary); }
-.card .in { position: absolute; left: 6px; top: 6px; width: 26px; height: 26px; border-radius: 999px; background: var(--accent-bright); color: #17140B; font-size: 0.75rem; font-weight: 800; display: grid; place-items: center; opacity: 0; transform: scale(.6); transition: opacity var(--m-settle) var(--ease-out), transform var(--m-settle) var(--ease-out); }
-.card[data-in="1"] .in { opacity: 1; transform: none; }
 
 /* ── Search results / list rows ─────────────────────────────────────────── */
 .row { display: flex; align-items: center; gap: var(--s3); width: 100%; text-align: left; padding: var(--s2) 0; border-bottom: 1px solid var(--border-subtle); min-height: 76px; }
@@ -176,7 +243,20 @@ section { margin-top: var(--s8); }
 /* ── "Now showing" — one line that always answers what am I looking at ────
    Every clause of the current query is a chip you can drop, and the count is
    the proof it did something. */
-.showing { margin-top: var(--s4); }
+.showing { margin-top: var(--s2); }
+/* One line that scrolls sideways rather than a block that grows downward:
+   narrowing three times must not push the shelf off the screen. */
+.showing .clauses { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; padding-bottom: 2px; }
+.showing .clauses::-webkit-scrollbar { display: none; }
+.showing .clause, .showing .count { flex: 0 0 auto; }
+/* A tap on a badge changes something 200px above the thumb. This is the line
+   that connects the two. */
+.showing.flash { animation: flashbar 900ms var(--ease-out) 1; }
+@keyframes flashbar {
+  0%, 100% { background: transparent; }
+  18%      { background: var(--accent-muted); }
+}
+@media (prefers-reduced-motion: reduce) { .showing.flash { animation: none; } }
 .showing .lead { font-size: 0.75rem; font-weight: 700; letter-spacing: .04em; text-transform: uppercase; color: var(--text-secondary); }
 .showing .clauses { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin-top: 6px; }
 .showing .clause { display: inline-flex; align-items: center; gap: 6px; min-height: 32px; padding: 0 10px; border-radius: 999px; background: var(--accent-muted); color: var(--accent); font-size: 0.8125rem; font-weight: 600; border: 1px solid var(--accent); }
@@ -842,14 +922,14 @@ function sections() {
     }
   }
 
-  // Because you picked X — one section per recent pick, so it is a heading
+  // Because you added X — one section per recent add, so it is a heading
   // you can see rather than a caption you might miss.
   for (const id of [...S.tray].reverse().slice(0, 2)) {
     const seed = byId.get(id); if (!seed) continue;
     if (S.graph.focus === id) continue;
     const films = similarTo(seed, have, 12);
     if (films.length >= 3) out.push({
-      id: 'because' + id, title: `Because you picked ${seed.t}`, seed: id,
+      id: 'because' + id, title: `Because you added ${seed.t}`, seed: id,
       cards: films.map(r => ({ f: r.f, why: r.why }))
     });
   }
@@ -886,7 +966,10 @@ const standing = f => f.v * Math.log10((f.vc || 0) + 10);
 function browseRows(have) {
   const shelf = pool().filter(f => !have.has(f.id));
   const rows = [], take = (list, n = ROW_SIZE) => list.slice(0, n).map(f => ({ f, why: '' }));
-  const add = (id, title, list) => { const c = take(list); if (c.length >= MIN_ROW) rows.push({ id, title, cards: c, browse: true }); };
+  const add = (id, title, list) => {
+    const c = take(list);
+    if (c.length >= MIN_ROW) rows.push({ id, title: title + rowSuffix(id), cards: c, browse: true });
+  };
 
   // Newest first, but a 2026 release with nine votes is not a release anybody
   // is looking for — within a year, order by how much the shelf has to say.
@@ -903,8 +986,31 @@ function browseRows(have) {
     add('g:' + g, `Popular ${genrePhrase(g)}`,
       shelf.filter(f => f.g.includes(g)).sort((a, b) => standing(b) - standing(a)));
   }
+
+  /* Narrow far enough and every row falls under MIN_ROW and silently
+     disappears. That is how a working global filter reads as a broken one:
+     Mischa narrowed to an actor, scrolled down, and found the rows he
+     remembered gone rather than filtered — which looks exactly like nothing
+     having happened below the fold.
+
+     So when a filter has thinned the shelf past the point where rows are
+     worth having, stop pretending to be a browse screen and be a result: one
+     row, everything that matches, named after what you asked for. */
+  if (narrowed() && rows.length < 3) {
+    const all = [...shelf].sort((a, b) => standing(b) - standing(a));
+    if (all.length) return [{
+      id: 'narrowed', browse: true,
+      title: `${all.length} ${all.length === 1 ? domainMeta().one : nounFor()}${rowSuffix()}`,
+      cards: take(all, Math.max(ROW_SIZE, all.length)),
+    }];
+  }
   return rows;
 }
+
+const narrowed = () => {
+  const F = S.filters;
+  return !!(F.genre || F.director || F.actor || (F.services && F.services.length));
+};
 
 /* ── Rendering ────────────────────────────────────────────────────────────── */
 function svgIcon(name) {
@@ -917,40 +1023,70 @@ function svgIcon(name) {
   return `<svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" aria-hidden="true">${p}</svg>`;
 }
 
-/* Two card anatomies, and the difference is what the row is FOR.
+/* ONE card anatomy, everywhere (Mischa, 2026-08-16: "some rows have the Add
+   button while other rows don't — the UI needs to be consistent with its UX").
 
-   A suggestion rail is arguing a case — "because you picked Inception" — so
-   its cards carry both verbs in words, which is round 2's fix ("I didn't know
-   how to add something vs what the chevron would do").
+   Two anatomies were a deliberate choice and it was the wrong one. A
+   suggestion rail spelled both verbs out in words; a browse row was poster-only
+   and grew a `See similar` after you added. Each was defensible on its own and
+   together they taught two different lessons about what a card is.
 
-   A BROWSE row is a shelf you are scanning, and two buttons under every poster
-   turn eleven rows of scanning into eleven rows of buttons (Mischa,
-   2026-08-15). Browse cards are the poster and the title, nothing else. The
-   poster is still the add control — it always was — and `See similar` appears
-   under a card only AFTER you have added it, which is also the first moment
-   the question is worth asking. */
+   The single anatomy is the poster, a `+` in its corner, and the title. The
+   corner control is the whole add affordance — a `+` needs no label, it sits
+   where the eye already is, and it leaves the row a row of posters rather than
+   a row of buttons. Adding turns it into a checkmark, draws the ring, and
+   sends a shimmer across the artwork.
+
+   That frees the poster itself, which now opens the title. Which is what
+   tapping a poster means everywhere else in the world, and what it means in
+   Stack. */
 function cardHTML(c, browse = false) {
   const inTen = S.tray.includes(c.f.id);
-  const acts = browse
-    ? (inTen ? `<div class="acts one">
-        <button class="do-similar" data-deeper="${c.f.id}" aria-label="Show ${nounFor()} like ${esc(c.f.t)}">See similar ${svgIcon('deeper')}</button>
-      </div>` : '')
-    : `<div class="acts">
-      <button class="do-add" data-add="${c.f.id}">${inTen ? '✓ Added' : '+ Add'}</button>
-      <button class="do-similar" data-deeper="${c.f.id}" aria-label="Show ${nounFor()} like ${esc(c.f.t)}">Similar ${svgIcon('deeper')}</button>
-    </div>`;
   return `<div class="card${browse ? ' browse' : ''}" data-card="${c.f.id}" data-in="${inTen ? 1 : 0}">
-    <button class="art" data-add="${c.f.id}" aria-label="${inTen ? 'Remove' : 'Add'} ${esc(c.f.t)}" aria-pressed="${inTen}">
+    <button class="art" data-title="${c.f.id}" aria-label="${esc(c.f.t)}${c.f.y ? ', ' + c.f.y : ''}">
       <img src="${art(c.f, 'w342')}" alt="" loading="lazy" decoding="async">
+      <span class="sheen" aria-hidden="true"></span>
       <svg class="ring" viewBox="0 0 120 180" preserveAspectRatio="none"><rect x="1.5" y="1.5" width="117" height="177" rx="6"/></svg>
     </button>
-    <span class="in" aria-hidden="true">✓</span>
+    <button class="pin" data-add="${c.f.id}" aria-pressed="${inTen}"
+      aria-label="${inTen ? 'Remove' : 'Add'} ${esc(c.f.t)}${inTen ? ' from' : ' to'} your Top 10">
+      <span class="glyph" aria-hidden="true">${inTen ? '✓' : '+'}</span>
+    </button>
     <div class="t">${esc(c.f.t)}</div>
     ${c.why ? (c.why.jump
         ? `<div class="why"><button data-facetjump='${esc(JSON.stringify(c.why.jump))}'>${esc(c.why.label)}</button></div>`
         : `<div class="why"><span class="static">${esc(c.why.label)}</span></div>`) : ''}
-    ${acts}
+    ${inTen ? seeSimilarHTML(c.f) : ''}
   </div>`;
+}
+
+/* Kept from round 8, now on every card rather than only browse ones, because
+   "the first moment the question is worth asking" is true of any card you have
+   just added — it was never a property of the row. */
+const seeSimilarHTML = f =>
+  `<div class="acts one revealed"><button class="do-similar" data-deeper="${f.id}" aria-label="Show ${nounFor()} like ${esc(f.t)}">See similar ${svgIcon('deeper')}</button></div>`;
+
+/* The tap happens on a card; the evidence appears in the bar above it. On a
+   phone those are far enough apart to read as unrelated, so the bar says so
+   itself. */
+function flashShowing() {
+  const bar = $('.showing');
+  if (!bar || reduced()) return;
+  bar.classList.remove('flash'); void bar.offsetWidth; bar.classList.add('flash');
+}
+
+/* A filtered row has to SAY it is filtered. "Popular dramas" reads identically
+   whether or not an actor filter is on, which is exactly how Mischa concluded
+   a global filter was row-local (2026-08-16).
+
+   The genre clause is dropped on genre rows because "Popular dramas in Drama"
+   is the app talking to itself. */
+function rowSuffix(rowId = '') {
+  const F = S.filters, bits = [];
+  if (F.actor) bits.push(`with ${F.actor}`);
+  if (F.director) bits.push(`by ${F.director}`);
+  if (F.genre && !rowId.startsWith('g:')) bits.push(`in ${F.genre}`);
+  return bits.length ? ' ' + bits.join(', ') : '';
 }
 
 function rowHTML(f) {
@@ -1144,8 +1280,8 @@ function renderBuild() {
         ${S.q ? '<button class="clear" data-act="clearq" aria-label="Clear search">×</button>' : ''}
       </div>
       ${filterChips()}
+      ${showingBar(q, results)}
     </div>
-    ${showingBar(q, results)}
     ${body}
     ${notes()}`;
 
@@ -1251,12 +1387,27 @@ function markCard(id, on) {
     el.dataset.in = on ? '1' : '0';
     const btn = el.querySelector('[data-add]');
     if (btn) { btn.setAttribute('aria-pressed', String(on)); if (btn.classList.contains('add')) btn.textContent = on ? '✓' : '+'; }
-    // A browse card grows its `See similar` when it is picked and loses it
-    // again when it is not. Built here rather than by re-rendering the rail,
-    // because the rail must not move under the thumb (round 1's law: acting on
-    // a card does not make the card leave) — and a re-render would also throw
-    // away the ring that is drawing itself two lines below.
-    if (el.classList.contains('browse')) {
+    // The corner control is the state, so it changes with the state.
+    const pin = el.querySelector('.pin .glyph');
+    if (pin) pin.textContent = on ? '✓' : '+';
+
+    // A shimmer across the artwork, once, on the way in only. Undoing should
+    // not be celebrated.
+    const sheen = el.querySelector('.sheen');
+    if (sheen) {
+      // Cleared on the way out as well as set on the way in. Leaving the class
+      // on meant a removed card still claimed to be shimmering, and the next
+      // add would not replay it.
+      sheen.classList.remove('run');
+      if (on && !reduced()) { void sheen.offsetWidth; sheen.classList.add('run'); }
+    }
+
+    // Every card grows its `See similar` when it is added and loses it again
+    // when it is not. Built here rather than by re-rendering the rail, because
+    // the rail must not move under the thumb (round 1's law: acting on a card
+    // does not make the card leave) — and a re-render would also throw away
+    // the ring that is drawing itself two lines below.
+    {
       const acts = el.querySelector('.acts');
       if (on && !acts) {
         const f = byId.get(id);
@@ -2224,6 +2375,86 @@ function toast(text, ms = 2200) {
 function setBackgroundInert(on) {
   for (const el of [app, dockEl]) { el.inert = on; if (on) el.setAttribute('aria-hidden', 'true'); else el.removeAttribute('aria-hidden'); }
 }
+/* ── The title page ───────────────────────────────────────────────────────
+   Tapping a poster opens the title, the way it does in Stack and the way it
+   does everywhere else — which is only possible now that the corner `+` owns
+   adding (Mischa, 2026-08-16).
+
+   Stack's page without the Ratings and Reviews, as asked. What is left is the
+   artwork, the facts, where you can watch it, and the two things this product
+   is actually about: whether it is in your Ten, and what it leads to.
+
+   Every fact on this page is also a door. "Christopher Nolan" is not a label,
+   it is the Nolan filter — which is the same narrowing the `Also Christopher
+   Nolan` badges do, in the place somebody is most likely to want it.
+
+   No synopsis, and that is a data gap rather than a design decision: the baked
+   catalog carries no overview field (see build_catalog.py). Adding one means
+   re-fetching 2,700 titles from TMDB with a key this prototype deliberately
+   does not have. */
+/* A list of facts, each of which narrows the shelf.
+
+   The separator is glued INSIDE the preceding item rather than sitting
+   between items, because an inline `·` of its own can start a line — which is
+   how "Tom Cruise · Colin Farrell / · Samantha Morton ·" happened. Punctuation
+   must not decide where text wraps. */
+function factLinks(kind, values) {
+  const last = values.length - 1;
+  return values.map((v, i) =>
+    `<span class="nm"><button class="linkish" data-facetjump='${esc(JSON.stringify({ kind, value: v }))}'>${esc(v)}</button>${i < last ? '<span class="sep">·</span>' : ''}</span>`
+  ).join(' ');
+}
+
+function renderTitle(id) {
+  const f = byId.get(id);
+  if (!f) { S.scene = 'build'; return renderBuild(); }
+  const inTen = S.tray.includes(f.id);
+  const region = S.region || 'US';
+  const on = (f.sv || {})[region] || [];
+  const services = on.map(sid => (SERVICES.find(x => x[0] === sid) || [, sid])[1]);
+  const cast = (f.ca || []).slice(0, 4);
+  const like = similarTo(f, new Set(), 12);
+
+  app.className = 'wrap';
+  app.innerHTML = `
+    <div class="topbar">
+      <h1 class="display-lg title-h1">${esc(f.t)}</h1>
+      <button class="link" data-act="titleback">Back</button>
+    </div>
+    <div class="title-hero">
+      <div class="title-art">
+        <img src="${art(f, 'w500')}" alt="" decoding="async">
+        <svg class="ring" viewBox="0 0 120 180" preserveAspectRatio="none"><rect x="1.5" y="1.5" width="117" height="177" rx="6"/></svg>
+      </div>
+      <div class="title-facts">
+        <p class="year">${f.y || ''}</p>
+        ${f.d ? `<p class="fact"><span class="k">Director</span>${factLinks('director', [f.d])}</p>` : ''}
+        ${cast.length ? `<p class="fact"><span class="k">Starring</span>${factLinks('actor', cast)}</p>` : ''}
+        ${(f.g || []).length ? `<p class="fact"><span class="k">Genre</span>${factLinks('genre', f.g.slice(0, 3))}</p>` : ''}
+        <p class="fact"><span class="k">Where to watch</span>
+          ${services.length
+            ? `<span class="watch">${services.map(n => `<span class="sv">${esc(n)}</span>`).join('')}</span>`
+            : `<span class="watch none">Not on your services</span>`}</p>
+      </div>
+    </div>
+    <div class="title-cta">
+      <button class="btn ${inTen ? 'ghost' : ''}" data-add="${f.id}" aria-pressed="${inTen}">
+        ${inTen ? '✓ In your Top 10' : '+ Add to my Top 10'}
+      </button>
+    </div>
+    ${like.length ? `<section data-rail="titlelike">
+      <div class="section-head"><h2 class="section-h">More like ${esc(f.t)}</h2></div>
+      <div class="rail">${like.map(r => cardHTML({ f: r.f, why: r.why }, true)).join('')}</div>
+    </section>` : ''}
+    ${notes()}`;
+  // The dock is the running count of your Ten, and it belongs on this page
+  // for the same reason it belongs on the shelf: the tally is the spine of
+  // the whole flow, and losing it on the one screen where you decide about a
+  // single title is losing it exactly where the decision is.
+  renderDock();
+  window.scrollTo(0, 0);
+}
+
 function render() {
   $$('.vault').forEach(v => v.remove());
   closeMap();
@@ -2237,13 +2468,17 @@ function render() {
   else if (S.scene === 'rank') { if (!S.rank) startDuel(); else renderDuel(); }
   else if (S.scene === 'reveal') renderReveal();
   else if (S.scene === 'done') renderFinished();
+  else if (S.scene === 'title') renderTitle(S.title);
 }
 
 document.addEventListener('click', e => {
-  const t = e.target.closest('[data-add],[data-deeper],[data-remove],[data-move],[data-toggle],[data-toggle-service],[data-facet],[data-facetjump],[data-higher],[data-sheet],[data-clear],[data-act],[data-topic],[data-focusnode],[data-dropfocus],[data-mapnode],[data-other]');
+  const t = e.target.closest('[data-title],[data-add],[data-deeper],[data-remove],[data-move],[data-toggle],[data-toggle-service],[data-facet],[data-facetjump],[data-higher],[data-sheet],[data-clear],[data-act],[data-topic],[data-focusnode],[data-dropfocus],[data-mapnode],[data-other]');
   if (!t) return;
 
   if (t.dataset.clear) { e.stopPropagation(); const k = t.dataset.clear; S.filters[k] = k === 'services' ? [] : null; save(); renderBuild(); return; }
+  if (t.dataset.title) {
+    S.title = +t.dataset.title; S.back = S.scene; S.scene = 'title'; save(); render(); return;
+  }
   if (t.dataset.add) { addFilm(+t.dataset.add, t); return; }
   if (t.dataset.deeper) {
     const id = +t.dataset.deeper;
@@ -2253,9 +2488,17 @@ document.addEventListener('click', e => {
   }
   if (t.dataset.facetjump) {
     const { kind, value } = JSON.parse(t.dataset.facetjump);
-    S.filters[kind] = S.filters[kind] === value ? null : value;
-    save(); renderBuild();
-    announce(S.filters[kind] ? `Narrowed to ${value}` : `${value} filter removed`); return;
+    const wasOn = S.filters[kind] === value;
+    S.filters[kind] = wasOn ? null : value;
+    // Narrowing from a title page means leaving it: the answer to "what else
+    // has Guy Pearce in it" is a shelf, and staying on Memento to be told
+    // about it is the app withholding the thing you asked for.
+    const leaving = S.scene === 'title';
+    if (leaving) S.scene = 'build';
+    save();
+    if (leaving) render(); else renderBuild();
+    if (!wasOn) flashShowing();
+    announce(wasOn ? `${value} filter removed` : `Narrowed to ${value}`); return;
   }
   if (t.dataset.focusnode) { S.graph.focus = +t.dataset.focusnode; save(); renderBuild(); return; }
   if (t.dataset.dropfocus) {
@@ -2264,6 +2507,7 @@ document.addEventListener('click', e => {
     const n = node(+t.dataset.dropfocus);
     S.graph.focus = n ? n.parent : null; save(); renderBuild(); return;
   }
+  if (t.dataset.act === 'titleback') { S.scene = S.back || 'build'; save(); render(); return; }
   if (t.dataset.other) { S.other = t.dataset.other; S.scene = 'other'; save(); render(); return; }
   if (t.dataset.mapnode) {
     if (t.dataset.mapnode === 'home') { S.graph.focus = null; save(); closeMap(); renderBuild(); return; }

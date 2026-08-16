@@ -237,7 +237,7 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   check(coach.pointsAtChip && coach.below, 'the callout sits under the chip with its arrow on it');
   check(coach.ok === 'OK' && coach.okH >= 44, `one way out, at ${coach.okH}pt: "${coach.ok}"`);
   // A modal that blocks the screen must actually block it.
-  const blocked = await page.locator('.rail .card .art').first()
+  const blocked = await page.locator('.rail .card .pin').first()
     .click({ timeout: 1200 }).then(() => false, () => true);
   check(blocked, 'a tap on the screen behind the callout does not reach it');
   await page.locator('.coachbox [data-act="tipok"]').click();
@@ -328,85 +328,185 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   await page.waitForTimeout(150);
   check(await page.locator('.mapview').count() === 0, 'Done closes the empty map');
 
-  // Round 2: "I didn't know how to add something to the 10 list vs what the
-  // chevron would do." Both actions must say what they are, in words.
-  // ── Browse cards are posters (Mischa, 2026-08-15) ───────────────────────
-  // Two buttons under every poster turned eleven rows of scanning into eleven
-  // rows of buttons. A browse card is the poster and the title; the poster was
-  // always the add control. `See similar` arrives only after you have added
-  // something, which is the first moment the question is worth asking.
-  const browseCard = await page.evaluate(() => {
-    const c = document.querySelector('.rail .card.browse');
-    if (!c) return null;
-    return { buttons: c.querySelectorAll('button').length,
-      hasArt: !!c.querySelector('.art'), hasTitle: !!c.querySelector('.t'),
-      acts: c.querySelectorAll('.acts').length };
+  // ── ONE card anatomy, everywhere (Mischa, 2026-08-16) ───────────────────
+  // "Some rows have the Add button while other rows don't — the UI needs to be
+  // consistent with its UX." Two anatomies were a deliberate choice and it was
+  // the wrong one, so the test that pinned them apart is gone and this one
+  // pins them together: every card, in every row, is the same shape.
+  const anatomies = await page.evaluate(() => {
+    const shape = c => JSON.stringify({
+      art: !!c.querySelector('.art'), pin: !!c.querySelector('.pin'),
+      title: !!c.querySelector('.t'), addButtons: c.querySelectorAll('.do-add').length,
+    });
+    const all = [...document.querySelectorAll('.rail .card')];
+    return { kinds: [...new Set(all.map(shape))], n: all.length,
+             browse: document.querySelectorAll('.rail .card.browse').length };
   });
-  check(!!browseCard, 'the browse rows render browse-anatomy cards');
-  check(browseCard.acts === 0 && browseCard.buttons === 1,
-    `an unpicked browse card carries no Add/Similar buttons (${browseCard.buttons} control: the poster)`);
-  check(browseCard.hasArt && browseCard.hasTitle, 'just the poster and the title');
-  // Poster height per card is what a browse row buys with that space.
-  const rowH = await page.evaluate(() => {
-    const b = document.querySelector('.rail .card.browse').getBoundingClientRect();
-    return Math.round(b.height);
-  });
-  check(rowH < 300, `so a browse card is ${rowH}px tall, not a stack of controls`);
+  check(anatomies.kinds.length === 1,
+    `every card in every row is the same shape (${anatomies.n} cards, ${anatomies.kinds.length} anatomy)`);
+  check(anatomies.kinds[0] && JSON.parse(anatomies.kinds[0]).addButtons === 0,
+    'and none of them carries a labelled Add button — the corner + is the whole affordance');
 
+  const card0 = await page.evaluate(() => {
+    const c = document.querySelector('.rail .card');
+    const pin = c.querySelector('.pin'), art = c.querySelector('.art');
+    const pr = pin.getBoundingClientRect(), ar = art.getBoundingClientRect();
+    return { glyph: pin.querySelector('.glyph').textContent.trim(),
+      pressed: pin.getAttribute('aria-pressed'), label: pin.getAttribute('aria-label'),
+      tap: Math.round(Math.min(pr.width, pr.height)),
+      onArt: pr.top >= ar.top - 1 && pr.right <= ar.right + 1,
+      artOpens: art.hasAttribute('data-title') };
+  });
+  check(card0.glyph === '+', 'an unadded card shows a + in its corner');
+  check(card0.onArt, 'sitting on the artwork, top-right');
+  check(card0.tap >= 44, `with a ${card0.tap}px touch target around it, not a 28px one`);
+  check(/add/i.test(card0.label) && card0.pressed === 'false',
+    `and it says what it does to a screen reader ("${card0.label}")`);
+  check(card0.artOpens, 'while the poster itself opens the title');
+
+  const rowH = await page.evaluate(() =>
+    Math.round(document.querySelector('.rail .card.browse').getBoundingClientRect().height));
+  check(rowH < 300, `so a card is ${rowH}px tall, not a stack of controls`);
+
+  // ── Adding: checkmark, ring, shimmer ────────────────────────────────────
   const firstBrowse = page.locator('.rail .card.browse').first();
   const browseId = await firstBrowse.getAttribute('data-card');
-  await firstBrowse.locator('.art').click();
+  await firstBrowse.locator('.pin').click();
+  await page.waitForTimeout(120);
+  const shimmering = await page.evaluate(id => {
+    const c = document.querySelector(`.card[data-card="${id}"]`);
+    const sheen = c.querySelector('.sheen');
+    return { running: sheen && sheen.classList.contains('run'),
+      anim: sheen ? getComputedStyle(sheen).animationName : null };
+  }, browseId);
+  check(shimmering.running && shimmering.anim === 'sheen',
+    'adding runs a shimmer across the poster');
   await page.waitForTimeout(420);
   const afterAdd = await page.evaluate(id => {
-    const c = document.querySelector(`.card.browse[data-card="${id}"]`);
-    const b = c && c.querySelector('.do-similar');
-    if (!b) return null;
-    const r = b.getBoundingClientRect(), cr = c.getBoundingClientRect();
+    const c = document.querySelector(`.card[data-card="${id}"]`);
+    const b = c.querySelector('.do-similar');
+    const pin = c.querySelector('.pin');
+    const r = b && b.getBoundingClientRect(), cr = c.getBoundingClientRect();
     const ar = c.querySelector('.art').getBoundingClientRect();
-    return { label: b.innerText.trim(), h: Math.round(r.height),
-      inside: r.left >= cr.left - 1 && r.right <= cr.right + 1,
-      belowArt: r.top >= ar.bottom - 1, top: Math.round(r.top), artBottom: Math.round(ar.bottom),
-      addButtons: c.querySelectorAll('.do-add').length };
+    return { glyph: pin.querySelector('.glyph').textContent.trim(),
+      pressed: pin.getAttribute('aria-pressed'),
+      ring: getComputedStyle(c.querySelector('.ring rect')).stroke,
+      label: b ? b.innerText.trim() : null,
+      inside: !!r && r.left >= cr.left - 1 && r.right <= cr.right + 1,
+      belowArt: !!r && r.top >= ar.bottom - 1,
+      top: r && Math.round(r.top), artBottom: Math.round(ar.bottom) };
   }, browseId);
-  check(!!afterAdd, 'adding from a browse card reveals a control under it');
-  check(/^See similar/.test(afterAdd.label), `and it reads "${afterAdd.label}"`);
-  check(afterAdd.addButtons === 0, 'with no Add button beside it — you have already added it');
-  check(afterAdd.inside, 'and it fits inside the card');
-  // `.in` is the card's added-badge class and it is absolutely positioned, so a
-  // reveal class called `.in` put `See similar` on top of the poster. The
-  // control belongs BELOW the artwork; anything else is a collision.
+  check(afterAdd.glyph === '✓', 'the + becomes a checkmark');
+  check(afterAdd.pressed === 'true', 'and announces itself as pressed');
+  check(afterAdd.ring !== 'none' && !/rgba\(0, 0, 0, 0\)/.test(afterAdd.ring),
+    `while the ring draws itself around the poster (${afterAdd.ring})`);
+  check(/^See similar/.test(afterAdd.label || ''), `and "${afterAdd.label}" appears beneath`);
+  check(afterAdd.inside, 'fitting inside the card');
+  // `.in` was the card's added-badge class and it is absolutely positioned, so
+  // a reveal class called `.in` once put `See similar` on top of the poster.
   check(afterAdd.belowArt,
-    `and sits below the poster, not on it (control top ${afterAdd.top}, poster bottom ${afterAdd.artBottom})`);
+    `below the poster, not on it (control top ${afterAdd.top}, poster bottom ${afterAdd.artBottom})`);
   const others = await page.evaluate(id => document.querySelectorAll(
-    `.card.browse:not([data-card="${id}"]) .do-similar`).length, browseId);
+    `.card:not([data-card="${id}"]) .do-similar`).length, browseId);
   check(others === 0, 'and only that card grew one — the rest of the row is untouched');
-  await firstBrowse.locator('.art').click();   // put it back
-  await page.waitForTimeout(420);
 
-  // ── A suggestion rail still names both verbs in words (round 2) ──────────
-  // A rail arguing a case is not a shelf being scanned, so it keeps them.
-  await page.locator('.rail .card.browse .art').first().click();
-  await page.waitForTimeout(500);
-  // The "Because you picked X" rail lands on the NEXT render, not on the tap:
-  // round 1's law is that the rail must not reshuffle under the thumb.
-  check(await page.locator('.rail .card:not(.browse)').count() === 0,
-    'the new rail does not shove itself in under the thumb — it waits for the next render');
-  await page.evaluate(() => window.renderBuild());
-  await page.waitForTimeout(300);
-  const sug = page.locator('.rail .card:not(.browse)').first();
-  check(await sug.count() === 1, 'picking something produces a suggestion rail');
-  const addLabel = (await sug.locator('.do-add').innerText()).trim();
-  const simLabel = (await sug.locator('.do-similar').innerText()).trim();
-  check(/add/i.test(addLabel), `the add control is labelled ("${addLabel}")`);
-  check(/similar/i.test(simLabel), `the drill-in control is labelled ("${simLabel}")`);
-  // A label that overflows its card is a label the user cannot read.
-  const fits = await page.evaluate(() => {
-    const c = document.querySelector('.rail .card:not(.browse)');
-    const card = c.getBoundingClientRect();
-    return [...c.querySelectorAll('.acts button')]
-      .every(b => { const r = b.getBoundingClientRect(); return r.left >= card.left - 1 && r.right <= card.right + 1; });
+  // Undoing must not be celebrated.
+  await page.locator(`.card[data-card="${browseId}"] .pin`).click();
+  await page.waitForTimeout(120);
+  const onRemove = await page.evaluate(id => {
+    const c = document.querySelector(`.card[data-card="${id}"]`);
+    return { glyph: c.querySelector('.pin .glyph').textContent.trim(),
+      shimmer: c.querySelector('.sheen').classList.contains('run'),
+      similar: c.querySelectorAll('.do-similar').length };
+  }, browseId);
+  check(onRemove.glyph === '+' && onRemove.similar === 0, 'removing puts the card back');
+  check(!onRemove.shimmer, 'with no shimmer — undoing is not celebrated');
+
+  // ── The poster opens the title ──────────────────────────────────────────
+  const openId = await page.locator('.rail .card').first().getAttribute('data-card');
+  await page.locator('.rail .card').first().locator('.art').click();
+  await page.waitForTimeout(350);
+  const titlePage = await page.evaluate(() => ({
+    scene: window.S.scene,
+    h1: document.querySelector('.title-h1') && document.querySelector('.title-h1').innerText.trim(),
+    facts: [...document.querySelectorAll('.title-facts .k')].map(k => k.innerText.trim()),
+    jumps: document.querySelectorAll('.title-facts [data-facetjump]').length,
+    ratings: /rating|review|out of 10|\/10|★/i.test(document.body.innerText),
+    cta: document.querySelector('.title-cta .btn') &&
+         document.querySelector('.title-cta .btn').innerText.trim(),
+    similar: document.querySelectorAll('[data-rail="titlelike"] .card').length,
+  }));
+  check(titlePage.scene === 'title', 'tapping a poster opens the title page');
+  check(!!titlePage.h1, `titled with the film ("${titlePage.h1}")`);
+  // innerText reflects text-transform, so these come back upper-cased.
+  check(titlePage.facts.some(f => /where to watch/i.test(f)) && titlePage.facts.length >= 3,
+    `carrying its facts (${titlePage.facts.join(', ')})`);
+  check(titlePage.jumps >= 2,
+    `every one of which narrows the shelf (${titlePage.jumps} tappable facts) — the clearer path Mischa asked for`);
+  check(!titlePage.ratings, 'and NO ratings or reviews — this product has one opinion per person, and it is a list');
+  check(/add to my top 10/i.test(titlePage.cta || ''), `with one clear action ("${titlePage.cta}")`);
+  check(titlePage.similar > 0, `and where it leads (${titlePage.similar} similar)`);
+
+  await page.screenshot({ path: SHOTS + '/17-title-page.png' });
+
+  // Narrowing from the title page must LEAVE it — the answer to "what else has
+  // Guy Pearce in it" is a shelf, and staying put is the app withholding it.
+  await page.locator('.title-facts [data-facetjump]').first().click();
+  await page.waitForTimeout(350);
+  const afterJump = await page.evaluate(() => ({
+    scene: window.S.scene,
+    filters: JSON.parse(JSON.stringify(window.S.filters)),
+    clauses: [...document.querySelectorAll('.showing .clause')].map(c => c.innerText.trim()),
+  }));
+  check(afterJump.scene === 'build', 'narrowing from a title page lands you back on the shelf');
+  check(afterJump.clauses.length >= 1,
+    `with the narrowing stated (${JSON.stringify(afterJump.clauses)})`);
+
+  // ── The filter must be visibly global (Mischa, 2026-08-16) ──────────────
+  // "It is currently only filtering the movies in that row." It was not — but
+  // nothing on screen said so: the chip had scrolled off the top and the row
+  // headings were unchanged. Both are now load-bearing.
+  const sticky = await page.evaluate(() => {
+    const bar = document.querySelector('.stickybar');
+    return bar && bar.contains(document.querySelector('.showing'));
   });
-  check(fits, 'both card actions fit inside the card');
+  check(sticky, 'the active filters live INSIDE the sticky bar, so they cannot scroll away');
+  await page.evaluate(() => window.scrollTo(0, 1600));
+  await page.waitForTimeout(200);
+  const stillThere = await page.evaluate(() => {
+    const el = document.querySelector('.showing');
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return { top: Math.round(r.top), visible: r.top >= 0 && r.top < innerHeight };
+  });
+  check(stillThere && stillThere.visible,
+    `and are still on screen 1600px down the page (y=${stillThere && stillThere.top}; it used to be -958)`);
+  const filteredHeads = await page.evaluate(() =>
+    [...document.querySelectorAll('.section-h')].map(h => h.innerText.trim()));
+  const saidSo = filteredHeads.filter(h => /\b(WITH|BY|IN)\b/.test(h));
+  check(saidSo.length >= 1,
+    `and the rows on screen say what they are narrowed to (${JSON.stringify(saidSo.slice(0, 2))})`);
+
+  // A wide filter keeps the browse rows, and each of them has to say so too.
+  await page.evaluate(() => {
+    window.S.filters = { services: [], genre: null, director: null, actor: null };
+    window.S.tray = []; window.S.graph = { nodes: {}, roots: [], focus: null };
+    window.renderBuild();
+    const g = window.facetValues('genre')[0][0];
+    window.S.filters.genre = g; window.renderBuild();
+  });
+  await page.waitForTimeout(250);
+  const wideHeads = await page.evaluate(() =>
+    [...document.querySelectorAll('.section-h')].map(h => h.innerText.trim()));
+  check(wideHeads.length >= 3 && wideHeads.some(h => /\bIN\b/.test(h)),
+    `a wide filter keeps the rows AND labels them (${JSON.stringify(wideHeads.slice(0, 3))})`);
+  // "Popular dramas in Drama" is the app talking to itself.
+  check(!wideHeads.some(h => /^POPULAR (\w+)S? IN \1/i.test(h)),
+    'without a genre row repeating the genre back at itself');
+  await page.evaluate(() => { window.S.filters = { services: [], genre: null, director: null, actor: null };
+    window.S.tray = []; window.S.graph = { nodes: {}, roots: [], focus: null };
+    window.S.scene = 'build'; window.save(); window.render(); });
+  await page.waitForTimeout(300);
   await page.evaluate(() => { window.S.tray = []; window.S.graph = { nodes: {}, roots: [], focus: null };
     window.renderBuild(); });
   await page.waitForTimeout(300);
@@ -534,7 +634,7 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   const firstCard = page.locator('.rail .card').first();
   const firstId = await firstCard.getAttribute('data-card');
   const railCountBefore = await page.locator('.rail .card').count();
-  await firstCard.locator('.art').click();
+  await firstCard.locator('.pin').click();
   check(await page.locator(`.card[data-card="${firstId}"]`).count() === 1, 'the card stays put after adding — it does not vanish or jump');
   check(await page.locator('.rail .card').count() === railCountBefore, 'the rail does not reshuffle under the thumb');
   check(await page.locator(`.card[data-card="${firstId}"][data-in="1"]`).count() === 1, 'the card shows its new state in place');
@@ -545,20 +645,22 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   await page.evaluate(() => window.__fliers = 0);
   await page.evaluate(() => new MutationObserver(ms => { for (const m of ms) for (const n of m.addedNodes)
     if (n.classList && n.classList.contains('flier')) window.__fliers++; }).observe(document.body, { childList: true }));
-  await page.locator('.rail .card').nth(1).locator('.art').click();
+  await page.locator('.rail .card').nth(1).locator('.pin').click();
   await page.waitForTimeout(80);
   check(await page.evaluate(() => window.__fliers) === 1, 'a poster visibly travels from the card to its slot');
 
   await page.screenshot({ path: SHOTS + '/1-build.png' });
 
   // ── Branching: more like this, with a trail you can walk back ────────────
-  // Drilling in now starts from a SUGGESTION card, because that is where the
-  // labelled `Similar` control lives — a browse card offers `See similar` only
-  // after it has been picked. The pick above earned this rail, so render it.
+  // Every card now offers `See similar` once it is added, and only then —
+  // which is the first moment the question is worth asking, and the same on
+  // every row since 2026-08-16. So drilling in is add, then follow.
   await page.evaluate(() => window.renderBuild());
   await page.waitForTimeout(250);
   const drill = page.locator('.rail .card:not(.browse)').nth(1);
   const branchFrom = await drill.getAttribute('data-card');
+  await drill.locator('.pin').click();
+  await page.waitForTimeout(420);
   await drill.locator('.do-similar').click();
   await page.waitForTimeout(120);
   const h2 = await page.locator('.section-h').first().innerText();
@@ -585,7 +687,10 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   });
   check(fresh != null, 'the branch offers a film that is not already on the map');
   const nodesBeforeDeeper = await page.evaluate(() => Object.keys(window.S.graph.nodes).length);
-  await page.locator('.rail').first().locator(`.card[data-card="${fresh}"]`).locator('.do-similar').click();
+  const freshCard = page.locator('.rail').first().locator(`.card[data-card="${fresh}"]`);
+  await freshCard.locator('.pin').click();
+  await page.waitForTimeout(420);
+  await freshCard.locator('.do-similar').click();
   await page.waitForTimeout(120);
   const explored = await page.evaluate(() => Object.keys(window.S.graph.nodes).length);
   check(explored === nodesBeforeDeeper + 1,
@@ -842,7 +947,7 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   while (await page.evaluate(() => window.S.tray.length) < 10) {
     const free = page.locator('.rail .card[data-in="0"]').first();
     if (!(await free.count())) break;
-    await free.locator('.art').click();
+    await free.locator('.pin').click();
     await page.waitForTimeout(30);
   }
   check(await page.evaluate(() => window.S.tray.length) === 10, 'the Ten fills to ten');
@@ -926,7 +1031,7 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   check(await page.locator('.rail .card').count() > 0, 'the scoped topic still has films to offer');
 
   // ── Draft persistence ───────────────────────────────────────────────────
-  await page.locator('.rail .card').first().locator('.art').click();
+  await page.locator('.rail .card').first().locator('.pin').click();
   await page.reload({ waitUntil: 'networkidle' });
   check((await page.locator('.dock-top .n').innerText()) === '1 of 10', 'the draft survives a reload');
 
@@ -956,7 +1061,7 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   while (await page.evaluate(() => window.S.tray.length) < 10) {
     const free = page.locator('.rail .card[data-in="0"]').first();
     if (!(await free.count())) break;
-    await free.locator('.art').click();
+    await free.locator('.pin').click();
     await page.waitForTimeout(25);
   }
   await page.locator('[data-act="arrange"]').click();
@@ -1026,7 +1131,7 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
 
   // "More like this" has to make a claim a reader would make. Reached the way
   // a reader reaches it on a browse row: pick the book, then See similar.
-  await page.locator('.rail .card.browse .art').first().click();
+  await page.locator('.rail .card.browse .pin').first().click();
   await page.waitForTimeout(420);
   await page.locator('.rail .card.browse .do-similar').first().click();
   await page.waitForTimeout(250);
@@ -1041,7 +1146,7 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   while (await page.evaluate(() => window.S.tray.length) < 10) {
     const free = page.locator('.rail .card[data-in="0"]').first();
     if (!(await free.count())) break;
-    await free.locator('.art').click();
+    await free.locator('.pin').click();
     await page.waitForTimeout(25);
   }
   check(await page.evaluate(() => window.S.tray.length) === 10, 'a books Ten fills to ten');
