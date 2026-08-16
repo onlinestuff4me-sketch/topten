@@ -53,11 +53,24 @@ Selection philosophy (unchanged in kind, widened in scale — 2026-08-15):
      found the 1930s missing 18 of TMDB's own top 40 for that decade and the
      1940s missing 16, while everything from the 1970s on was complete. Each
      decade now admits its own most-rated films.
-  7. **English-language, plus Oscar winners from everywhere else** (Mischa,
-     2026-08-16). The universe sweep asks TMDB for English only; OSCAR_FOREIGN
-     is the stated exception and is pinned. The rule is then enforced once more
-     after collection, because the keyword, company and genre sources take no
-     language parameter and would otherwise let other languages in sideways.
+  7. **English-language sweeps, plus four hand-written exceptions** (Mischa,
+     2026-08-16). The automatic sources ask TMDB for English only. What is
+     NAMED is exempt, because a language rule that overrides the only
+     deliberate judgements in the build is a rule overriding the wrong thing:
+
+         CANON             world cinema someone decided belongs
+         OSCAR_ENGLISH     Best Picture winners, and nominees
+         OSCAR_FOREIGN     non-English Academy Award winners, and nominees
+         ENGLISH_MISTAGGED films in English TMDB tags as foreign productions
+
+     The rule is enforced after collection as well as during it, because the
+     keyword, company and genre sources take no language parameter and would
+     otherwise let other languages in sideways.
+
+     Both Oscar lists are PARTIAL and were written without a source to check
+     them against — TMDB carries no awards data and wikipedia.org, oscars.org
+     and wikidata.org are all blocked at this environment's proxy. Year and
+     country sit beside each entry so a wrong one can be caught by reading.
 
 `audit_catalog.py` is how any of the numbers above get checked. Every one of
 them is a judgement, and until that script existed not one had ever been
@@ -262,6 +275,98 @@ print(f"{len(films)} candidates from {len(sources)} source pages")
 # it excludes Seven Samurai, Amélie, City of God, Oldboy, Shoplifters and Das
 # Boot, all of which were nominated and none of which won. They are absent on
 # purpose.
+# ── English-language Academy Award canon ───────────────────────────────────
+#
+# Pinned for the same reason CANON is: a shelf ranked by vote count buries
+# older films, and a check found 20 of the 79 Best Picture winners missing —
+# Wings, Cavalcade, Mrs. Miniver, Marty, Gigi, Oliver!, Ordinary People,
+# Chariots of Fire, The Artist, Birdman among them. Not obscure films; old
+# ones, which on TMDB is the same thing.
+#
+# Winners, then the nominees I can state with confidence. Like OSCAR_FOREIGN
+# this is a list to grow rather than a claim to be complete: Best Picture
+# alone has had over 600 nominees, and there is no reachable source here to
+# check a longer list against.
+OSCAR_ENGLISH = (
+    # Best Picture winners.
+    "Wings", "Cavalcade", "It Happened One Night", "Mutiny on the Bounty",
+    "You Can't Take It with You", "Gone with the Wind", "Rebecca",
+    "How Green Was My Valley", "Mrs. Miniver", "Casablanca", "Going My Way",
+    "The Lost Weekend", "The Best Years of Our Lives", "Gentleman's Agreement",
+    "Hamlet", "All the King's Men", "All About Eve", "An American in Paris",
+    "The Greatest Show on Earth", "From Here to Eternity", "On the Waterfront",
+    "Marty", "Around the World in 80 Days", "The Bridge on the River Kwai",
+    "Gigi", "Ben-Hur", "The Apartment", "West Side Story", "Lawrence of Arabia",
+    "Tom Jones", "My Fair Lady", "The Sound of Music", "A Man for All Seasons",
+    "In the Heat of the Night", "Oliver!", "Midnight Cowboy", "Patton",
+    "The French Connection", "The Godfather", "The Sting",
+    "The Godfather Part II", "One Flew Over the Cuckoo's Nest", "Rocky",
+    "Annie Hall", "The Deer Hunter", "Kramer vs. Kramer", "Ordinary People",
+    "Chariots of Fire", "Gandhi", "Terms of Endearment", "Amadeus",
+    "Out of Africa", "Platoon", "The Last Emperor", "Rain Man",
+    "Driving Miss Daisy", "Dances with Wolves", "The Silence of the Lambs",
+    "Unforgiven", "Schindler's List", "Forrest Gump", "Braveheart",
+    "The English Patient", "Titanic", "Shakespeare in Love", "American Beauty",
+    "Gladiator", "A Beautiful Mind", "Chicago", "The Lord of the Rings: The Return of the King",
+    "Million Dollar Baby", "Crash", "The Departed", "No Country for Old Men",
+    "Slumdog Millionaire", "The Hurt Locker", "The King's Speech", "The Artist",
+    "Argo", "12 Years a Slave", "Birdman", "Spotlight", "Moonlight",
+    "The Shape of Water", "Green Book", "Parasite", "Nomadland", "CODA",
+    "Everything Everywhere All at Once", "Oppenheimer", "Anora",
+    # Nominees that a vote-count shelf is most likely to have buried.
+    "The Grapes of Wrath", "Citizen Kane", "The Maltese Falcon",
+    "Double Indemnity", "It's a Wonderful Life", "Sunset Boulevard",
+    "A Streetcar Named Desire", "High Noon", "Roman Holiday", "Sabrina",
+    "12 Angry Men", "Witness for the Prosecution", "Anatomy of a Murder",
+    "Some Like It Hot", "The Hustler", "To Kill a Mockingbird",
+    "Dr. Strangelove", "Who's Afraid of Virginia Woolf?", "Bonnie and Clyde",
+    "The Graduate", "Butch Cassidy and the Sundance Kid", "Easy Rider",
+    "A Clockwork Orange", "The Last Picture Show", "Cabaret", "Chinatown",
+    "Jaws", "Network", "Taxi Driver", "All the President's Men",
+    "Apocalypse Now", "Raging Bull", "The Elephant Man", "Reds",
+    "Raiders of the Lost Ark", "Tootsie", "The Right Stuff", "The Killing Fields",
+    "Witness", "Hannah and Her Sisters", "Fatal Attraction", "Broadcast News",
+    "Dead Poets Society", "Field of Dreams", "Goodfellas", "Awakenings",
+    "JFK", "The Prince of Tides", "A Few Good Men", "Scent of a Woman",
+    "The Fugitive", "In the Name of the Father", "Pulp Fiction",
+    "The Shawshank Redemption", "Quiz Show", "Apollo 13", "Sense and Sensibility",
+    "Fargo", "Jerry Maguire", "L.A. Confidential", "Good Will Hunting",
+    "Saving Private Ryan", "The Thin Red Line", "The Green Mile",
+    "The Insider", "The Sixth Sense", "Traffic", "Erin Brockovich",
+    "Moulin Rouge!", "The Lord of the Rings: The Fellowship of the Ring",
+    "The Pianist", "The Hours", "Mystic River", "Lost in Translation",
+    "Sideways", "Finding Neverland", "Little Miss Sunshine", "The Queen",
+    "Babel", "Michael Clayton", "Juno", "There Will Be Blood", "Milk",
+    "Frost/Nixon", "The Reader", "Up in the Air", "Inglourious Basterds",
+    "District 9", "An Education", "Precious", "Black Swan", "The Fighter",
+    "Inception", "The Social Network", "Toy Story 3", "127 Hours",
+    "The Descendants", "Hugo", "Moneyball", "The Tree of Life", "War Horse",
+    "Lincoln", "Life of Pi", "Zero Dark Thirty", "Django Unchained",
+    "Gravity", "Her", "Nebraska", "Philomena", "The Wolf of Wall Street",
+    "Boyhood", "The Grand Budapest Hotel", "The Imitation Game", "Whiplash",
+    "The Theory of Everything", "The Big Short", "Bridge of Spies",
+    "Brooklyn", "Mad Max: Fury Road", "The Martian", "The Revenant", "Room",
+    "Arrival", "Fences", "Hacksaw Ridge", "Hell or High Water", "Hidden Figures",
+    "La La Land", "Lion", "Manchester by the Sea", "Call Me by Your Name",
+    "Darkest Hour", "Dunkirk", "Get Out", "Lady Bird", "Phantom Thread",
+    "The Post", "Three Billboards Outside Ebbing, Missouri", "BlacKkKlansman",
+    "Black Panther", "Bohemian Rhapsody", "The Favourite", "A Star Is Born",
+    "Vice", "Ford v Ferrari", "The Irishman", "Jojo Rabbit", "Joker",
+    "Little Women", "Marriage Story", "Once Upon a Time... in Hollywood",
+    "1917", "The Father", "Judas and the Black Messiah", "Mank",
+    "Minari", "Promising Young Woman", "Sound of Metal", "The Trial of the Chicago 7",
+    "Belfast", "Don't Look Up", "Drive My Car", "Dune", "King Richard",
+    "Licorice Pizza", "Nightmare Alley", "West Side Story",
+    "All Quiet on the Western Front", "Avatar: The Way of Water",
+    "The Banshees of Inisherin", "Elvis", "The Fabelmans", "Tár",
+    "Top Gun: Maverick", "Triangle of Sadness", "Women Talking",
+    "American Fiction", "Anatomy of a Fall", "Barbie", "The Holdovers",
+    "Killers of the Flower Moon", "Maestro", "Past Lives", "Poor Things",
+    "The Zone of Interest", "The Brutalist", "A Complete Unknown", "Conclave",
+    "Dune: Part Two", "I'm Still Here", "Nickel Boys", "The Substance",
+    "Wicked",
+)
+
 # Films in English that TMDB tags as a foreign PRODUCTION. `original_language`
 # records where a film was made, not what is spoken in it, so these would be
 # deleted by the letter of "English-language films" against its plain meaning.
@@ -349,6 +454,84 @@ OSCAR_FOREIGN = (
     "All Quiet on the Western Front",   # 2022 Germany
     "The Zone of Interest",             # 2023 UK/Germany
     "I'm Still Here",                   # 2024 Brazil
+    # ── Nominated, not won ───────────────────────────────────────────────
+    # Mischa, 2026-08-16: winners AND nominees. This is a PARTIAL list. The
+    # International Feature category alone has five nominees a year since 1956
+    # — roughly 350 films — and with no reachable source to check against,
+    # writing all of them from memory would be inventing most of them. What
+    # follows is the subset I can state with confidence, which skews recent
+    # because recent nominees are the ones a shelf built on vote counts is
+    # most likely to be missing anyway. Additions welcome; this is a list to
+    # grow, not a claim to be complete.
+    "Das Boot",                         # 1982 Germany, 6 nominations
+    "Downfall",                         # 2004 Germany
+    "Shoplifters",                      # 2018 Japan
+    "A Prophet",                        # 2009 France
+    "The White Ribbon",                 # 2009 Austria/Germany
+    "Incendies",                        # 2010 Canada
+    "Biutiful",                         # 2010 Mexico
+    "Monsieur Lazhar",                  # 2011 Canada
+    "Footnote",                         # 2011 Israel
+    "Bullhead",                         # 2011 Belgium
+    "The Hunt",                         # 2012 Denmark
+    "Kon-Tiki",                         # 2012 Norway
+    "No",                               # 2012 Chile
+    "War Witch",                        # 2012 Canada
+    "The Broken Circle Breakdown",      # 2013 Belgium
+    "The Missing Picture",              # 2013 Cambodia
+    "Omar",                             # 2013 Palestine
+    "The Hunt",                         # 2012 Denmark
+    "Leviathan",                        # 2014 Russia
+    "Wild Tales",                       # 2014 Argentina
+    "Timbuktu",                         # 2014 Mauritania
+    "Tangerines",                       # 2014 Estonia
+    "Mustang",                          # 2015 France/Turkey
+    "Embrace of the Serpent",           # 2015 Colombia
+    "Theeb",                            # 2015 Jordan
+    "A War",                            # 2015 Denmark
+    "Toni Erdmann",                     # 2016 Germany
+    "Land of Mine",                     # 2016 Denmark
+    "A Man Called Ove",                 # 2016 Sweden
+    "Tanna",                            # 2016 Australia/Vanuatu
+    "The Insult",                       # 2017 Lebanon
+    "Loveless",                         # 2017 Russia
+    "On Body and Soul",                 # 2017 Hungary
+    "The Square",                       # 2017 Sweden
+    "Cold War",                         # 2018 Poland
+    "Capernaum",                        # 2018 Lebanon
+    "Never Look Away",                  # 2018 Germany
+    "Pain and Glory",                   # 2019 Spain
+    "Les Misérables",                   # 2019 France
+    "Corpus Christi",                   # 2019 Poland
+    "Honeyland",                        # 2019 North Macedonia
+    "Collective",                       # 2020 Romania
+    "Quo Vadis, Aida?",                 # 2020 Bosnia
+    "Better Days",                      # 2020 Hong Kong
+    "The Man Who Sold His Skin",        # 2020 Tunisia
+    "Flee",                             # 2021 Denmark
+    "The Hand of God",                  # 2021 Italy
+    "Lunana: A Yak in the Classroom",   # 2021 Bhutan
+    "Close",                            # 2022 Belgium
+    "Argentina, 1985",                  # 2022 Argentina
+    "EO",                               # 2022 Poland
+    "The Quiet Girl",                   # 2022 Ireland
+    "Society of the Snow",              # 2023 Spain
+    "The Teachers' Lounge",             # 2023 Germany
+    "Io Capitano",                      # 2023 Italy
+    "The Seed of the Sacred Fig",       # 2024 Germany/Iran
+    "Emilia Pérez",                     # 2024 France
+    "The Girl with the Needle",         # 2024 Denmark
+    "Flow",                             # 2024 Latvia — won Animated Feature
+    # Animated Feature nominees in other languages.
+    "Howl's Moving Castle",             # 2005 Japan
+    "The Wind Rises",                   # 2013 Japan
+    "The Red Turtle",                   # 2016 France/Japan
+    "My Life as a Zucchini",            # 2016 Switzerland
+    "Mirai",                            # 2018 Japan
+    # Other categories.
+    "Hero",                             # 2002 China
+    "House of Flying Daggers",          # 2004 China
+    "Volver",                           # 2006 Spain
     # Non-English films that won in OTHER categories.
     "La Dolce Vita",                    # 1961 Costume Design
     "Divorce Italian Style",            # 1962 Original Screenplay
@@ -462,7 +645,7 @@ def resolve(title):
 # only difference is that OSCAR_FOREIGN is how a non-English film reaches an
 # English-language shelf at all, so an unresolved title there is a film simply
 # missing rather than a film ranked out.
-ALL_NAMED = CANON + OSCAR_FOREIGN + ENGLISH_MISTAGGED
+ALL_NAMED = CANON + OSCAR_ENGLISH + OSCAR_FOREIGN + ENGLISH_MISTAGGED
 pinned = set()
 exempt = set()          # …from the English-language rule. ONLY the Oscar list.
 unresolved = []
@@ -473,8 +656,16 @@ with ThreadPoolExecutor(max_workers=WORKERS) as pool:
             continue
         films.setdefault(m["id"], row(m))
         pinned.add(m["id"])
-        if title in OSCAR_FOREIGN or title in ENGLISH_MISTAGGED:
-            exempt.add(m["id"])
+        # EVERY named title is exempt from the English-language rule, not
+        # only the Oscar lists (Mischa, 2026-08-16: "keep CANON's world cinema
+        # as its own exception"). CANON is a hand-written list of films someone
+        # decided belong on the shelf; a language rule that overrides it is a
+        # rule overriding the only deliberate judgement in the whole build.
+        #
+        # The rule therefore governs the SWEEPS — which is where it was always
+        # needed, since those are what filled the shelf with whatever TMDB
+        # happened to rank highly in each language.
+        exempt.add(m["id"])
 print(f"named canon: {len(pinned)} pinned, {len(unresolved)} unresolved {unresolved}")
 
 
@@ -539,14 +730,19 @@ print(f"{len(_people)} directors expanded; {len(films)} films before trim")
 # Mononoke and Howl's Moving Castle. The script reported 152 non-English films
 # and the artifact held 217. Storing `lang` is what made that visible.
 #
-# Being PINNED does not exempt a film. That was the second leak and the larger
-# one: 96 of CANON's 239 titles are non-English, so Seven Samurai, Tokyo Story,
-# In the Mood for Love, Akira and Totoro all walked in under a rule that said
-# they should not. Only two things are exempt, and both are named lists rather
-# than a property some films happen to have:
+# Being NAMED exempts a film; being swept in does not. Three lists are exempt,
+# and all three are hand-written, which is the point — the rule governs the
+# automatic sources, not the deliberate ones:
 #
-#   OSCAR_FOREIGN        the stated exception — non-English Academy Award winners
+#   CANON                world cinema someone decided belongs (Mischa, 2026-08-16)
+#   OSCAR_FOREIGN        non-English Academy Award winners AND nominees
 #   ENGLISH_MISTAGGED    films in English that TMDB tags as a foreign production
+#
+# An earlier version exempted only the Oscar list, which removed about eighty
+# revered films — Seven Samurai, Tokyo Story, In the Mood for Love, Akira,
+# Totoro, City of God, Amélie — because CANON's 96 non-English titles lost
+# their exemption. That was the rule doing exactly what it said and the rule
+# being wrong.
 #
 # `spoken_languages` was tried as the test and is not one. TMDB lists English
 # among the spoken languages of Parasite and Das Boot as readily as of Léon,
