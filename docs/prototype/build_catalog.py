@@ -557,6 +557,11 @@ _dropped = [i for i, f in films.items()
             if f.get("lang") != "en" and i not in exempt]
 for i in _dropped:
     del films[i]
+# `pinned` is a set of ids, and some of those ids have just been deleted — a
+# pinned CANON title that is not an Oscar winner is exactly what this rule is
+# meant to remove. The trim below indexes `films` by every pinned id, so
+# leaving them in the set makes the rule crash on its own successes.
+pinned &= films.keys()
 _left = sum(1 for f in films.values() if f.get("lang") != "en")
 print(f"english-language rule: dropped {len(_dropped)} non-English films "
       f"(including {sum(1 for i in _dropped if i in pinned)} that were pinned canon); "
