@@ -1,16 +1,19 @@
 """Build the prototype's baked catalog from TMDB.
 
-THIS IS STAGE ONE OF THREE. Run all three, in order:
+THIS IS STAGE ONE OF FIVE. Run all five, in order:
 
-    python3 build_catalog.py    # films: ids, titles, genres, poster colours
-    python3 enrich_catalog.py   # sv (services), ca (cast), r (recommendations)
-    python3 build_tv.py         # the second shelf, appended to the same file
+    python3 build_catalog.py              films, genres, poster colours
+    python3 enrich_catalog.py             cast, recommendations, raw providers
+    python3 enrich_catalog.py --details   studios and collections
+    python3 enrich_catalog.py --providers canonical service ids + SERVICES
+    python3 build_tv.py                   the second shelf
 
-Stopping after this one produces a catalog.js that loads without complaint and
-is missing cast, recommendations, streaming availability and every TV show —
-so the actor filter, `See similar` and the services filter are all silently
-dead, and the TV domain is empty. It looks fine. It parses fine. Ask how it was
-built before trusting it (learned the hard way, 2026-08-16).
+Stopping early produces a catalog.js that loads without complaint and is
+missing whole field sets — cast, recommendations, streaming availability,
+studios, collections, or all 700 TV shows — so the actor filter, `See similar`
+and the services filter go silently dead and a whole domain empties. It looks
+fine. It parses fine. Ask how it was built before trusting it (learned the
+hard way, twice, 2026-08-16).
 
 Writes docs/prototype/catalog.js. The key is used here, at build time, and is
 never shipped: the prototype ships with the data already in it, so the page
@@ -45,6 +48,20 @@ Selection philosophy (unchanged in kind, widened in scale — 2026-08-15):
      dramas — so a single global cutoff under-selects them. Each primary genre
      therefore also admits its most-rated films outright. This is why Zoolander
      and Borat were absent: not buried in a row, never on the shelf.
+  6. **A per-decade floor, for the same reason.** Vote count is not comparable
+     across decades: a 1935 film loses a comparison it was never in. The audit
+     found the 1930s missing 18 of TMDB's own top 40 for that decade and the
+     1940s missing 16, while everything from the 1970s on was complete. Each
+     decade now admits its own most-rated films.
+  7. **English-language, plus Oscar winners from everywhere else** (Mischa,
+     2026-08-16). The universe sweep asks TMDB for English only; OSCAR_FOREIGN
+     is the stated exception and is pinned. The rule is then enforced once more
+     after collection, because the keyword, company and genre sources take no
+     language parameter and would otherwise let other languages in sideways.
+
+`audit_catalog.py` is how any of the numbers above get checked. Every one of
+them is a judgement, and until that script existed not one had ever been
+measured against what it discards.
 """
 
 import colorsys
@@ -140,8 +157,13 @@ def slug(s):
 
 # --- 1. the eligible universe: every film with enough votes to be anyone's
 # --- favourite, in one sweep, so the trim below ranks the real field.
+# English-language, by decision (Mischa, 2026-08-16): the shelf is
+# English-language films plus, from every other language, the ones that won an
+# Academy Award. Those arrive through OSCAR_FOREIGN below, which is exempt from
+# this restriction — a rule and its stated exception, rather than a rule with a
+# quietly leaky edge.
 UNIVERSE = {"sort_by": "vote_count.desc", "vote_count.gte": str(VOTE_FLOOR),
-            "include_adult": "false"}
+            "with_original_language": "en", "include_adult": "false"}
 _first = get("/discover/movie", page=1, **UNIVERSE)
 _pages = min(_first.get("total_pages", 1), 500)   # TMDB refuses page > 500
 print(f"universe: {_first.get('total_results')} films with {VOTE_FLOOR}+ votes, {_pages} pages")
@@ -169,11 +191,23 @@ for genre in ("27", "35", "878", "16", "80", "18", "12", "53", "10749", "36",
               "10752", "37", "14", "9648", "10402", "99", "28", "10751"):
     for page in range(1, 7):
         sources.append(("/discover/movie", {"with_genres": genre, "sort_by": "vote_count.desc", "page": page}))
-for lang in ("ja", "ko", "fr", "it", "es", "de", "cn", "zh", "hi", "sv", "da",
-             "ru", "fa", "pt", "pl", "no", "th", "tr"):
+# No per-language sweep any more. Non-English films reach the shelf only by
+# winning an Academy Award, and they arrive by name through OSCAR_FOREIGN,
+# which is resolved with the same title search the rest of the canon uses.
+
+# --- 3. Older decades, swept on their own terms.
+# ---
+# --- The audit found the 1930s missing 18 of TMDB's own top 40 by votes for
+# --- that decade and the 1940s missing 16, while every decade from the 1970s
+# --- on was complete (2026-08-16). One global `vote_count.desc` sweep is a
+# --- sweep of recent film: a 1935 release does not accumulate votes the way a
+# --- 2015 one does, so it loses a comparison it was never really in.
+for _d0 in range(1920, 1980, 10):
     for page in (1, 2, 3):
-        sources.append(("/discover/movie", {"with_original_language": lang,
-                                            "sort_by": "vote_count.desc", "page": page}))
+        sources.append(("/discover/movie", {
+            "sort_by": "vote_count.desc", "with_original_language": "en",
+            "primary_release_date.gte": f"{_d0}-01-01",
+            "primary_release_date.lte": f"{_d0 + 9}-12-31", "page": page}))
 
 genres = {g["id"]: g["name"] for g in get("/genre/movie/list").get("genres", [])}
 
@@ -188,6 +222,10 @@ def row(m):
         "v": round(m.get("vote_average", 0), 1),
         "pop": round(m.get("popularity", 0), 1),
         "vc": m.get("vote_count", 0),
+        # Stored so the English-language rule can be CHECKED rather than
+        # trusted. A filter whose input is not in the output is a filter
+        # nobody can audit.
+        "lang": m.get("original_language", ""),
     }
 
 
@@ -207,6 +245,110 @@ print(f"{len(films)} candidates from {len(sources)} source pages")
 # --- ten favourite films of all time" is worthless if the rail is all this
 # --- month's releases, so these are fetched by name AND exempted from the
 # --- trim — see the module docstring, point 3.
+# ── Non-English films that won an Academy Award ─────────────────────────────
+#
+# The shelf is English-language (see UNIVERSE). This is the stated exception:
+# from every other language, the films that actually won an Oscar (Mischa,
+# 2026-08-16).
+#
+# ** THIS LIST IS COMPILED FROM MEMORY AND WAS NOT VERIFIED AGAINST A SOURCE. **
+# TMDB carries no awards data, and wikipedia.org, oscars.org and wikidata.org
+# are all blocked at this environment's egress proxy — so there was nothing to
+# check it against. The year and country sit beside each title precisely so a
+# wrong one can be spotted by reading rather than by trusting me. Treat a
+# correction as expected maintenance, not as a defect report.
+#
+# The rule applied is WON, not nominated. That is a harder line than it sounds:
+# it excludes Seven Samurai, Amélie, City of God, Oldboy, Shoplifters and Das
+# Boot, all of which were nominated and none of which won. They are absent on
+# purpose.
+OSCAR_FOREIGN = (
+    # Best International Feature Film (and its predecessors), by ceremony year.
+    "Shoeshine",                        # 1947 Italy (honorary)
+    "Monsieur Vincent",                 # 1948 France (honorary)
+    "Bicycle Thieves",                  # 1949 Italy (honorary)
+    "Rashomon",                         # 1951 Japan (honorary)
+    "Forbidden Games",                  # 1952 France (honorary)
+    "Gate of Hell",                     # 1954 Japan (honorary)
+    "La Strada",                        # 1956 Italy
+    "Nights of Cabiria",                # 1957 Italy
+    "Mon Oncle",                        # 1958 France
+    "Black Orpheus",                    # 1959 France/Brazil
+    "The Virgin Spring",                # 1960 Sweden
+    "Through a Glass Darkly",           # 1961 Sweden
+    "Sundays and Cybele",               # 1962 France
+    "8½",                               # 1963 Italy
+    "Yesterday, Today and Tomorrow",    # 1964 Italy
+    "The Shop on Main Street",          # 1965 Czechoslovakia
+    "A Man and a Woman",                # 1966 France
+    "Closely Watched Trains",           # 1967 Czechoslovakia
+    "War and Peace",                    # 1968 USSR
+    "Z",                                # 1969 Algeria/France
+    "Investigation of a Citizen Above Suspicion",  # 1970 Italy
+    "The Garden of the Finzi-Continis", # 1971 Italy
+    "The Discreet Charm of the Bourgeoisie",  # 1972 France
+    "Day for Night",                    # 1973 France
+    "Amarcord",                         # 1974 Italy
+    "Dersu Uzala",                      # 1975 USSR
+    "Black and White in Color",         # 1976 Ivory Coast
+    "Madame Rosa",                      # 1977 France
+    "Get Out Your Handkerchiefs",       # 1978 France
+    "The Tin Drum",                     # 1979 West Germany
+    "Moscow Does Not Believe in Tears", # 1980 USSR
+    "Mephisto",                         # 1981 Hungary
+    "Fanny and Alexander",              # 1983 Sweden
+    "Dangerous Moves",                  # 1984 Switzerland
+    "The Official Story",               # 1985 Argentina
+    "The Assault",                      # 1986 Netherlands
+    "Babette's Feast",                  # 1987 Denmark
+    "Pelle the Conqueror",              # 1988 Denmark
+    "Cinema Paradiso",                  # 1989 Italy
+    "Journey of Hope",                  # 1990 Switzerland
+    "Mediterraneo",                     # 1991 Italy
+    "Indochine",                        # 1992 France
+    "Belle Epoque",                     # 1993 Spain
+    "Burnt by the Sun",                 # 1994 Russia
+    "Antonia's Line",                   # 1995 Netherlands
+    "Kolya",                            # 1996 Czech Republic
+    "Character",                        # 1997 Netherlands
+    "Life Is Beautiful",                # 1998 Italy
+    "All About My Mother",              # 1999 Spain
+    "Crouching Tiger, Hidden Dragon",   # 2000 Taiwan
+    "No Man's Land",                    # 2001 Bosnia
+    "Nowhere in Africa",                # 2002 Germany
+    "The Barbarian Invasions",          # 2003 Canada
+    "The Sea Inside",                   # 2004 Spain
+    "Tsotsi",                           # 2005 South Africa
+    "The Lives of Others",              # 2006 Germany
+    "The Counterfeiters",               # 2007 Austria
+    "Departures",                       # 2008 Japan
+    "The Secret in Their Eyes",         # 2009 Argentina
+    "In a Better World",                # 2010 Denmark
+    "A Separation",                     # 2011 Iran
+    "Amour",                            # 2012 Austria
+    "The Great Beauty",                 # 2013 Italy
+    "Ida",                              # 2014 Poland
+    "Son of Saul",                      # 2015 Hungary
+    "The Salesman",                     # 2016 Iran
+    "A Fantastic Woman",                # 2017 Chile
+    "Roma",                             # 2018 Mexico
+    "Parasite",                         # 2019 South Korea
+    "Another Round",                    # 2020 Denmark
+    "Drive My Car",                     # 2021 Japan
+    "All Quiet on the Western Front",   # 2022 Germany
+    "The Zone of Interest",             # 2023 UK/Germany
+    "I'm Still Here",                   # 2024 Brazil
+    # Non-English films that won in OTHER categories.
+    "La Dolce Vita",                    # 1961 Costume Design
+    "Divorce Italian Style",            # 1962 Original Screenplay
+    "Two Women",                        # 1961 Actress, Sophia Loren
+    "Il Postino",                       # 1995 Original Dramatic Score
+    "Talk to Her",                      # 2002 Original Screenplay
+    "Spirited Away",                    # 2002 Animated Feature
+    "Pan's Labyrinth",                  # 2006 Cinematography, Art Direction, Makeup
+    "Letters from Iwo Jima",            # 2006 Sound Editing
+)
+
 CANON = (
     # The original round-3 list, unchanged.
     "Casablanca", "Hereditary", "Moonlight", "No Country for Old Men",
@@ -305,16 +447,33 @@ def resolve(title):
     return best
 
 
+# CANON and OSCAR_FOREIGN are resolved together and pinned together — the
+# only difference is that OSCAR_FOREIGN is how a non-English film reaches an
+# English-language shelf at all, so an unresolved title there is a film simply
+# missing rather than a film ranked out.
+ALL_NAMED = CANON + OSCAR_FOREIGN
 pinned = set()
 unresolved = []
 with ThreadPoolExecutor(max_workers=WORKERS) as pool:
-    for title, m in zip(CANON, pool.map(resolve, CANON)):
+    for title, m in zip(ALL_NAMED, pool.map(resolve, ALL_NAMED)):
         if not m:
             unresolved.append(title)
             continue
         films.setdefault(m["id"], row(m))
         pinned.add(m["id"])
 print(f"named canon: {len(pinned)} pinned, {len(unresolved)} unresolved {unresolved}")
+
+# Anything non-English that is NOT a pinned Oscar winner leaves now, before the
+# trim ranks anything. The universe sweep already asked TMDB for English only,
+# but the keyword, company, genre and top_rated sources do not take a language
+# parameter, so they let other languages in through the side door. Enforcing
+# the rule in one place after collection is the difference between a rule and
+# a hope.
+_foreign = [i for i, f in films.items() if f.get("lang") != "en" and i not in pinned]
+for i in _foreign:
+    del films[i]
+print(f"english-language rule: dropped {len(_foreign)} non-English films that won no Oscar; "
+      f"{sum(1 for f in films.values() if f.get('lang') != 'en')} non-English remain (all pinned)")
 
 
 def standing(f):
@@ -396,6 +555,25 @@ _kept = dict([(i, films[i]) for i in pinned] + _rest)
 # than either fixing it or not, because it looks fixed.
 GENRE_REACH = 100
 
+# The audit found the 1930s missing 18 of TMDB's own top 40 by votes for that
+# decade and the 1940s missing 16, while every decade from the 1970s on was
+# complete. Vote count is not comparable ACROSS decades — a 1935 film loses a
+# comparison it was never in — so each decade admits its own most-rated films,
+# exactly as each genre does.
+DECADE_REACH = 60
+
+_by_decade = {}
+for _fid, _f in films.items():
+    _by_decade.setdefault(_f["y"] // 10 * 10, []).append((_fid, _f))
+
+_decade_added = 0
+for _d, _pool in _by_decade.items():
+    _pool.sort(key=lambda kv: -kv[1]["vc"])
+    for _fid, _f in _pool[:DECADE_REACH]:
+        if _fid not in _kept:
+            _kept[_fid] = _f
+            _decade_added += 1
+
 _by_genre = {}
 for _fid, _f in films.items():
     _g = (_f.get("g") or [None])[0]
@@ -413,7 +591,9 @@ for _g, _pool in _by_genre.items():
 films = _kept
 print(f"{len(films)} films (standing cutoff {_cut:.1f}; {_rescued} pinned titles "
       f"the cutoff would have dropped; {_added} admitted by per-genre reach "
-      f"that acclaim alone would have missed); fetching colours and directors…")
+      f"that acclaim alone would have missed; {_decade_added} by per-decade "
+      f"reach, which is how anything from before 1950 survives a vote count "
+      f"comparison against 2015); fetching colours and directors…")
 
 with ThreadPoolExecutor(max_workers=WORKERS) as pool:
     ids = list(films)
