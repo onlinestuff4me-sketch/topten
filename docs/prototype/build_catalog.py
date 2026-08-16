@@ -561,10 +561,11 @@ for i in _dropped:
 # pinned CANON title that is not an Oscar winner is exactly what this rule is
 # meant to remove. The trim below indexes `films` by every pinned id, so
 # leaving them in the set makes the rule crash on its own successes.
+_was_pinned = sum(1 for i in _dropped if i in pinned)   # count BEFORE pruning
 pinned &= films.keys()
 _left = sum(1 for f in films.values() if f.get("lang") != "en")
 print(f"english-language rule: dropped {len(_dropped)} non-English films "
-      f"(including {sum(1 for i in _dropped if i in pinned)} that were pinned canon); "
+      f"(including {_was_pinned} that were pinned canon); "
       f"{_left} non-English remain, every one of them a named exception")
 
 # The trim: pinned canon first, then the field by standing, to exactly TARGET.

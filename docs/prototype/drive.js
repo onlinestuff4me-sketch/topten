@@ -1326,14 +1326,18 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   // "Robert De Niro" shortens to De Niro or not at all. It shortened to "Niro".
   const people = await page.evaluate(() => ({
     deNiro: window.makeTopic({ actor: 'Robert De Niro' }).title,
-    // Two Miyazakis on the shelf, so neither may claim the surname alone.
-    miyazaki: window.makeTopic({ director: 'Hayao Miyazaki' }).title,
+    // Two Scotts on the shelf — Ridley (16 films) and Tony (8) — so neither
+    // may claim the surname alone. This used to be the two Miyazakis, until
+    // the English-language rule left only Hayao (via Spirited Away, a pinned
+    // Oscar winner) and the surname stopped being ambiguous. The rule the
+    // test is about did not change; its fixture expired.
+    scott: window.makeTopic({ director: 'Ridley Scott' }).title,
     hitchcock: window.makeTopic({ director: 'Alfred Hitchcock' }).title,
   }));
   check(!/\bNiro\b/.test(people.deNiro) || /De Niro/.test(people.deNiro),
     `a name particle stays with its name ("${people.deNiro}")`);
-  check(people.miyazaki === 'Top 10 Hayao Miyazaki Movies',
-    `an ambiguous surname stays whole ("${people.miyazaki}") — Hayao and Goro are both on the shelf`);
+  check(people.scott === 'Top 10 Ridley Scott Movies',
+    `an ambiguous surname stays whole ("${people.scott}") — Ridley and Tony are both on the shelf`);
   check(people.hitchcock === 'Top 10 Hitchcock Movies',
     `an unambiguous one shortens the way people say it ("${people.hitchcock}")`);
 
