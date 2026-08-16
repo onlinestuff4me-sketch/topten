@@ -28,6 +28,11 @@ Selection philosophy (unchanged in kind, widened in scale — 2026-08-15):
      titles now skip the trim. That is the only hand in the ranking.
   4. **Full filmographies for directors who appear more than once.** A rabbit
      hole into a director is worthless if their work is missing.
+  5. **A per-genre floor by reach.** `standing` is an acclaim score and acclaim
+     is not evenly distributed across genres — comedies and horror rate below
+     dramas — so a single global cutoff under-selects them. Each primary genre
+     therefore also admits its most-rated films outright. This is why Zoolander
+     and Borat were absent: not buried in a row, never on the shelf.
 """
 
 import colorsys
@@ -355,9 +360,44 @@ _rest = sorted((kv for kv in films.items() if kv[0] not in pinned),
                key=lambda kv: -standing(kv[1]))[: max(TARGET - len(pinned), 0)]
 _cut = standing(_rest[-1][1]) if _rest else 0
 _rescued = sum(1 for i in pinned if standing(films[i]) < _cut)
-films = dict([(i, films[i]) for i in pinned] + _rest)
+_kept = dict([(i, films[i]) for i in pinned] + _rest)
+
+# --- 5. A per-genre floor, ranked by REACH rather than standing.
+# ---
+# --- `standing` is an acclaim score, and acclaim is not evenly distributed
+# --- across genres: comedies and horror rate systematically below dramas, so
+# --- a single global cutoff quietly under-selects them. That is not a
+# --- ranking artefact inside a row, it is a hole in the CATALOG — Zoolander,
+# --- Borat and Bridesmaids were not buried in the Comedies row, they were
+# --- never on the shelf at all (Mischa, 2026-08-16).
+# ---
+# --- So each primary genre also gets its most-rated films admitted outright.
+# --- Vote count is the closest thing TMDB has to "would you recognise this",
+# --- which is exactly the axis a global acclaim cutoff is blind to.
+# ---
+# --- This ADDS rather than reshuffles: everything the standing trim chose is
+# --- still here. The alternative — a quota that displaces acclaimed films —
+# --- would re-roll the whole shelf to fix a gap at its edges.
+GENRE_REACH = 40
+
+_by_genre = {}
+for _fid, _f in films.items():
+    _g = (_f.get("g") or [None])[0]
+    if _g:
+        _by_genre.setdefault(_g, []).append((_fid, _f))
+
+_added = 0
+for _g, _pool in _by_genre.items():
+    _pool.sort(key=lambda kv: -kv[1]["vc"])
+    for _fid, _f in _pool[:GENRE_REACH]:
+        if _fid not in _kept:
+            _kept[_fid] = _f
+            _added += 1
+
+films = _kept
 print(f"{len(films)} films (standing cutoff {_cut:.1f}; {_rescued} pinned titles "
-      f"the cutoff would have dropped); fetching colours and directors…")
+      f"the cutoff would have dropped; {_added} admitted by per-genre reach "
+      f"that acclaim alone would have missed); fetching colours and directors…")
 
 with ThreadPoolExecutor(max_workers=WORKERS) as pool:
     ids = list(films)
