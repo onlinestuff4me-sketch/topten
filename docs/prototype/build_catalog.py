@@ -463,17 +463,7 @@ with ThreadPoolExecutor(max_workers=WORKERS) as pool:
         pinned.add(m["id"])
 print(f"named canon: {len(pinned)} pinned, {len(unresolved)} unresolved {unresolved}")
 
-# Anything non-English that is NOT a pinned Oscar winner leaves now, before the
-# trim ranks anything. The universe sweep already asked TMDB for English only,
-# but the keyword, company, genre and top_rated sources do not take a language
-# parameter, so they let other languages in through the side door. Enforcing
-# the rule in one place after collection is the difference between a rule and
-# a hope.
-_foreign = [i for i, f in films.items() if f.get("lang") != "en" and i not in pinned]
-for i in _foreign:
-    del films[i]
-print(f"english-language rule: dropped {len(_foreign)} non-English films that won no Oscar; "
-      f"{sum(1 for f in films.values() if f.get('lang') != 'en')} non-English remain (all pinned)")
+
 
 
 def standing(f):
@@ -525,6 +515,39 @@ for m in extra:
         continue
     films[m["id"]] = row(m)
 print(f"{len(_people)} directors expanded; {len(films)} films before trim")
+
+
+# ── The English-language rule, enforced once, LAST ──────────────────────────
+#
+# After the expansion, not before it. The first version ran before, and the
+# expansion then walked pinned directors' full filmographies straight back
+# through the door: Miyazaki arrived via Spirited Away and brought Princess
+# Mononoke and Howl's Moving Castle, Park Chan-wook brought The Handmaiden,
+# Meirelles brought City of God. The script reported 152 non-English films and
+# the artifact held 217. Storing `lang` is what made that visible.
+#
+# And the test is SPOKEN language, not `original_language`. That field is a
+# production tag: TMDB marks Léon: The Professional and The Fifth Element
+# `fr`, because they are French productions, though both are films in English.
+# Dropping them would enforce the letter of "English-language films" against
+# its plain meaning. So a film stays if English is among its spoken languages,
+# which costs one details call per non-English candidate and only for those.
+def speaks_english(fid):
+    langs = get(f"/movie/{fid}").get("spoken_languages") or []
+    return any(l.get("iso_639_1") == "en" for l in langs)
+
+
+_suspect = [i for i, f in films.items() if f.get("lang") != "en" and i not in pinned]
+with ThreadPoolExecutor(max_workers=WORKERS) as pool:
+    _english = set(i for i, ok in zip(_suspect, pool.map(speaks_english, _suspect)) if ok)
+_dropped = [i for i in _suspect if i not in _english]
+for i in _dropped:
+    del films[i]
+_left = sum(1 for f in films.values() if f.get("lang") != "en")
+print(f"english-language rule: {len(_suspect)} non-English-tagged candidates, "
+      f"{len(_english)} of them spoken in English and kept, {len(_dropped)} dropped; "
+      f"{_left} remain (pinned Oscar winners, or English films with a foreign "
+      f"production tag)")
 
 # The trim: pinned canon first, then the field by standing, to exactly TARGET.
 _rest = sorted((kv for kv in films.items() if kv[0] not in pinned),
