@@ -1,5 +1,17 @@
 """Build the prototype's baked catalog from TMDB.
 
+THIS IS STAGE ONE OF THREE. Run all three, in order:
+
+    python3 build_catalog.py    # films: ids, titles, genres, poster colours
+    python3 enrich_catalog.py   # sv (services), ca (cast), r (recommendations)
+    python3 build_tv.py         # the second shelf, appended to the same file
+
+Stopping after this one produces a catalog.js that loads without complaint and
+is missing cast, recommendations, streaming availability and every TV show —
+so the actor filter, `See similar` and the services filter are all silently
+dead, and the TV domain is empty. It looks fine. It parses fine. Ask how it was
+built before trusting it (learned the hard way, 2026-08-16).
+
 Writes docs/prototype/catalog.js. The key is used here, at build time, and is
 never shipped: the prototype ships with the data already in it, so the page
 needs no API key and works on a plane.
@@ -378,7 +390,11 @@ _kept = dict([(i, films[i]) for i in pinned] + _rest)
 # --- This ADDS rather than reshuffles: everything the standing trim chose is
 # --- still here. The alternative — a quota that displaces acclaimed films —
 # --- would re-roll the whole shelf to fix a gap at its edges.
-GENRE_REACH = 40
+# 100, not 40. At 40 the floor admitted Borat, Superbad, Dumb and Dumber and
+# Ace Ventura but not Zoolander, which sits 93rd among comedies by vote count —
+# so the first attempt fixed some of the hole and left the rest, which is worse
+# than either fixing it or not, because it looks fixed.
+GENRE_REACH = 100
 
 _by_genre = {}
 for _fid, _f in films.items():
