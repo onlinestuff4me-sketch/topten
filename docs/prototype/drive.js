@@ -592,6 +592,41 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   check(tier.offered.length >= 4 && tier.offered.includes('Parasite'),
     `while the ones people know still appear (${tier.offered.join(', ')})`);
 
+  // ── Studios are a filter, not a row (Mischa, 2026-08-16) ────────────────
+  // No Studio Ghibli row by default; a Studio chip that gets you there.
+  const studio = await page.evaluate(() => {
+    const chips = [...document.querySelectorAll('.chips .chip')].map(c => c.innerText.trim());
+    const offered = window.facetValues('studio').map(([v, n]) => `${v} (${n})`);
+    window.S.filters.studio = 'Studio Ghibli';
+    const rows = window.browseRows(new Set());
+    const films = [...new Set(rows.flatMap(r => r.cards.map(c => c.f.t)))];
+    const heading = rows.map(r => r.title).join(' | ');
+    window.S.filters.studio = null;
+    const byDefault = window.browseRows(new Set()).map(r => r.title);
+    return { chips, offered, films, heading, byDefault };
+  });
+  check(studio.chips.includes('Studio'),
+    `a Studio chip sits beside the others (${studio.chips.join(' · ')})`);
+  check(studio.offered.length >= 8,
+    `offering the studios the catalog actually labels (${studio.offered.slice(0, 4).join(', ')}…)`);
+  check(!studio.byDefault.some(t => /ghibli/i.test(t)),
+    'with no Studio Ghibli row by default');
+  check(studio.films.includes('Princess Mononoke') && studio.films.includes('My Neighbor Totoro')
+        && studio.films.length === 9,
+    `and selecting it returns the whole studio (${studio.films.length} films: ${studio.films.slice(0, 3).join(', ')}…)`);
+  check(/from Studio Ghibli/.test(studio.heading),
+    `named for what was asked for ("${studio.heading}")`);
+
+  // Asking for something IS expressing interest — an explicit filter must not
+  // be second-guessed by the archive-tier gate.
+  const asked = await page.evaluate(() => {
+    window.S.filters.director = 'Akira Kurosawa';
+    const n = window.browseRows(new Set()).flatMap(r => r.cards).length;
+    window.S.filters.director = null;
+    return n;
+  });
+  check(asked > 0, `naming a director returns their work whatever its vote count (${asked} films)`);
+
   // Adjacent rows showing the same three posters is what a screenshot caught.
   const echoes = await page.evaluate(() => {
     const rows = window.browseRows(new Set());

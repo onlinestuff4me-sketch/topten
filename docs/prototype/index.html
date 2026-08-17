@@ -636,6 +636,9 @@ const DOMAINS = [
   { id: 'movie', label: 'Movies', noun: 'movies', one: 'movie', ready: true,
     topic: { id: 'movie', domain: 'movie', title: 'Movies', prompt: 'Your 10 favorite movies of all time.' } },
   { id: 'tv', label: 'TV shows', noun: 'shows', one: 'show', ready: true,
+    // build_tv.py stores networks in the same field films use for studios, and
+    // a network is not a studio. Same axis, different word.
+    axes: { studio: 'Network' },
     topic: { id: 'tv', domain: 'tv', title: 'TV shows', prompt: 'Your 10 favorite TV shows of all time.' } },
   // Books live in their own file, so this one domain can go missing on its
   // own. If it does, the row falls back to "coming next" rather than opening
@@ -644,7 +647,8 @@ const DOMAINS = [
   // rather than empty: an axis with nothing behind it is a dead control.
   { id: 'book', label: 'Books', noun: 'books', one: 'book',
     ready: (window.CATALOG_BOOKS || []).length > 0,
-    axes: { services: null, genre: 'Subject', director: 'Author', actor: null },
+    axes: { services: null, genre: 'Subject', director: 'Author', actor: null,
+            studio: 'Publisher' },
     sim: { rec: 'Often read together', with: 'Also by' },
     topic: { id: 'book', domain: 'book', title: 'Books', prompt: 'Your 10 favorite books of all time.' } },
   { id: 'games', label: 'Video games', noun: 'games', one: 'game', ready: false },
@@ -660,7 +664,14 @@ const domainMeta = (t = S.topic) => DOMAINS.find(d => d.id === domainOf(t)) || D
 const nounFor = (t = S.topic) => domainMeta(t).noun;
 const countNoun = (n, t = S.topic) => `${n} ${n === 1 ? domainMeta(t).one : domainMeta(t).noun}`;
 const TOPIC_ALL = DOMAINS[0].topic;
-const AXES = { services: 'Services', genre: 'Genre', director: 'Director', actor: 'Actor' };
+const AXES = { services: 'Services', genre: 'Genre', director: 'Director',
+               actor: 'Actor', studio: 'Studio' };
+/* Every single-value axis, in one place. Adding `studio` meant touching five
+   separate `['genre', 'director', 'actor']` literals, and a sixth that was
+   missed would have been a filter that narrows the shelf while the escape
+   hatches, the map breadcrumb and the row headings all pretend it is not
+   there. `services` is not here because it is multi-value and clears to []. */
+const FACETS = ['genre', 'director', 'actor', 'studio'];
 const SIMWORDS = { rec: 'Often watched together', with: 'With' };
 const domain = (t) => DOMAINS.find(d => d.id === domainOf(t || S.topic)) || DOMAINS[0];
 const axes = () => ({ ...AXES, ...(domain().axes || {}) });
@@ -699,7 +710,7 @@ function fresh(topic = TOPIC_ALL) {
     // "this led to that". Walking back moves focus and destroys nothing —
     // round 2's headline complaint was that it did.
     graph: { nodes: {}, roots: [], focus: null },
-    filters: { services: [], genre: null, director: null, actor: null },
+    filters: { services: [], genre: null, director: null, actor: null, studio: null },
     region: guessRegion(), keep: [], ranked: [], rank: null, comparisons: 0, badge: null,
     done: [],         // every Ten finished this session, in order
     tipDone: false    // the services coach mark, dismissed once and for good
@@ -801,6 +812,7 @@ function passesFilters(f) {
   if (F.genre && !f.g.includes(F.genre)) return false;
   if (F.director && f.d !== F.director) return false;
   if (F.actor && !(f.ca || []).includes(F.actor)) return false;
+  if (F.studio && !(f.br || []).includes(F.studio)) return false;
   return true;
 }
 const pool = () => CAT.filter(f => inTopic(f) && passesFilters(f));
@@ -808,7 +820,8 @@ const pool = () => CAT.filter(f => inTopic(f) && passesFilters(f));
 function facetValues(kind) {
   const counts = new Map();
   for (const f of CAT.filter(inTopic)) {
-    const vals = kind === 'genre' ? f.g : kind === 'director' ? [f.d] : (f.ca || []);
+    const vals = kind === 'genre' ? f.g : kind === 'director' ? [f.d]
+      : kind === 'studio' ? (f.br || []) : (f.ca || []);
     for (const v of vals) if (v) counts.set(v, (counts.get(v) || 0) + 1);
   }
   return [...counts.entries()].filter(([, n]) => n >= 2).sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
@@ -1026,7 +1039,14 @@ const inGenreRow = (f, g) =>
    adding one international film to their Ten. Nothing here restricts what can
    be searched or filtered — only what is offered unasked. */
 const INTL_BROWSE_FLOOR = 500;
+/* Interest is expressed by asking for something, and there is more than one
+   way to ask. Adding an international film to your Ten is one. So is naming a
+   studio, a director, an actor or a genre, or typing a search — if somebody
+   has asked for Studio Ghibli, hiding a Ghibli film from them because of its
+   vote count is the app refusing the question it was just asked. The gate is
+   only ever about what is offered UNASKED. */
 const wantsInternational = () =>
+  narrowed() || !!S.q.trim() ||
   S.tray.some(id => { const f = byId.get(id); return f && f.lang && f.lang !== 'en'; });
 const browsable = f =>
   !f.lang || f.lang === 'en' || (f.vc || 0) >= INTL_BROWSE_FLOOR || wantsInternational();
@@ -1100,7 +1120,7 @@ function browseRows(have) {
 
 const narrowed = () => {
   const F = S.filters;
-  return !!(F.genre || F.director || F.actor || (F.services && F.services.length));
+  return FACETS.some(k => F[k]) || !!(F.services && F.services.length);
 };
 
 /* ── Rendering ────────────────────────────────────────────────────────────── */
@@ -1176,6 +1196,7 @@ function rowSuffix(rowId = '') {
   const F = S.filters, bits = [];
   if (F.actor) bits.push(`with ${F.actor}`);
   if (F.director) bits.push(`by ${F.director}`);
+  if (F.studio) bits.push(`from ${F.studio}`);
   if (F.genre && !rowId.startsWith('g:')) bits.push(`in ${F.genre}`);
   return bits.length ? ' ' + bits.join(', ') : '';
 }
@@ -1258,7 +1279,7 @@ function deadEnd() {
     if (n > 0) escapes.push({ label, n, drop });
   };
 
-  for (const k of ['genre', 'director', 'actor']) {
+  for (const k of FACETS) {
     if (F[k]) tryWithout(F[k], () => { F[k] = null; }, () => { F[k] = saved[k]; }, `data-clear="${k}"`);
   }
   if (F.services.length) {
@@ -1290,6 +1311,7 @@ function filterChips() {
     ${A.genre ? chip('genre', F.genre, F.genre || A.genre) : ''}
     ${A.director ? chip('director', F.director, F.director || A.director) : ''}
     ${A.actor ? chip('actor', F.actor, F.actor || A.actor) : ''}
+    ${A.studio && facetValues('studio').length ? chip('studio', F.studio, F.studio || A.studio) : ''}
   </div>`;
 }
 
@@ -1841,7 +1863,7 @@ function renderMap() {
 function mapContext() {
   const F = S.filters, bits = [];
   if (F.services.length) bits.push('On ' + F.services.map(sid => (SERVICES.find(x => x[0] === sid) || [, sid])[1]).join(', '));
-  for (const k of ['genre', 'director', 'actor']) if (F[k]) bits.push(F[k]);
+  for (const k of FACETS) if (F[k]) bits.push(F[k]);
   if (!bits.length) return '';
   // True of every state of this screen, including the empty one: a filter
   // changes what is offered next, never what the map has recorded.
