@@ -98,7 +98,18 @@ OUT = os.path.join(os.path.dirname(os.path.abspath(__file__)), "catalog.js")
 TARGET = 2000          # films on the shelf (Mischa, 2026-08-15: 620 was thin)
 VOTE_FLOOR = 400       # a film nobody voted on is not a candidate for a Ten
 EXPAND_FLOOR = 250     # …but a named director's lesser work still belongs
-CANON_FLOOR = 150      # …and a named film is named because votes bury it
+# 20, not 150. The comment beside this constant said "a named film is named
+# because votes bury it" and the value then buried fourteen of them: Journey of
+# Hope (38 votes), Madame Rosa (43), Monsieur Vincent (45), Cavalcade (135) —
+# every one an Academy Award winner, every one rejected by the rule written to
+# rescue it (2026-08-16).
+#
+# The floor was never what disambiguated anyway. `resolve` requires an EXACT
+# title match and then takes the most-voted survivor, so a wrong film only wins
+# if it both shares the title exactly and outpolls the right one — which a
+# higher floor does nothing about. What is left is a guard against pinning
+# something with three votes, and 20 is enough for that.
+CANON_FLOOR = 20
 WORKERS = 16           # TMDB tops out around 25 req/s from here either way
 
 
@@ -617,7 +628,25 @@ CANON = (
 # find that title from itself: querying "8½" returns Code 8 and 8 Mile. Where
 # the two differ, the search term is given here and the match still has to be
 # exact — a fuzzy fallback is how you pin the wrong film.
-QUERY_FOR = {"8½": "Otto e mezzo"}
+QUERY_FOR = {
+    "8½": "Otto e mezzo",
+}
+
+# A year, where the title alone cannot pick the film out. "No" is a one-word
+# title against a database of a million films, and putting the year in the
+# query string only makes TMDB search for the literal words "No 2012" — it has
+# to travel as a parameter.
+YEAR_FOR = {"No": 2012}
+
+# What TMDB calls a film, where that differs from what the canon lists call it.
+# The match stays exact — this maps one exact name to another rather than
+# loosening the comparison, because a fuzzy fallback is how you pin the 2019
+# remake of something (verified against posters with Mischa, 2026-08-16).
+TMDB_TITLE = {
+    "Birdman": "Birdman or (The Unexpected Virtue of Ignorance)",
+    "Dr. Strangelove": "Dr. Strangelove or: How I Learned to Stop Worrying and Love the Bomb",
+    "Precious": "Precious: Based on the Novel 'Push' by Sapphire",
+}
 
 
 def resolve(title):
@@ -627,9 +656,12 @@ def resolve(title):
     how you end up pinning the 2019 remake of something. Unmatched names are
     printed rather than swallowed — a name that stops resolving is the list
     rotting, and we want to see it."""
-    want = slug(title)
+    want = slug(TMDB_TITLE.get(title, title))
     best = None
-    for m in get("/search/movie", query=QUERY_FOR.get(title, title)).get("results", []):
+    args = {"query": QUERY_FOR.get(title, title)}
+    if title in YEAR_FOR:
+        args["year"] = YEAR_FOR[title]
+    for m in get("/search/movie", **args).get("results", []):
         if not m.get("poster_path") or not m.get("release_date"):
             continue
         if slug(m.get("title")) != want and slug(m.get("original_title")) != want:
