@@ -542,20 +542,55 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   check(!genreRows.some(h => /^POPULAR\b/.test(h)),
     'none of which says "Popular" a second time');
 
-  // Every film in a genre row is really OF that genre: TMDB lists genres
-  // primary-first, and membership-by-includes filed Pulp Fiction
-  // ([Thriller, Crime, Comedy]) under Comedies.
+  // A genre row asks one of two questions, and which one depends on the row.
+  //
+  // For a CONTENT genre the question is "is this mostly a comedy", answered by
+  // the primary genre — that is what keeps Pulp Fiction ([Thriller, Crime,
+  // Comedy]) out of Comedies. For a MEDIUM the question is "is this animated",
+  // answered by membership: TMDB files Princess Mononoke as [Adventure,
+  // Fantasy, Animation], and a rule that calls that not-an-animated-film is
+  // a rule that is simply wrong (Mischa, 2026-08-16).
   const fit = await page.evaluate(() => {
+    const MEDIUM = new Set(['Animation', 'Documentary']);
     const rows = window.browseRows(new Set()).filter(r => r.id.startsWith('g:'));
     const bad = [];
     for (const r of rows) {
       const g = r.id.slice(2);
-      for (const c of r.cards) if (c.f.g[0] !== g) bad.push(`${c.f.t} [${c.f.g.join(', ')}] in ${g}`);
+      for (const c of r.cards) {
+        const ok = MEDIUM.has(g) ? c.f.g.includes(g) : c.f.g[0] === g;
+        if (!ok) bad.push(`${c.f.t} [${c.f.g.join(', ')}] in ${g}`);
+      }
     }
     return { rows: rows.length, bad: bad.slice(0, 3), n: bad.length };
   });
   check(fit.n === 0,
-    `and every film in a genre row leads with that genre (${fit.rows} rows, ${fit.n} mismatches${fit.n ? ': ' + fit.bad.join('; ') : ''})`);
+    `and every film in a genre row belongs there (${fit.rows} rows, ${fit.n} mismatches${fit.n ? ': ' + fit.bad.join('; ') : ''})`);
+
+  // The specific films that rule exists for.
+  const ghibli = await page.evaluate(() => {
+    const row = window.browseRows(new Set()).find(r => r.id === 'g:Animation');
+    const eligible = window.CATALOG.filter(f => (f.dm || 'movie') === 'movie' && f.g.includes('Animation'));
+    const named = ['Spirited Away', 'Princess Mononoke', 'My Neighbor Totoro', "Howl's Moving Castle"];
+    return { inRow: row ? row.cards.some(c => c.f.t === 'Spirited Away') : false,
+             eligible: named.filter(t => eligible.some(f => f.t === t)).length };
+  });
+  check(ghibli.eligible === 4,
+    `all four Ghibli films are eligible for the animation row (${ghibli.eligible}/4) — under the primary-genre rule three of them were not`);
+  check(ghibli.inRow, 'and Spirited Away actually appears in it');
+
+  // The archive tier: pinned award winners with double-digit vote counts stay
+  // in the catalog and out of a row somebody is scanning.
+  const tier = await page.evaluate(() => {
+    const rows = window.browseRows(new Set());
+    const offered = rows.flatMap(r => r.cards.map(c => c.f)).filter(f => f.lang && f.lang !== 'en');
+    const inCatalog = window.CATALOG.filter(f => f.lang && f.lang !== 'en' && (f.vc || 0) < 500).length;
+    return { archiveOffered: offered.filter(f => (f.vc || 0) < 500).map(f => f.t),
+             offered: [...new Set(offered.map(f => f.t))], inCatalog };
+  });
+  check(tier.archiveOffered.length === 0,
+    `no archive-tier international film is offered unasked (${tier.inCatalog} of them sit in the catalog, reachable by search and filter)`);
+  check(tier.offered.length >= 4 && tier.offered.includes('Parasite'),
+    `while the ones people know still appear (${tier.offered.join(', ')})`);
 
   // Adjacent rows showing the same three posters is what a screenshot caught.
   const echoes = await page.evaluate(() => {

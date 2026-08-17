@@ -991,8 +991,48 @@ const reach = f => (f.vc || 0);
    a claim about what a film IS. */
 const primaryGenre = f => (f.g && f.g[0]) || null;
 
+/* Animation and Documentary are MEDIUMS, not genres, and the primary-genre
+   rule was wrong about them (Mischa, 2026-08-16: "Spirited Away, Princess
+   Mononoke should be eligible to appear in popular animated movies").
+
+   TMDB files Princess Mononoke as [Adventure, Fantasy, Animation] and My
+   Neighbor Totoro as [Fantasy, Animation, Family] — Animation third and
+   second. Under "a film belongs to its first genre" neither can appear in an
+   Animation row at all, which is absurd: they are animated films. The same
+   rule is right for Comedy and Drama, where "primary" means the tone the film
+   is actually in, and that is what keeps Pulp Fiction out of Comedies.
+
+   So the question a row asks depends on what kind of row it is. Is it
+   animated — yes or no. Is it a comedy — mostly, or incidentally? */
+const MEDIUM_GENRES = new Set(['Animation', 'Documentary']);
+const inGenreRow = (f, g) =>
+  MEDIUM_GENRES.has(g) ? (f.g || []).includes(g) : primaryGenre(f) === g;
+
+/* The archive tier.
+
+   Pinning every Academy Award winner put 54 non-English films on the shelf
+   with double- and low-triple-digit vote counts — Journey of Hope on 38,
+   Madame Rosa on 43. They belong in the catalog: they are findable by search,
+   by filter, by director, and by following a branch. What they should not do
+   is populate a browse row somebody is scanning for something to watch
+   (Mischa, 2026-08-16).
+
+   500 votes is where the list stops being films people have seen and starts
+   being films people have heard of. It is a judgement, and the closest call
+   is Pather Panchali at 499 — one vote the wrong side, and worth moving the
+   line for if that reads wrong.
+
+   The gate lifts the moment somebody shows an interest, which they do by
+   adding one international film to their Ten. Nothing here restricts what can
+   be searched or filtered — only what is offered unasked. */
+const INTL_BROWSE_FLOOR = 500;
+const wantsInternational = () =>
+  S.tray.some(id => { const f = byId.get(id); return f && f.lang && f.lang !== 'en'; });
+const browsable = f =>
+  !f.lang || f.lang === 'en' || (f.vc || 0) >= INTL_BROWSE_FLOOR || wantsInternational();
+
 function browseRows(have) {
-  const shelf = pool().filter(f => !have.has(f.id));
+  const shelf = pool().filter(f => !have.has(f.id) && browsable(f));
   const rows = [], take = (list, n = ROW_SIZE) => list.slice(0, n).map(f => ({ f, why: '' }));
   const add = (id, title, list) => {
     const c = take(list);
@@ -1021,6 +1061,10 @@ function browseRows(have) {
   for (const f of shelf) {
     const g = primaryGenre(f);
     if (g) leads.set(g, (leads.get(g) || 0) + 1);
+    // A medium genre is counted by membership, because that is how its row is
+    // filled — ranking Animation by the films that LEAD with it would order
+    // the row by a number that does not describe it.
+    for (const m of f.g || []) if (MEDIUM_GENRES.has(m) && m !== g) leads.set(m, (leads.get(m) || 0) + 1);
   }
   const byShare = [...leads.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]));
 
@@ -1030,7 +1074,7 @@ function browseRows(have) {
     // (Mischa, 2026-08-16). A row named Comedies is a shelf; a row named
     // Popular comedies is an argument nobody asked for.
     add('g:' + g, cap(genrePhrase(g)),
-      shelf.filter(f => primaryGenre(f) === g && !alreadyShown.has(f.id))
+      shelf.filter(f => inGenreRow(f, g) && !alreadyShown.has(f.id))
            .sort((a, b) => reach(b) - reach(a)));
   }
 
