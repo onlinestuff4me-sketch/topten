@@ -821,7 +821,13 @@ const DOMAINS = [
   { id: 'tv', label: 'TV shows', noun: 'shows', one: 'show', art: 'poster', ready: true,
     // build_tv.py stores networks in the same field films use for studios, and
     // a network is not a studio. Same axis, different word.
-    axes: { studio: 'Network' },
+    //
+    // The same is true of the authorship field: it holds the CREATOR, which
+    // build_tv.py's own docstring says and the data confirms (Vince Gilligan
+    // for Breaking Bad, David Benioff for Game of Thrones). A show has a
+    // creator; calling that a director was the third place a domain's own
+    // word had been typed at the call site instead of asked for.
+    axes: { studio: 'Network', director: 'Creator' },
     topic: { id: 'tv', domain: 'tv', title: 'TV shows', prompt: 'Your 10 favorite TV shows of all time.' } },
   // Books live in their own file, so this one domain can go missing on its
   // own. If it does, the row falls back to "coming next" rather than opening
@@ -2997,7 +3003,13 @@ function renderTitle(id) {
       </div>
       <div class="title-facts">
         <p class="year">${f.y || ''}</p>
-        ${f.d ? `<p class="fact"><span class="k">Director</span>${factLinks('director', [f.d])}</p>` : ''}
+        <!-- Ask, do not assert. The axes() helper already carries this
+             word per domain - books declare director as Author - and the
+             filter chips have been reading it all along while this screen
+             said "Director" over Jane Austen.
+             (No backticks in a comment inside a template literal. Third
+             time today; see the trap in tech-stack.md.) -->
+        ${f.d ? `<p class="fact"><span class="k">${esc(axes().director || 'Director')}</span>${factLinks('director', [f.d])}</p>` : ''}
       </div>
     </div>
     <div class="title-cta">
@@ -3023,10 +3035,13 @@ function renderTitle(id) {
     <div class="title-facts wide">
         ${cast.length ? `<p class="fact"><span class="k">Starring</span>${factLinks('actor', cast)}</p>` : ''}
         ${(f.g || []).length ? `<p class="fact"><span class="k">Genre</span>${factLinks('genre', f.g.slice(0, 3))}</p>` : ''}
-        <p class="fact"><span class="k">Where to watch</span>
+        <!-- A domain that declares no services axis has none, so the row
+             goes rather than reading "Where to watch / Not on your
+             services" under a book. -->
+        ${axes().services ? `<p class="fact"><span class="k">Where to watch</span>
           ${services.length
             ? `<span class="watch">${services.map(n => `<span class="sv">${esc(n)}</span>`).join('')}</span>`
-            : `<span class="watch none">Not on your services</span>`}</p>
+            : `<span class="watch none">Not on your services</span>`}</p>` : ''}
     </div>
     ${like.length ? `<section data-rail="titlelike">
       <div class="section-head"><h2 class="section-h">More like ${esc(f.t)}</h2></div>

@@ -369,6 +369,37 @@ const CONTRAST = `(() => {
   return { seen, bad: [...new Map(out.map(o => [o.sel + o.text, o])).values()].slice(0, 5) };
 })()`;
 
+
+/* ── A books shelf never speaks like a film shelf ───────────────────────────
+   design.md's rule: anything a domain says out loud belongs in DOMAINS, not
+   in a string at the call site. Four instances have been caught this way and
+   every one was invisible until a second domain existed - the noun, the axis
+   label, the artwork word, and the title page's credit line, which said
+   "DIRECTOR" over Jane Austen and offered "Where to watch" for a book.
+
+   So this reads every visible string and every accessible name on the books
+   flow and looks for a word only a film or television shelf should say. A
+   book's own title or author may legitimately contain any word, so anything
+   matching a real record on the shelf is allowed through. */
+const FILM_WORDS = /\b(poster|posters|film|films|movie|movies|watched|watching|rewatch|screening|episode|season|network|studio|director|directed)\b/i;
+const DOMAIN_SPEECH = `(() => {
+  const out = [], seen = new Set();
+  for (const el of document.querySelectorAll('body *')) {
+    const r = el.getBoundingClientRect();
+    if (r.width < 1 || r.height < 1) continue;
+    for (const n of el.childNodes) {
+      if (n.nodeType !== 3) continue;
+      const t = n.textContent.replace(/\\s+/g, ' ').trim();
+      if (t && !seen.has(t)) { seen.add(t); out.push(t); }
+    }
+    const al = el.getAttribute && el.getAttribute('aria-label');
+    if (al) { const t = al.replace(/\\s+/g, ' ').trim(); if (t && !seen.has(t)) { seen.add(t); out.push(t); } }
+  }
+  const own = CAT.filter(f => inTopic(f, S.topic))
+    .flatMap(f => [f.t, f.d, ...(f.ca || [])]).filter(Boolean).map(x => String(x).toLowerCase());
+  return { said: out, own };
+})()`;
+
 (async () => {
   const browser = await chromium.launch({ executablePath: CHROME });
   /* Browser viewports, not device sizes.
@@ -2513,6 +2544,40 @@ const CONTRAST = `(() => {
     check(faults.length === 0,
       `${where}: every control named and every rank spoken`
       + (faults.length ? ` \u2014 ${faults.length}: ${faults.slice(0, 3).join('; ')}` : ''));
+  }
+
+  console.log('\n\u2500\u2500 A books shelf speaks like one \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500');
+  const BOOK_SCREENS = [
+    ['browsing', () => { S.scene = 'build'; S.seen = true; S.tipDone = true; S.tray = []; save(); render(); }],
+    ['a title page', () => {
+      const f = CAT.filter(x => inTopic(x, S.topic)).sort((a, b) => (b.vc || 0) - (a.vc || 0))[0];
+      S.title = f.id; S.back = 'build'; S.scene = 'title'; save(); render();
+    }],
+  ];
+  for (const [where, fn] of BOOK_SCREENS) {
+    await page.evaluate(() => {
+      localStorage.clear();
+      document.querySelectorAll('.sheet, .scrim, .vault, .coach, .coachscrim').forEach(n => n.remove());
+      S.topic = makeTopic({ domain: 'book' }); save();
+    });
+    await page.evaluate(fn);
+    await page.waitForTimeout(350);
+    await page.evaluate(() => {
+      document.querySelectorAll('.coach, .coachscrim').forEach(n => n.remove());
+      window.scrollTo(0, 0);
+    });
+    await page.waitForTimeout(100);
+    const { said, own } = await page.evaluate(DOMAIN_SPEECH);
+    const ownSet = new Set(own);
+    const bad = said.filter(t => {
+      if (!FILM_WORDS.test(t)) return false;
+      const low = t.toLowerCase();
+      if (ownSet.has(low)) return false;            // a real title or author
+      return !own.some(o => o.length > 3 && low.includes(o));
+    });
+    check(bad.length === 0,
+      `${where} a books shelf says nothing only a film shelf would`
+      + (bad.length ? ` \u2014 ${bad.length}: ${bad.slice(0, 3).map(t => JSON.stringify(t.slice(0, 40))).join(', ')}` : ''));
   }
 
   check(errors.length === 0, 'no page errors: ' + JSON.stringify(errors));

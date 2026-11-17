@@ -961,10 +961,34 @@ this section already fixed one rule down. `DOMAINS` carries an `art` word
 `artNounFor()` answers it the way `nounFor()` answers "movies / shows /
 books". `drive.js` asserts a books shelf is tapped by its covers.
 
+**And again, an hour later.** A sweep of every visible string and accessible
+name on the books flow, looking for words only a film shelf should say, found
+the title page saying **"DIRECTOR" over Jane Austen** and offering **"Where to
+watch"** for a book. Both words were typed into that screen while the app
+already knew better: books declare `director: 'Author'` and `services: null`
+in their own axes, and the filter chips had been reading those all along. The
+screen asks now, and a domain with no services axis loses the row rather than
+printing "Not on your services" under a novel.
+
+The same sweep caught a third: TV was labelled **Director** when the field
+holds the **creator** — Vince Gilligan for Breaking Bad, David Benioff for
+Game of Thrones, which `build_tv.py`'s own docstring says it stores. A show
+has a creator.
+
+| | movies | TV | books |
+|---|---|---|---|
+| authorship | Director | **Creator** | **Author** |
+| the studio axis | Studio | Network | Publisher |
+| the genre axis | Genre | Genre | Subject |
+| artwork | poster | poster | **cover** |
+| where to watch | yes | yes | **no row at all** |
+
 The pattern to keep: **anything a domain says out loud belongs in `DOMAINS`,
-not in a string at the call site.** Three have been caught this way now — the
-noun, the axis label, the artwork word — and each was invisible until a
-second domain existed.
+not in a string at the call site.** Five have been caught this way now — the
+noun, the studio axis, the artwork word, the credit line and the services row
+— and every one was invisible until a second domain existed. `drive.js` now
+sweeps the books flow for film words, with a book's own title and author
+allowed through, so the next one costs a test run rather than a reading.
 
 - **Artwork is asked for, never assembled at the call site.** Every screen
   used to build `image.tmdb.org/t/p/w185` + the item's path, in a dozen
