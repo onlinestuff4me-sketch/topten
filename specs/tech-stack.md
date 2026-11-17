@@ -126,6 +126,34 @@ are present and that the kit (`PLATES`, `ENAMELS`, `MATERIALS`, …) is not —
 and both halves were falsified by re-leaking a name and watching the suite
 go red.
 
+## WARNING - Trap: CSS transform beats an SVG transform attribute
+
+**Found 2026-11-17 (Claude).** The reveal ceremony animates badge layers by
+class, and the landed state is `.layer.on { transform: none }`. The badge's
+motif carried its placement as a `transform` **attribute** on that same
+element. CSS always wins over a presentation attribute, so the moment the
+layer landed, `transform: none` wiped the placement and the motif snapped
+back to its authored box - where the ribbon cut it in half.
+
+The rule: **an element that CSS animates must not also carry a layout
+transform attribute.** Put the placement on an inner group. The same applies
+to `fill`, `stroke` and every other presentation attribute wherever a
+stylesheet touches the element.
+
+It is quiet because both halves look right in isolation: the SVG is correct
+when opened on its own, and the CSS is correct on an element with no
+transform attribute. Only the landed state of the animation is wrong, which
+is the one frame a 1.4s-into-the-ceremony screenshot does not show. The walk
+harness now waits for the ceremony to finish before shooting.
+
+## WARNING - Trap: backticks inside a template literal
+
+Same session, same file. A code comment written inside a JS template literal
+quoted a CSS selector in backticks, which closed the literal. `badge.js`
+stopped parsing, and because it is a shared classic script the symptom was
+again the whole app failing to boot. Comments inside template literals get no
+backticks - name the selector in plain words.
+
 ## Verification workflow
 
 Three environments; every report names which one it verified in.

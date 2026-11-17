@@ -202,12 +202,19 @@ const MOTIFS = {
   briefcase: '<rect x="66" y="86" width="68" height="46" rx="5"/><path d="M86 86 V76 a6 6 0 0 1 6-6h16a6 6 0 0 1 6 6v10" fill="none" stroke-width="7"/>',
   eye: '<path d="M56 100 Q100 66 144 100 Q100 134 56 100 Z" fill="none" stroke-width="7"/><circle cx="100" cy="100" r="13"/>',
   planet: '<circle cx="100" cy="98" r="26"/><ellipse cx="100" cy="98" rx="46" ry="15" fill="none" stroke-width="6" transform="rotate(-18 100 98)"/>',
-  skull: '<path d="M100 66 c-24 0-40 17-40 38 0 12 6 19 12 24 v10 h56 v-10 c6-5 12-12 12-24 0-21-16-38-40-38z"/>',
+  skull: '<path d="M100 66 c-24 0-40 17-40 38 0 12 6 19 12 24 v10 h56 v-10 c6-5 12-12 12-24 0-21-16-38-40-38z"/>'
+    + '<ellipse cx="86" cy="102" rx="9" ry="11" fill="#000" opacity=".5"/>'
+    + '<ellipse cx="114" cy="102" rx="9" ry="11" fill="#000" opacity=".5"/>'
+    + '<path d="M100 112 l6 12 h-12 z" fill="#000" opacity=".5"/>'
+    + '<path d="M90 128 v10 M100 128 v10 M110 128 v10" stroke="#000" stroke-width="3" opacity=".45" fill="none"/>',
   rose: '<circle cx="100" cy="94" r="12"/><path d="M100 70 a24 24 0 0 1 24 24 24 24 0 0 1-24 24 24 24 0 0 1-24-24" fill="none" stroke-width="7"/><path d="M100 118 v22" stroke-width="6" fill="none"/>',
   star: '<path d="M100 62 L112 92 L145 94 L119 114 L128 146 L100 128 L72 146 L81 114 L55 94 L88 92 Z"/>',
   mask: '<path d="M62 72 h76 v34 c0 26-17 42-38 42s-38-16-38-42z"/>',
   grin: '<circle cx="100" cy="100" r="38" fill="none" stroke-width="7"/><path d="M78 106 q22 22 44 0" fill="none" stroke-width="7"/><circle cx="86" cy="88" r="5"/><circle cx="114" cy="88" r="5"/>',
-  helm: '<path d="M62 104 a38 38 0 0 1 76 0 v22 h-76z"/>',
+  helm: '<path d="M62 104 a38 38 0 0 1 76 0 v22 h-76z"/>'
+    + '<rect x="72" y="98" width="56" height="8" rx="4" fill="#000" opacity=".5"/>'
+    + '<rect x="96" y="72" width="8" height="26" rx="4" fill="#000" opacity=".35"/>'
+    + '<rect x="72" y="114" width="56" height="4" rx="2" fill="#000" opacity=".28"/>',
   compass: '<circle cx="100" cy="100" r="38" fill="none" stroke-width="7"/><path d="M100 74 L112 100 L100 126 L88 100 Z"/>',
   flame: '<path d="M100 60 c16 22 30 30 30 50 a30 30 0 0 1-60 0c0-14 10-20 16-30 4 10 10 12 14 6 4-8-2-16 0-26z"/>',
   sword: '<rect x="94" y="58" width="12" height="70"/><rect x="74" y="126" width="52" height="10" rx="4"/><rect x="94" y="136" width="12" height="16"/>',
@@ -250,8 +257,8 @@ function badgeSVG(c, s = 200) {
 
   const sheen = {
     enamel: `<ellipse cx="78" cy="62" rx="54" ry="30" fill="#fff" opacity=".20" transform="rotate(-18 78 62)"/>`,
-    brass: Array.from({ length: 16 }, (_, i) =>
-      `<rect x="${8 + i * 12}" y="0" width="4" height="200" fill="#fff" opacity=".045"/>`).join(''),
+    brass: Array.from({ length: 40 }, (_, i) =>
+      `<rect x="${i * 5}" y="0" width="2" height="200" fill="#fff" opacity=".05"/>`).join(''),
     velvet: `<radialGradient id="v${uid}" cx="50%" cy="38%" r="68%">
         <stop offset="0%" stop-color="#fff" stop-opacity=".16"/>
         <stop offset="100%" stop-color="#000" stop-opacity=".22"/></radialGradient>
@@ -299,7 +306,8 @@ function badgeSVG(c, s = 200) {
         textLength="${wide.toFixed(1)}" lengthAdjust="spacingAndGlyphs"
         font-size="${fit.toFixed(1)}" fill="${metalHi}"
         font-family="'New York', ui-serif, Georgia, serif"
-        font-weight="700">${escBadge(words)}</text>
+        font-weight="700">${[...words].map(ch =>
+          `<tspan class="ich">${escBadge(ch)}</tspan>`).join('')}</text>
     </g>`;
 
   return `<svg viewBox="0 0 ${s} ${s}" role="img" aria-label="Badge: ${escBadge(words || 'unnamed')}">
@@ -322,12 +330,24 @@ function badgeSVG(c, s = 200) {
       <g clip-path="url(#c${uid})">${sheen}</g>
     </g>
     <g class="layer" id="l-motif" fill="${metal}" stroke="${metal}"
-       stroke-linejoin="round" stroke-linecap="round"
-       transform="translate(100 ${showText ? 84 : 100}) scale(${showText ? 0.74 : 0.92}) translate(-100 -100)">
-      <g opacity=".35" transform="translate(0,3)" fill="#000" stroke="#000">${motif}</g>
-      ${motif}
+       stroke-linejoin="round" stroke-linecap="round">
+      <!-- The placement transform lives on an INNER group on purpose. The
+           reveal ceremony animates the .layer class with CSS, and the rule
+           .layer.on sets transform:none, which OVERRIDES a transform
+           attribute on the same element - CSS always beats a presentation
+           attribute. A motif positioned here therefore snapped back to its
+           authored box the instant the layer landed, and the ribbon cut it
+           in half. The two must not share an element. -->
+      <g transform="translate(100 ${showText ? 84 : 100}) scale(${showText ? 0.74 : 0.92}) translate(-100 -100)">
+        <g opacity=".35" transform="translate(0,3)" fill="#000" stroke="#000">${motif}</g>
+        ${motif}
+      </g>
     </g>
     <g class="layer" id="l-metal" fill="none" stroke-linejoin="round">
+      <g clip-path="url(#c${uid})" transform="translate(100 100) scale(0.88) translate(-100 -100)">
+        <path d="${plate}" stroke="${metalLo}" stroke-width="3.4" opacity=".55"/>
+        <path d="${plate}" stroke="${metal}" stroke-width="1.6"/>
+      </g>
       <path d="${plate}" stroke="${metalLo}" stroke-width="9"/>
       <path d="${plate}" stroke="${metal}" stroke-width="5"/>
       <path d="${plate}" stroke="${metalHi}" stroke-width="1.5" opacity=".8"/>

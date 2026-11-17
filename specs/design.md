@@ -999,6 +999,47 @@ by `Georgia`-stack with matched metrics (or licensed alternative later), no
 glass (static header), same Share Card renderer for OG images. The page's
 job: look worthy of the list, convert to "Make your Ten."
 
+## The main screen's vertical budget (2026-11-17)
+
+**The rule: one whole rail clears the dock, at 393x659, at rest.**
+`drive.js` asserts it. It is the cheapest possible statement of "the main
+screen shows the main thing", and it survives the header being redesigned.
+
+It was failing by a wide margin. Measured:
+
+| | before | after |
+|---|---|---|
+| header, title to first poster | 334px | 281px |
+| dock | 130px | 118px |
+| band left for content | **195px** | **260px** |
+| height of one rail | 229px | 229px |
+
+70% of the screen was chrome, and the first row of the app's first screen
+could not fit on it. What came back:
+
+- **The subtitle, 52px with its gap.** `topicPrompt` builds it FROM the
+  title, so "Top 10 Movies of All Time" sat directly above "Your 10 favorite
+  movies of all time." It is a restatement by construction and could never
+  add information. Deleted.
+- **"Start over" moved into the summary row**, beside Map. It cannot share
+  the title's line: `fitline` shrinks the headline until it holds one line,
+  and a sibling button took enough width that "Top 10 Animated Movies of the
+  2000s" wrapped to two even at the 20px floor. The suite caught that within
+  a minute of the attempt.
+- **The gap above the first row**, 32px to 16px. `.stickybar + section` only
+  — above the bar is a control surface the eye skips, between rows is content
+  the eye reads, and those deserve different spacing.
+- **The dock, one step tighter** top and bottom.
+
+**The test was measuring a screen that does not exist.** `drive.js` resized
+to 393x852 before its layout assertions — the DEVICE size, not the viewport.
+At 852 the budget check passed no matter what the header did; it was proved
+worthless by putting the subtitle back and watching it stay green. All of the
+suite's viewports are now named constants at real browser heights (`PHONE`
+393x659, `SMALL` 375x553), which immediately surfaced a second latent bug: a
+sticky-bar assertion had been relying on the taller page clamping an earlier
+scroll back to zero.
+
 ## The hero Ten, and the phone viewport we actually get (2026-11-17)
 
 **The component.** `.hero-ten` presents a finished Top 10 as a physical

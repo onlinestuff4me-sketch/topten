@@ -163,6 +163,32 @@ Latency budget: ≤ 3s end-to-end (Req 4). Generation runs during the rank
 ceremony's final beats when possible (speculative start once 8 of 10 are
 slotted; discard on change).
 
+## The reveal draws the whole badge (2026-11-17)
+
+`revealSequence` has always specified "backplate, motif, metals,
+**inscription last, letter-by-letter**". The prototype was doing the first
+three and then typing the inscription into a separate line of DOM text under
+the badge, while the badge's own inscription layer was never switched on at
+all. So the reveal - the one screen that draws a badge at 260px - was the
+only surface in the product showing a badge without its ribbon.
+
+Now the ribbon cloth lands as the final layer and the letters are struck onto
+it one at a time, which is what the sequence said. The line under the badge
+is the **list name**, which the reveal had never stated out loud despite
+being the moment you finish that list.
+
+The inscription is emitted as one `tspan` per character on every surface, so
+any renderer can animate it; outside the vault they are simply all visible.
+`drive.js` reads the inscription off the drawn tspans rather than off a
+neighbouring element - a stronger assertion, because it proves the words are
+on the artifact and not merely on the screen.
+
+**An inner keyline** was added to the metals layer at the same time: a thin
+rule inset 12% from the plate edge. A 260px badge of one flat field and one
+large glyph reads as a sticker; a border for the field to sit inside is what
+most separates a struck badge from a drawn one. It costs two paths and is
+visible on all eight plates.
+
 ## Reveal & gating rules
 
 - The badge is **never previewable** during creation — no partial renders,

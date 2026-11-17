@@ -676,6 +676,82 @@ the code. The prototype has seven fictional people, two of whom share this
 topic; "according to 2 people" would have had Mischa judging the fixture
 instead of the design.
 
+## The browse screen opens on Popular, and "recent" means recent AND seen (2026-11-17)
+
+Two rows lead the browse screen, and both were wrong.
+
+**Order.** It opened on "Recent releases". The topic is "Top 10 Movies of All
+Time", and the first row has to make somebody want to start picking — which
+means films they already have opinions about, not this month's. Popular leads
+now: Interstellar, Inception, The Avengers, The Dark Knight. Recent follows.
+Measured, the two do not overlap at all in their first twenty: all-time reach
+and three-year reach pick different films.
+
+**Contents.** "Recent releases" sorted by year and then by reach, which is not
+a tie-break — strict year order put the whole of 2026 ahead of the whole of
+2025, so the app opened on Project Hail Mary, Obsession, Michael, Disclosure
+Day and Backrooms: five films almost nobody has seen yet, as the first thing
+anyone saw. The comment above the code already said what it should have done
+("a 2026 release with nine votes is not a release anybody is looking for");
+the code did the opposite of its own comment. It is now a three-year window
+ordered by reach — Deadpool & Wolverine, Dune: Part Two, Inside Out 2, The
+Substance, Superman, Sinners. Recent AND recognisable, which is what the row
+always claimed to be.
+
+A row's NAME cannot catch this, so the suite now checks its CONTENTS: the
+first six cards of each opening row must clear a reach floor. Falsified by
+restoring the year sort and watching it report 2,822 votes.
+
+## The discover card leads with an argument, not a byline (2026-11-17)
+
+**The same three questions, one screen later.** The splash decision above
+removed the stranger from the FIRST screen. It left him on the discover
+screen, where every card read:
+
+> **Top 10 Crime Movies of the 90s**
+> A Top 10 by Sam
+
+— which is the exact framing the splash had just rejected, two taps further
+in. The screen was contradicting its own opening.
+
+Discovery is different from the splash in one way that matters: here the
+person's list IS the content, so it cannot be replaced by the crowd. But the
+byline still cannot carry the card, because on day one there is no social
+graph and dressing one up — follower counts, bios, badges nobody earned —
+would be faking the thing the product has to go and build.
+
+**So the card leads with a claim drawn from the list, and the name becomes
+attribution rather than the headline.** Two forms, both derived:
+
+| when | the line | why |
+|---|---|---|
+| no take of your own on this topic | *"Nour puts Vertigo above Psycho."* | Where they depart from the crowd is the most arguable thing about a list — a sentence with a reply, and the reply is a Ten. |
+| you have a take | *"You and Sam agree on 6 of 10."* | The best line in the product, and it was one screen too deep. Nought out of ten gets its own wording. |
+
+The three questions now answer themselves on this screen too:
+
+- **Who is Sam?** Someone who ranked these. Deliberately thin — the name is
+  attribution, and it earns weight later, when there is a real graph behind it.
+- **Why care?** Because the card states something about a thing you have
+  opinions about. Taste is noise; a ranking is a claim.
+- **Why make my own?** Because the card has just told you something about
+  your own taste that you cannot check any other way — and once you have a
+  take, every card on that topic turns into a number.
+
+**No free text, still.** Every claim is generated from the list; `drive.js`
+asserts each one matches one of the three shapes the generator can produce,
+which is a stronger guard than the paragraph-count proxy it replaced — a
+hand-written sentence fails it.
+
+**A fixture fix came with it.** The stand-in people ranked their whole shelf
+by rating average, and average is not reach: an obscure title with eleven
+generous votes outscored a famous one, so Rae's card read *"Rae puts Teach
+You a Lesson above Game of Thrones"* — not a claim anybody can argue with,
+because nobody has heard of it. Their lists are now drawn from the 60
+best-known titles on the topic and ranked by rating within that, which is
+what a person's list looks like: titles you recognise, in an order you would
+fight about. It reads *"Rae puts Chernobyl above Game of Thrones"* now.
+
 ## The first screen shows somebody's Ten, not the rules (2026-11-17, Mischa)
 
 *(Superseded the same day by the section above — the structure survives, the

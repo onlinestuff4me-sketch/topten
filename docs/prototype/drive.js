@@ -19,8 +19,35 @@ const BASE = process.argv[2] || 'http://127.0.0.1:8788';
 const SHOTS = process.env.SHOTS || './shots';
 const MIRROR = process.env.POSTER_MIRROR || './posters';
 
+
+/* The inscription, read off the badge itself.
+
+   It used to be read from a separate line of DOM text under the badge. The
+   reveal now strikes it onto the badge's ribbon, letter by letter, which is
+   what design.md's `revealSequence` always specified ("inscription last,
+   letter-by-letter") and what every other surface already drew. Reading the
+   drawn tspans is also the stronger assertion: it proves the words are ON
+   the artifact rather than merely somewhere on the screen. */
+const badgeInscription = page => page.evaluate(() => {
+  const t = document.querySelector('.vault #l-ribbon text');
+  return t ? t.textContent.trim() : '';
+});
+
 (async () => {
   const browser = await chromium.launch({ executablePath: CHROME });
+  /* Browser viewports, not device sizes.
+
+     A phone reports 393x852; Safari spends about 190px of that on its own
+     chrome, so the page gets 393x659 — which is what
+     `devices['iPhone 15 Pro'].viewport` says too. This suite used to resize
+     to 393x852 before its layout assertions, measuring a screen 193px taller
+     than any real one. That is not a harmless slack: the browse-screen budget
+     check passed at 852 no matter what the header did, and only failed —
+     correctly — once it was measured at 659.
+
+     Smaller phone: 375x667 is the DEVICE; its page gets about 553. */
+  const PHONE = { width: 393, height: 659 };
+  const SMALL = { width: 375, height: 553 };
   const ctx = await browser.newContext({ ...devices['iPhone 15 Pro'], isMobile: true, hasTouch: true });
   const page = await ctx.newPage();
 
@@ -196,7 +223,7 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
     }
   };
   await headOneLineAt('iPhone 15 Pro width (393px)');
-  await page.setViewportSize({ width: 375, height: 667 });
+  await page.setViewportSize(SMALL);
   await page.waitForTimeout(140);
   await headOneLineAt('the narrowest supported iPhone (375px)');
   const fitsSE = await page.evaluate(() => ({
@@ -205,7 +232,7 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
            <= window.innerHeight + 1 }));
   check(!fitsSE.over && fitsSE.ctaIn,
     'and the whole splash still fits the smallest supported iPhone without scrolling');
-  await page.setViewportSize({ width: 393, height: 852 });
+  await page.setViewportSize(PHONE);
   await page.waitForTimeout(140);
 
   await noBritishSpelling('the intro');
@@ -291,8 +318,8 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   // At one fixed size the long ones broke across two lines, and a wrapped page
   // title reads as two headings. Checked at the narrowest supported width and
   // against the longest name the app can currently generate.
-  for (const w of [375, 393]) {
-    await page.setViewportSize({ width: w, height: 852 });
+  for (const w of [SMALL.width, PHONE.width]) {
+    await page.setViewportSize({ width: w, height: w === SMALL.width ? SMALL.height : PHONE.height });
     for (const crit of [{}, { genre: 'Animation', decade: 2000 }, { genre: 'Science Fiction', decade: 1990 },
                         { actor: 'Robert De Niro' }, { director: 'Alfred Hitchcock', genre: 'Thriller' }]) {
       await page.evaluate(c => { window.S.topic = window.makeTopic(c); window.renderBuild(); }, crit);
@@ -310,10 +337,36 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
     }
   }
   // "Start over" came off the title's line for the same reason, and must not
-  // have gone missing in the move.
-  check(await page.locator('.subrow [data-act="restart"]').count() === 1,
-    'and "Start over" moved to the line below rather than competing for the title\'s width');
-  await page.setViewportSize({ width: 393, height: 852 });
+  // have gone missing in the move. Assert the PROPERTY — off the title's
+  // line, still present, still a real target — rather than one container, so
+  // the check survives the next time it moves. (It has moved twice: out of
+  // the title row into a subtitle row, then into the summary row when the
+  // subtitle turned out to restate the headline by construction.)
+  const restart = await page.evaluate(() => {
+    const el = document.querySelector('[data-act="restart"]');
+    if (!el) return null;
+    const r = el.getBoundingClientRect();
+    return { inTitleRow: !!el.closest('.topbar'), w: Math.round(r.width), h: Math.round(r.height),
+             visible: r.width > 0 && r.height > 0 };
+  });
+  check(restart && restart.visible, '"Start over" is on the screen');
+  check(restart && !restart.inTitleRow,
+    'and off the title\'s line rather than competing for its width');
+
+  // The row it moved into has to still fit: a count that ellipsises to
+  // nothing is worse than the button being somewhere else.
+  const sum = await page.evaluate(() => {
+    const c = document.querySelector('.showing .summary .count');
+    const row = document.querySelector('.showing .summary');
+    if (!c || !row) return null;
+    return { countW: Math.round(c.getBoundingClientRect().width),
+             clipped: c.scrollWidth - c.clientWidth > 1,
+             spill: Math.round(row.scrollWidth - row.clientWidth) };
+  });
+  check(sum && sum.spill <= 1, 'the summary row does not overflow: ' + JSON.stringify(sum));
+  check(sum && sum.countW >= 120 && !sum.clipped,
+    'and the count it carries is still readable beside it: ' + JSON.stringify(sum));
+  await page.setViewportSize(PHONE);
   await page.evaluate(() => { window.S.topic = window.makeTopic({ domain: 'movie' }); window.renderBuild(); });
   await page.waitForTimeout(200);
 
@@ -573,8 +626,80 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   const headings = await page.evaluate(() =>
     [...document.querySelectorAll('.section-h')].map(h => h.innerText.trim()));
   check(headings.length >= 8, `the first screen offers ${headings.length} rows to browse, not one`);
-  check(headings[0] === 'RECENT RELEASES', `and it opens on "${headings[0]}"`);
-  check(headings[1] === 'POPULAR', `then "${headings[1]}"`);
+  /* Popular leads.
+
+     The first row of the main screen has to make somebody want to start
+     picking, and the topic is "Top 10 Movies of All Time" — so it should be
+     films they already have opinions about, not this month's releases. It
+     opens on Interstellar, Inception, The Avengers, The Dark Knight.
+
+     "Recent releases" follows, and the two do not overlap at all in their
+     first twenty (measured): all-time reach and three-year reach pick
+     different films. */
+  check(headings[0] === 'POPULAR', `and it opens on "${headings[0]}"`);
+  check(headings[1] === 'RECENT RELEASES', `with recent releases under it ("${headings[1]}")`);
+
+  /* And what is IN the opening rows, not just their names.
+
+     "Recent releases" used to sort by year and then by reach, which is not a
+     tie-break: strict year order put all of 2026 ahead of all of 2025, so
+     the app opened on Project Hail Mary, Obsession, Michael, Disclosure Day
+     and Backrooms — five films almost nobody has seen, as the first thing
+     anyone saw. A row's NAME cannot catch that; only its contents can. */
+  const rowReach = await page.evaluate(() => {
+    const out = [];
+    for (const sec of [...document.querySelectorAll('section')].slice(0, 2)) {
+      const name = (sec.querySelector('.section-h') || {}).innerText || '?';
+      const vc = [...sec.querySelectorAll('.card[data-card]')]
+        .slice(0, 6)
+        .map(c => (byId.get(Number(c.dataset.card)) || {}).vc || 0);
+      out.push({ name: name.trim(), min: Math.min(...vc), n: vc.length });
+    }
+    return out;
+  });
+  for (const r of rowReach) {
+    check(r.n >= 6 && r.min >= 3000,
+      `the opening row "${r.name}" leads with films people have actually seen (lowest of its first ${r.n}: ${r.min} votes)`);
+  }
+  /* The main screen has to show the main thing.
+
+     Measured at iPhone 15 Pro (393x659, and 659 is right: Safari's chrome
+     takes ~190px of the 852 the device reports): the header ran to 334px and
+     the dock to 130, leaving a 195px band for content — while one rail is
+     229px tall. The first row of the app's first screen could not fit on it.
+     70% of the screen was chrome.
+
+     The subtitle was the clearest waste: `topicPrompt` builds it FROM the
+     title, so "Top 10 Movies of All Time" sat above "Your 10 favorite movies
+     of all time." It could never add information, and it cost 52px with its
+     gap. This asserts the outcome rather than the cause — whatever the header
+     grows into later, a whole rail still has to clear the dock. */
+  /* At 659px, not 852.
+
+     `devices['iPhone 15 Pro']` reports the DEVICE's 852, but Safari spends
+     about 190 of those on its own chrome, so a page gets 659. Asserted at
+     852 this check passes no matter what the header does — proved by putting
+     the subtitle back and watching it stay green. The viewport is set
+     explicitly here and restored after. */
+  const REAL = PHONE;
+  const wasViewport = page.viewportSize();
+  await page.setViewportSize(REAL);
+  await page.waitForTimeout(250);
+  const budget = await page.evaluate(() => {
+    const rail = document.querySelector('.rail'), dock = document.querySelector('.dock');
+    if (!rail || !dock) return null;
+    const r = rail.getBoundingClientRect(), d = dock.getBoundingClientRect();
+    return { top: Math.round(r.top), railH: Math.round(r.height),
+             dockTop: Math.round(d.top), vh: window.innerHeight };
+  });
+  check(budget && budget.top + budget.railH <= budget.dockTop,
+    `the first row fits above the dock at ${budget && budget.vh}px tall `
+    + `(header ${budget && budget.top}px + rail ${budget && budget.railH}px vs dock at ${budget && budget.dockTop}px)`);
+  check(budget && budget.vh === REAL.height,
+    `and that measurement was taken at Safari's real height, not the device's (${budget && budget.vh}px)`);
+  if (wasViewport) await page.setViewportSize(wasViewport);
+  await page.waitForTimeout(200);
+
   // "Popular" survives only on the row actually called Popular (Mischa,
   // 2026-08-16). A row named Comedies is a shelf; "Popular comedies" is an
   // argument nobody asked for.
@@ -709,6 +834,12 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
     `no two rows hold the same ${railIds.length} titles in the same order`);
 
   // ── Search and the refinements stay put while you browse ─────────────────
+  // At rest means at rest: say so rather than inheriting whatever scroll
+  // position the previous block left. This passed only because the taller
+  // (and wrong) 852px viewport made the document short enough that the
+  // earlier scroll clamped back to 0.
+  await page.evaluate(() => window.scrollTo(0, 0));
+  await page.waitForTimeout(150);
   const stickyBefore = await page.evaluate(() =>
     Math.round(document.querySelector('.stickybar').getBoundingClientRect().top));
   await page.evaluate(() => window.scrollTo(0, 1600));
@@ -717,11 +848,13 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
     const r = document.querySelector('.stickybar').getBoundingClientRect();
     const q = document.querySelector('#q').getBoundingClientRect();
     return { top: Math.round(r.top), qTop: Math.round(q.top), qBottom: Math.round(q.bottom),
+      vh: window.innerHeight,
       chips: document.querySelectorAll('.stickybar .chip').length, y: Math.round(window.scrollY) };
   });
   check(stuck.y > 800, `scrolled ${stuck.y}px down the browse screen`);
   check(stuck.top <= 1, 'the search bar and filters are still pinned to the top');
-  check(stuck.qTop >= 0 && stuck.qBottom <= 852, 'the search field itself is on screen, not just its container');
+  check(stuck.qTop >= 0 && stuck.qBottom <= stuck.vh,
+    `the search field itself is on screen, not just its container (${stuck.qTop}–${stuck.qBottom} of ${stuck.vh})`);
   check(stuck.chips >= 3, `and the refinements came with it (${stuck.chips} chips)`);
   check(stickyBefore > 0, 'it starts in the flow rather than permanently overlaying the title');
   await page.evaluate(() => window.scrollTo(0, 0));
@@ -1130,8 +1263,19 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   await page.waitForTimeout(900);
   check(await page.locator('.skip.on').count() === 1, 'the reveal becomes skippable after 0.8s, not before');
   await page.waitForTimeout(2600);
-  const insc = (await page.locator('.vault .inscription').innerText()).trim();
+  const insc = await badgeInscription(page);
   check(insc.split(/\s+/).length <= 6, `inscription is at most six words: "${insc}"`);
+  // And it is struck onto the badge, not printed beside it.
+  const struck = await page.evaluate(() => {
+    const on = document.querySelectorAll('.vault #l-ribbon .ich.on').length;
+    const all = document.querySelectorAll('.vault #l-ribbon .ich').length;
+    const ribbon = document.querySelector('.vault #l-ribbon');
+    return { on, all, ribbonOn: !!ribbon && ribbon.classList.contains('on') };
+  });
+  check(struck.all > 0 && struck.on === struck.all && struck.ribbonOn,
+    `every letter lands on the badge's ribbon (${struck.on}/${struck.all}, ribbon shown: ${struck.ribbonOn})`);
+  check(await page.locator('.vault .revealed-name').count() === 1,
+    'and the line under it names the list you just finished');
   await page.screenshot({ path: SHOTS + '/5-reveal.png' });
   await page.waitForSelector('.after.on', { timeout: 5000 });
   await page.locator('[data-act="done"]').click();
@@ -1323,7 +1467,7 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   await page.waitForSelector('.vault', { timeout: 5000 });
   await page.locator('[data-act="skip"]').click();
   await page.waitForSelector('.after.on', { timeout: 5000 });
-  const bookInsc = (await page.locator('.vault .inscription').innerText()).trim();
+  const bookInsc = await badgeInscription(page);
   check(!/film/i.test(bookInsc), `a book badge is inscribed about books ("${bookInsc}")`);
   await page.locator('[data-act="done"]').click();
   await page.waitForTimeout(250);
@@ -1347,22 +1491,42 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   // already showing, so it only pushed the first card down the screen.
   check(await page.locator('.prompt').count() === 0, 'and carries no blurb under the title');
 
-  // ── The LIST NAME leads, the creator is subordinate (Mischa, round 5) ────
+  // ── The LIST NAME leads, the line under it is subordinate (round 5) ─────
   const type = await page.evaluate(() => [...document.querySelectorAll('.other-ten')].map(c => {
     const px = sel => parseFloat(getComputedStyle(c.querySelector(sel)).fontSize);
     return { name: c.querySelector('.listname').innerText.trim(), nameSize: px('.listname'),
-             creator: c.querySelector('.creator').innerText.trim(), creatorSize: px('.creator') };
+             claim: c.querySelector('.claim').innerText.trim(), claimSize: px('.claim') };
   }));
-  check(type.length === cardCount && type.every(t => t.nameSize > t.creatorSize),
+  check(type.length === cardCount && type.every(t => t.nameSize > t.claimSize),
     `the list name is the biggest type on every card (${type[0].nameSize}px name vs ` +
-    `${type[0].creatorSize}px creator)`);
-  check(type.every(t => t.nameSize >= t.creatorSize * 1.5),
-    'and dominant, not merely larger — at least half again the creator\'s size');
+    `${type[0].claimSize}px claim)`);
+  check(type.every(t => t.nameSize >= t.claimSize * 1.5),
+    'and dominant, not merely larger — at least half again the line under it');
   // Since the correction of 2026-08-15 the name IS the topic, so it appears
   // once. Two people on the same topic share a name and are told apart by the
-  // creator line — which is the point of Sam and Theo both being on Crime.
+  // line beneath — which is the point of Sam and Theo both being on Crime.
   check(await page.locator('.other-ten .topic').count() === 0,
     'the name is not repeated as a separate topic line above itself');
+
+  /* ── Every card makes an argument, not an introduction ──────────────────
+     Mischa, 2026-11-17: "Who is Sam, why do I care about his top 10, why
+     would that make me want to make my own?" The card used to answer none of
+     those — it said "A Top 10 by Sam" and left the rest to the reader. Now
+     it leads with a claim drawn from the list itself. */
+  check(type.every(t => /\S/.test(t.claim)), 'every card leads with a claim');
+  check(!/A Top 10 by/i.test(await page.locator('body').innerText()),
+    'and none of them leads with a stranger\'s name instead');
+  // The claim has to be ABOUT something — it names the person and a title,
+  // so it cannot collapse to a label.
+  check(type.every(t => t.claim.split(/\s+/).length >= 5),
+    `each claim is a sentence, not a label (shortest: "${type.map(t => t.claim).sort((a, b) => a.length - b.length)[0]}")`);
+  check(new Set(type.map(t => t.claim)).size === type.length,
+    'and no two cards make the same claim');
+  // Two people on the same topic must still be told apart, now that the line
+  // under the name is the only thing distinguishing them.
+  const sameTopic = type.filter(t => /Crime Movies of the 90s/.test(t.name));
+  check(sameTopic.length === 2 && sameTopic[0].claim !== sameTopic[1].claim,
+    `two takes on one topic read differently (${sameTopic.length} found)`);
 
   // ── A NAME IS A RULE, TRUE OF ALL TEN ───────────────────────────────────
   // The correction Mischa made on 2026-08-15: a list called "Top 10 Crime
@@ -1464,10 +1628,28 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   check(reasons.every(r => !r.why.includes(r.title)),
     'the reason is never the name — a fraction names nothing');
 
-  // ── No user-entered text: a card carries metadata and nothing else ───────
+  /* ── No user-entered text: every word on a card is derived ──────────────
+     The rule is that nobody types anything onto a social surface (PRD Req 12
+     amendment) — free text here is a moderation surface this product does
+     not need. The old check enforced it by counting `p` elements, which was
+     a proxy for the rule and not the rule: the claim line beneath each name
+     is a `p`, and it is generated from the list, not written by anyone.
+
+     So assert the rule itself. Every claim must match one of the three
+     shapes `claimFor` can produce, which is a stronger statement than "there
+     is no paragraph" — a hand-written sentence would fail it. */
   const strays = await page.evaluate(() => [...document.querySelectorAll('.other-ten')]
-    .reduce((n, c) => n + c.querySelectorAll('p, .ln, .desc, .blurb').length, 0));
+    .reduce((n, c) => n + c.querySelectorAll('p:not(.claim), .ln, .desc, .blurb').length, 0));
   check(strays === 0, 'no card carries a description line');
+  const SHAPES = [
+    /^You and \S+ agree on (\d+ of 10|nothing at all)\.$/,
+    /^\S+ puts .+ above .+\.$/,
+    /^\S+\u2019s number one is .+\.$/,
+  ];
+  const generated = type.filter(t => SHAPES.some(re => re.test(t.claim)));
+  check(generated.length === type.length,
+    `every claim is one the app generated, not one anybody typed `
+    + `(${generated.length}/${type.length}${generated.length === type.length ? '' : ' — odd one: "' + type.find(t => !SHAPES.some(re => re.test(t.claim))).claim + '"'})`);
   const discoverText = await page.locator('body').innerText();
   check(!/Argues about endings|practical effects|Cries at Pixar|Watches everything twice|Quotes films at you|Reads the credits/i.test(discoverText),
     'and the hand-written character blurbs are gone from the app entirely');
