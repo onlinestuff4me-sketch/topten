@@ -349,7 +349,17 @@ section { margin-top: var(--s8); }
 .slotmini.landing { animation: land var(--m-settle) var(--ease-out); }
 @keyframes land { 0% { transform: scale(.82); } 60% { transform: scale(1.04); } 100% { transform: none; } }
 
-.btn { background: var(--accent); color: #fff; border-radius: 999px; padding: 0 var(--s4); min-height: 48px; display: inline-flex; align-items: center; justify-content: center; font-weight: 600; font-size: 0.9375rem; white-space: nowrap; }
+/* A button label wraps rather than being cut off.
+
+   `white-space: nowrap` plus a label that grows with Dynamic Type cannot
+   both hold - the same shape of bug as the splash headline. At a 28px root
+   "Make your first list" overflowed its button by 7px, and by 31px at 32px.
+   It did not show up here because this machine's font is narrower than the
+   CI runner's; the suite now measures in several fonts for that reason.
+
+   A two-line button at an accessibility text size is correct. A label with
+   its end sliced off is not. */
+.btn { background: var(--accent); color: #fff; border-radius: 999px; padding: var(--s2) var(--s4); min-height: 48px; display: inline-flex; align-items: center; justify-content: center; text-align: center; font-weight: 600; font-size: 0.9375rem; }
 @media (prefers-color-scheme: dark) { .btn { color: #17140B; } }
 .btn[disabled] { background: var(--bg-recessed); color: var(--text-disabled); }
 .btn.ghost { background: none; color: var(--accent); border: 1px solid var(--border-subtle); }

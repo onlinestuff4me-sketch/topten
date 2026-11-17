@@ -198,6 +198,19 @@ under a second.
 The same applies to the `fitline` page-title checks, which have always had
 this exposure and have been lucky.
 
+**Written down once and then not applied.** The Dynamic Type sweep added
+hours later measured in one font and went red on CI for exactly this reason:
+"Make your first list" fitted the splash's button here at a 28px root and
+overflowed it by 7px there. A lesson recorded in a spec is not a lesson
+applied to the next test. That sweep now runs in three fonts, and the DejaVu
+Serif pass reproduces the CI failure locally in a second - 8px and 32px
+against CI's 7px and 31px.
+
+The underlying bug was the same shape as the splash headline's: a label that
+grows with the reader's text size, inside a control with `white-space:
+nowrap`. Button labels wrap now. A two-line button at an accessibility text
+size is correct; a label with its end sliced off is not.
+
 **And the process lesson, which cost more than the bug.** The commit was
 pushed to `main` on the strength of three green local suites while CI was
 still running. "All green" meant "green here". Watch the run before calling

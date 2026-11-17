@@ -2160,8 +2160,22 @@ const CONTRAST = `(() => {
     ['a finished Ten', () => { S.ranked = [680, 155, 13, 550, 27205, 278, 238, 424, 129, 603];
                                S.scene = 'done'; save(); render(); }],
   ];
+  /* In more than one font.
+
+     The first run of this sweep went green here and red on CI, because the
+     runner has none of this machine's fonts and falls back to something
+     wider: the splash's call to action fitted at 28px here and overflowed
+     by 7px there. I had already written that lesson down for a different
+     check this morning and then not applied it to this one. Any assertion
+     about WIDTH is a statement about the font that rendered it.
+
+     DejaVu Serif is on the runner and is the widest of these, so it is the
+     one that reproduces CI locally. */
+  const DT_FONTS = ['', '"DejaVu Serif", serif', '"Liberation Sans", sans-serif'];
   for (const [where, fn] of DT_SCREENS) {
     const bad = [];
+    for (const font of DT_FONTS) {
+    await page.evaluate(f => { document.body.style.fontFamily = f; }, font);
     for (const px of DT_SIZES) {
       await page.evaluate(v => { document.documentElement.style.fontSize = v + 'px'; }, px);
       await page.evaluate(fn);
@@ -2172,10 +2186,13 @@ const CONTRAST = `(() => {
       });
       await page.waitForTimeout(100);
       const r = await page.evaluate(DT_CHECK);
-      if (r.pageSpill > 1) bad.push(`${px}px: page spills ${r.pageSpill}px sideways`);
-      for (const c of r.clipped) bad.push(`${px}px: ${c.sel} clipped by ${c.over}px ("${c.text}")`);
-      for (const o of r.offscreen) bad.push(`${px}px: ${o.sel} off-screen ("${o.text}")`);
+      const f = font ? ` in ${font.split(',')[0]}` : '';
+      if (r.pageSpill > 1) bad.push(`${px}px${f}: page spills ${r.pageSpill}px sideways`);
+      for (const c of r.clipped) bad.push(`${px}px${f}: ${c.sel} clipped by ${c.over}px ("${c.text}")`);
+      for (const o of r.offscreen) bad.push(`${px}px${f}: ${o.sel} off-screen ("${o.text}")`);
     }
+    }
+    await page.evaluate(() => { document.body.style.fontFamily = ''; });
     check(bad.length === 0,
       `${where} holds from ${DT_SIZES[0]}px to ${DT_SIZES[DT_SIZES.length - 1]}px root text`
       + (bad.length ? ` — ${bad.length} problems: ${bad.slice(0, 3).join('; ')}` : ''));
