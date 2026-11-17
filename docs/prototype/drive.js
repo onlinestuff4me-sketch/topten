@@ -1886,8 +1886,31 @@ async function sweepTaps(page, where, check) {
   check(leaked.ownsMotifs, "index.html's own MOTIFS survives loading the renderer");
   check(leaked.kit.length === 0, 'and the renderer leaks none of its kit: ' + JSON.stringify(leaked.kit));
 
-  console.log('\n\u2500\u2500 Touch targets, hit-tested at 44x44 \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500');
+  /* The thing you came to a title page to do is reachable without scrolling.
+
+     Giving the cast and genre links real 44px targets put each one on its
+     own line in the 203px column beside the poster, the facts block grew to
+     428px, and "+ Add to my Top 10" landed at y=528 with the dock at 541 -
+     the primary action on the page, behind the dock. An accessibility fix
+     that buries the button is not a fix. The metadata moved below the
+     button and full-width, where it is also what it always was: navigation,
+     not facts to read. */
+  console.log('\n\u2500\u2500 The title page leads with its action \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500');
   await page.setViewportSize(PHONE);
+  await page.evaluate(() => { S.title = 680; S.back = 'build'; S.scene = 'title'; save(); render(); });
+  await page.waitForTimeout(350);
+  const cta = await page.evaluate(() => {
+    const btn = document.querySelector('.title-cta .btn'), dock = document.querySelector('.dock');
+    if (!btn || !dock) return null;
+    const b = btn.getBoundingClientRect(), d = dock.getBoundingClientRect();
+    return { top: Math.round(b.top), bottom: Math.round(b.bottom), dockTop: Math.round(d.top),
+             label: btn.innerText.trim(), scrolled: Math.round(window.scrollY) };
+  });
+  check(cta && cta.scrolled === 0 && cta.bottom <= cta.dockTop,
+    `"${cta && cta.label}" is reachable without scrolling `
+    + `(ends at ${cta && cta.bottom}px, dock starts at ${cta && cta.dockTop}px)`);
+
+  console.log('\n\u2500\u2500 Touch targets, hit-tested at 44x44 \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500');
   const TAP_SCREENS = [
     ['the splash', () => { localStorage.clear(); S.scene = 'intro'; S.seen = false; S.introSeen = 0; save(); render(); }],
     ['the browse screen', () => { S.scene = 'build'; S.seen = true; S.tipDone = true; S.tray = []; save(); render(); }],

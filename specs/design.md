@@ -999,6 +999,29 @@ by `Georgia`-stack with matched metrics (or licensed alternative later), no
 glass (static header), same Share Card renderer for OG images. The page's
 job: look worthy of the list, convert to "Make your Ten."
 
+## The title page leads with its action (2026-11-17)
+
+Order on a title page: **title, artwork + year + director, the button, then
+the ways onward.** Cast, genre and services sit full-width BELOW the button,
+not in the column beside the poster.
+
+This started as a bug of my own making. Giving the cast and genre links real
+44px targets put each on its own line in the 203px column, the facts block
+grew to 428px, and "+ Add to my Top 10" landed at y=528 with the dock at 541
+— the primary action on the page, behind the dock. An accessibility fix that
+buries the button is not a fix.
+
+It is also the better page. Those links are not facts to read, they are
+**navigation**: every one narrows the collection. What somebody came to this
+screen to do is add the film, so the artwork and the button come first and
+the ways onward follow. Full width lets them wrap properly too — four cast
+names take two lines at 353px where they took three at 203 — and the label
+("STARRING") sits inline with them instead of spending a line of its own.
+
+`drive.js` asserts the button is fully above the dock at rest, with no
+scrolling. Falsified by sinking it 260px and watching the check name the
+overlap.
+
 ## 44x44, hit-tested rather than measured (2026-11-17)
 
 AGENTS.md has always set a 44x44pt floor on touch targets. It had never been

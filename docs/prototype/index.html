@@ -125,6 +125,8 @@ section { margin-top: var(--s8); }
 .title-facts .fact { margin-top: var(--s3); font-size: 0.875rem; line-height: 1.5;
   display: flex; flex-wrap: wrap; align-items: center; }
 .title-facts .fact > .k { flex: 0 0 100%; }
+.title-facts.wide { margin-top: var(--s6); }
+.title-facts.wide .fact > .k { flex: 0 0 auto; align-self: center; margin: 0 var(--s3) 0 0; min-width: 76px; }
 .title-facts .k { display: block; font-size: 0.6875rem; font-weight: 700; letter-spacing: .04em;
   text-transform: uppercase; color: var(--text-secondary); margin-bottom: 2px; }
 /* A fact that narrows is a link, and looks like one. Underlined rather than
@@ -2870,18 +2872,35 @@ function renderTitle(id) {
       <div class="title-facts">
         <p class="year">${f.y || ''}</p>
         ${f.d ? `<p class="fact"><span class="k">Director</span>${factLinks('director', [f.d])}</p>` : ''}
-        ${cast.length ? `<p class="fact"><span class="k">Starring</span>${factLinks('actor', cast)}</p>` : ''}
-        ${(f.g || []).length ? `<p class="fact"><span class="k">Genre</span>${factLinks('genre', f.g.slice(0, 3))}</p>` : ''}
-        <p class="fact"><span class="k">Where to watch</span>
-          ${services.length
-            ? `<span class="watch">${services.map(n => `<span class="sv">${esc(n)}</span>`).join('')}</span>`
-            : `<span class="watch none">Not on your services</span>`}</p>
       </div>
     </div>
     <div class="title-cta">
       <button class="btn ${inTen ? 'ghost' : ''}" data-add="${f.id}" aria-pressed="${inTen}">
         ${inTen ? '✓ In your Top 10' : '+ Add to my Top 10'}
       </button>
+    </div>
+    <!-- Cast, genre and services moved out of the column beside the poster
+         and under the button on 2026-11-17.
+
+         Two reasons, and the first is a bug. Giving these links real 44px
+         targets made each one a line of its own in a 203px column, the facts
+         block grew to 428px, and the CTA landed at y=528 with the dock at
+         541 - the primary action on the page was behind the dock and nobody
+         could reach it without scrolling.
+
+         The second is that it is the better page. These are not facts to
+         read, they are NAVIGATION: every one is a link that narrows the
+         collection. What somebody came to this screen to do is add the film,
+         so the artwork and the button come first and the ways onward follow.
+         Full width also lets them wrap properly - four cast names take two
+         lines at 353px where they took three at 203. -->
+    <div class="title-facts wide">
+        ${cast.length ? `<p class="fact"><span class="k">Starring</span>${factLinks('actor', cast)}</p>` : ''}
+        ${(f.g || []).length ? `<p class="fact"><span class="k">Genre</span>${factLinks('genre', f.g.slice(0, 3))}</p>` : ''}
+        <p class="fact"><span class="k">Where to watch</span>
+          ${services.length
+            ? `<span class="watch">${services.map(n => `<span class="sv">${esc(n)}</span>`).join('')}</span>`
+            : `<span class="watch none">Not on your services</span>`}</p>
     </div>
     ${like.length ? `<section data-rail="titlelike">
       <div class="section-head"><h2 class="section-h">More like ${esc(f.t)}</h2></div>
