@@ -10,7 +10,14 @@
 set -euo pipefail
 
 HERE="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-PGBIN="${PGBIN:-/usr/lib/postgresql/16/bin}"
+# The newest major version installed, not a version typed into the script.
+# This default named 16, and when GitHub's runner image moved on the job
+# failed with exit 127 while every local run stayed green.
+PGBIN="${PGBIN:-$(ls -d /usr/lib/postgresql/*/bin 2>/dev/null | sort -V | tail -1)}"
+if [ ! -x "${PGBIN:-}/initdb" ]; then
+  echo "run.sh: no PostgreSQL binaries found (looked under /usr/lib/postgresql; set PGBIN= to override)" >&2
+  exit 1
+fi
 PGROOT="${PGROOT:-/var/tmp/topten-rls}"
 PORT="${PGPORT:-55432}"
 

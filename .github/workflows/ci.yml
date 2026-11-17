@@ -56,8 +56,19 @@ jobs:
     steps:
       - uses: actions/checkout@v5
 
-      - name: Postgres version
-        run: /usr/lib/postgresql/16/bin/postgres --version
+      # Find whatever major version the runner ships rather than naming one.
+      # ubuntu-latest moved off PostgreSQL 16 in November 2026 and the job
+      # died with "No such file or directory", exit 127 — a green suite one
+      # day and a broken job the next, with nothing in the repo changed.
+      - name: Locate PostgreSQL
+        run: |
+          PGBIN="$(ls -d /usr/lib/postgresql/*/bin 2>/dev/null | sort -V | tail -1)"
+          if [ -z "$PGBIN" ]; then
+            echo "No PostgreSQL found under /usr/lib/postgresql" >&2
+            exit 1
+          fi
+          echo "PGBIN=$PGBIN" >> "$GITHUB_ENV"
+          "$PGBIN/postgres" --version
 
       - name: Apply migrations and run the policy suite
         run: supabase/tests/run.sh
