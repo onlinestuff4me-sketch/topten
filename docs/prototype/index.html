@@ -1864,10 +1864,22 @@ function refreshTenSheet() {
    Every film you followed or picked, and what led to what. Tapping a node
    re-enters the path there; nothing is ever removed by navigating.
    ─────────────────────────────────────────────────────────────────────────── */
-const MAP = { w: 56, h: 84, gx: 26, gy: 58, pad: 14, originH: 44 };
+const MAP = { w: 56, h: 84, gx: 26, gy: 58, pad: 14, originH: 44, originW: 132 };
 // A label wider than its node collides with its neighbour's. 9px type runs
 // about 4.6px a character, so a 56px node holds ~12 before it has to stop.
-const mapLabel = t => (t.length > 12 ? t.slice(0, 11) + '…' : t);
+//
+// The ROOT is the exception: it sits alone on its row with the whole width
+// either side of it, so it is 132px and holds the list's name rather than
+// the first twelve characters of it. "Crime Movies of the 90s" reads; "Top
+// 10 Crime…" did not.
+//
+// 24, measured rather than derived: 26 overflowed on "Animated Movies of
+// the 2000s" (127px of text in 124px of room) and 24 clears every topic
+// shape the namer can produce - genre, genre+decade, director, actor.
+const mapLabel = (t, wide) => {
+  const max = wide ? 24 : 12;
+  return t.length > max ? t.slice(0, max - 1) + '\u2026' : t;
+};
 
 /* Unexplored next steps, drawn off whatever is focused. Without these the map
    is a history log; with them it is somewhere you can actually go (round 3:
@@ -2008,8 +2020,14 @@ function drawMap(ghosts, focus) {
       return `<g class="map-node ${isFocus ? 'focus' : ''}" data-mapnode="home" tabindex="0" role="button"
           aria-label="All of ${esc(S.topic.title)}${isFocus ? ', where you are' : ''}">
         ${isFocus ? hereMark(c.cx, top) : ''}
-        <rect class="plate" x="${c.cx - MAP.w / 2}" y="${top}" width="${MAP.w}" height="${MAP.originH}" rx="10"/>
-        <text x="${c.cx}" y="${c.cy + 4}" text-anchor="middle">${esc(mapLabel(S.topic.title))}</text></g>`;
+        <rect class="plate" x="${c.cx - MAP.originW / 2}" y="${top}" width="${MAP.originW}" height="${MAP.originH}" rx="10"/>
+        <!-- The root is the TOPIC, and every topic's name begins "Top 10 ",
+             which is seven of the twelve characters a 56px node holds: the
+             root read "Top 10 Movi…" and named nothing. The same prefix was
+             stripped from the splash strip's captions for the same reason
+             (design.md, the hero Ten note). -->
+        <text x="${c.cx}" y="${c.cy + 4}" text-anchor="middle">${
+          esc(mapLabel(S.topic.title.replace(/^Top 10 /, ''), true))}</text></g>`;
     }
     const f = byId.get(p.id);
     if (!f) return '';                       // never let one unknown id blank the map

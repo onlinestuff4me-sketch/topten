@@ -1022,6 +1022,21 @@ names take two lines at 353px where they took three at 203 — and the label
 scrolling. Falsified by sinking it 260px and watching the check name the
 overlap.
 
+## The map's root names the list (2026-11-17)
+
+A map node is 56px wide and holds about twelve characters of 9px type before
+it collides with its neighbour. The ROOT node is the topic, and **every
+topic's name begins "Top 10 "** - seven of those twelve - so the root read
+*"Top 10 Movi…"* and named nothing at all. It is the same fault the splash
+strip's captions had, fixed the same way: strip the prefix every card shares.
+
+The root is also the one node that can afford to be wider. It sits alone on
+its row with the full width either side, so it is 132px and holds **24**
+characters - measured, not derived: 26 overflowed on "Animated Movies of the
+2000s" (127px of text in 124px of room), and 24 clears every shape the namer
+can produce (genre, genre + decade, director, actor). It reads "Crime Movies
+of the 90s" now.
+
 ## The splash fits on every phone, swept not guessed (2026-11-17)
 
 "A splash whose button is below the fold has failed at the only job it has"
