@@ -2160,6 +2160,66 @@ const CONTRAST = `(() => {
      that buries the button is not a fix. The metadata moved below the
      button and full-width, where it is also what it always was: navigation,
      not facts to read. */
+  /* ── The first screen fits on every phone ───────────────────────────────
+     "A splash whose button is below the fold has failed at the only job it
+     has" - the comment already in index.html, written when a breakpoint set
+     at 741px tipped a Pro Max (which gives 745) over its own viewport. That
+     was fixed by measuring six viewports by hand, once. A measurement taken
+     by hand protects nothing, so it is a test now.
+
+     These are BROWSER heights, not device heights: a phone's spec sheet
+     counts the ~190px Safari spends on its own chrome. */
+  console.log('\n\u2500\u2500 The splash fits on every phone \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500');
+  const PHONES = [
+    ['iPhone SE', 375, 553],
+    // The three that actually broke, kept as regression cases: a 20px band
+    // where the strip was shown but there was no room for it, and a narrow
+    // Android width where the hero grid's own height did the overflowing.
+    ['narrow, just under the strip', 360, 610],
+    ['narrow, just over it', 360, 630],
+    ['iPhone 13 mini', 375, 629],
+    ['iPhone 15 Pro', 393, 659],
+    ['iPhone 15 Pro Max', 430, 745],
+    ['short and wide', 430, 610],
+    ['iPad mini', 744, 954],
+  ];
+  for (const [label, w, h] of PHONES) {
+    await page.setViewportSize({ width: w, height: h });
+    await page.evaluate(() => {
+      localStorage.clear();
+      S.scene = 'intro'; S.seen = false; S.introSeen = 0; save(); render();
+    });
+    await page.waitForTimeout(260);
+    await page.evaluate(() => window.scrollTo(0, 0));
+    await page.waitForTimeout(80);
+    const fit = await page.evaluate(() => {
+      const q = sel => document.querySelector(sel);
+      const box = el => { const r = el.getBoundingClientRect();
+        return { top: Math.round(r.top), bottom: Math.round(r.bottom), w: Math.round(r.width) }; };
+      const cta = q('.intro [data-act="begin"]'), promise = q('.intro .promise'), h1 = q('.intro h1');
+      if (!cta || !promise || !h1) return null;
+      return {
+        cta: box(cta), promise: box(promise), h1: box(h1),
+        vh: window.innerHeight, vw: window.innerWidth,
+        spill: Math.round(document.documentElement.scrollWidth - document.documentElement.clientWidth),
+        // How far the page could scroll, which is the honest "does it fit".
+        // A pixel or two is sub-pixel rounding on a 100svh box, not a
+        // layout that overflows.
+        over: Math.round(document.documentElement.scrollHeight - document.documentElement.clientHeight),
+      };
+    });
+    const ok = fit && fit.over <= 2 && fit.spill <= 1
+      && fit.cta.bottom <= fit.vh && fit.promise.bottom <= fit.vh
+      && fit.h1.top >= 0 && fit.cta.top >= 0;
+    check(ok,
+      `${label} (${w}x${h}): the headline, the button and the promise are all on screen `
+      + `without scrolling` + (fit ? ` \u2014 headline ${fit.h1.top}..${fit.h1.bottom}, button ${fit.cta.top}..${fit.cta.bottom}, `
+                                   + `promise ends ${fit.promise.bottom}, of ${fit.vh}; scrollable ${fit.over}px; spill ${fit.spill}`
+                                   : ' \u2014 splash did not render'));
+  }
+  await page.setViewportSize(PHONE);
+  await page.waitForTimeout(150);
+
   console.log('\n\u2500\u2500 The title page leads with its action \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500');
   await page.setViewportSize(PHONE);
   await page.evaluate(() => { S.title = 680; S.back = 'build'; S.scene = 'title'; save(); render(); });
@@ -2261,13 +2321,21 @@ const CONTRAST = `(() => {
 
      DejaVu Serif is on the runner and is the widest of these, so it is the
      one that reproduces CI locally. */
+  /* The fallback fonts are swept only at the LARGE sizes.
+
+     Every width failure found this way appeared at a 28px or 32px root,
+     because that is where a label outgrows its control; at ordinary sizes
+     the three fonts agree. Sweeping all three at all six sizes is 90 renders
+     per screen-set for two extra findings, and this suite has a CI timeout
+     to live within. */
   const DT_FONTS = ['', '"DejaVu Serif", serif', '"Liberation Sans", sans-serif'];
+  const WIDE_ONLY = DT_SIZES.filter(px => px >= 28);
   for (const [where, fn] of DT_SCREENS) {
     const bad = [];
     for (const font of DT_FONTS) {
-    await page.evaluate(f => { document.body.style.fontFamily = f; }, font);
-    for (const px of DT_SIZES) {
-      await page.evaluate(v => { document.documentElement.style.fontSize = v + 'px'; }, px);
+      for (const px of (font ? WIDE_ONLY : DT_SIZES)) {
+        await page.evaluate(f => { document.body.style.fontFamily = f; }, font);
+        await page.evaluate(v => { document.documentElement.style.fontSize = v + 'px'; }, px);
       await page.evaluate(fn);
       await page.waitForTimeout(220);
       await page.evaluate(() => {

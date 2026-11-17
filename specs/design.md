@@ -1022,6 +1022,48 @@ names take two lines at 353px where they took three at 203 — and the label
 scrolling. Falsified by sinking it 260px and watching the check name the
 overlap.
 
+## The splash fits on every phone, swept not guessed (2026-11-17)
+
+"A splash whose button is below the fold has failed at the only job it has"
+was already a comment in the code, written when a breakpoint at 741px tipped
+a Pro Max (which gives 745) over its own viewport. That was fixed by
+measuring six viewports **by hand, once**. A hand-measurement protects
+nothing: sweeping every height from 500 to 900 across five widths found the
+splash overflowing in a band nobody had looked at.
+
+**Three faults, each invisible outside its own narrow window:**
+
+1. **The strip was a fixed 173px** whatever the screen, so between about 600
+   and 680px of height the three bands wanted more room than existed - an
+   iPhone 13 mini (375x629) scrolled by 11px. Its width is now
+   `clamp(54px, 9.5svh, 84px)`, so it gives way continuously instead of at a
+   breakpoint. Shrinking the strip is the right thing to give up: the hero is
+   the thesis and the CTA is the point.
+2. **The hero grid's height derives from its WIDTH** - five columns of 2:3
+   cells, so about 0.6x - which means a wide, short viewport made it taller
+   exactly where there was least room. A 430x610 browser overflowed by 56px.
+   Capped at `min(100%, 54svh)`: the loosest value that survives the sweep.
+3. **The strip's breakpoint was 620, not 600.** Below ~620 the three bands do
+   not fit however small the strip gets. The old value was wrong only in a
+   20px window.
+
+**And one self-inflicted:** writing `margin-inline: auto` on the hero to
+centre it. It is a `<figure>`, whose default `margin-block` is `1em` - naming
+only the inline axis handed 16px back top and bottom, which was most of the
+overflow the cap had just been added to remove. `margin: 0 auto`.
+
+`drive.js` now sweeps eight viewports, including the three that actually
+broke, and asserts the headline, the button and the promise are all on screen
+with the page not scrollable by more than 2px (a pixel or two is sub-pixel
+rounding on a `100svh` box, not a layout that overflows).
+
+**A note on the sweeps' own cost.** `drive.js` runs 77s, inside CI's 25-minute
+budget with room to spare. The Dynamic Type sweep runs its fallback fonts
+only at the 28px and 32px roots: every width failure found that way appeared
+at those sizes, because that is where a label outgrows its control, and at
+ordinary sizes the fonts agree. Checked by restoring the bug and confirming
+the trimmed sweep still names both failures.
+
 ## VoiceOver: every control named, every rank spoken (2026-11-17)
 
 The fourth stated gate, swept on five screens by `drive.js`. A screen reader

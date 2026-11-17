@@ -543,7 +543,23 @@ footer.notes .build { color: var(--text-disabled); margin-top: var(--s2); }
 /* Presented as a physical object, not a section of the page. Somebody is
    meant to look at this and want one — so it gets a surface, an edge and a
    shadow, the way the share page and the OG card present a finished Ten. */
-.hero-ten { margin: 0; position: relative; display: flex; flex-direction: column; gap: var(--s3);
+/* Capped against viewport HEIGHT as well as width.
+
+   The grid is five columns of 2:3 cells, so its height is derived from its
+   WIDTH - about 0.6x it. On a viewport that is wide and short the hero
+   therefore grew taller exactly where there was least room, and a 430x610
+   browser overflowed the splash by 56px. Width alone cannot express "do not
+   get taller than the room you have", so the cap is in `svh`.
+
+   54svh is the loosest value that fits every height from 540 to 820 across
+   375, 393, 430 and 480 wide - swept, not guessed. It binds only on short
+   screens, where a smaller artifact is the right answer anyway. */
+/* `margin: 0 auto`, not `margin-inline: auto`: this is a <figure>, and a
+   figure's default margin-block is 1em. Writing only the inline axis handed
+   it 16px back top and bottom, which is most of the overflow this cap was
+   added to remove. */
+.hero-ten { margin: 0 auto; max-width: min(100%, 54svh);
+  position: relative; display: flex; flex-direction: column; gap: var(--s3);
   background: var(--bg-surface); border: 1px solid var(--border-subtle);
   border-radius: var(--r-sheet); padding: var(--s4);
   box-shadow: 0 1px 2px rgba(28,26,23,.05), 0 18px 40px -18px rgba(28,26,23,.25); }
@@ -588,7 +604,21 @@ footer.notes .build { color: var(--text-disabled); margin-top: var(--s2); }
 .intro-strip { display: flex; gap: var(--s2); overflow-x: auto; scrollbar-width: none;
   margin: 0 calc(var(--margin) * -1); padding: var(--s3) var(--margin) 0; }
 .intro-strip::-webkit-scrollbar { display: none; }
-.mini-ten { flex: 0 0 84px; margin: 0; display: grid; gap: 6px; }
+/* The strip's width is a clamp against viewport HEIGHT, not a constant.
+
+   The strip was a fixed 173px tall whatever the screen, and the splash is a
+   fixed single screen - so on a 375x629 browser (an iPhone 13 mini) the
+   three bands wanted 11px more than existed and the first screen scrolled.
+   Everything above and below that height fitted, which is exactly the kind
+   of narrow gap a hand-measurement misses and a sweep across real viewports
+   does not.
+
+   Shrinking the strip is the right thing to give up: the hero IS the thesis
+   and the CTA is the point, and these are previews of other topics. A
+   breakpoint would have worked for one phone; a clamp against `svh` fits
+   every height between, which is what the rest of this screen already does
+   with its type. */
+.mini-ten { flex: 0 0 clamp(54px, 9.5svh, 84px); margin: 0; display: grid; gap: 6px; }
 .mini-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3px;
   border-radius: var(--r-art); overflow: hidden; background: var(--bg-recessed); }
 .mini-grid img { width: 100%; aspect-ratio: 2/3; object-fit: cover; display: block; }
@@ -632,7 +662,13 @@ footer.notes .build { color: var(--text-disabled); margin-top: var(--s2); }
    The hero is the thesis and the CTA is the point; a row of other lists is
    the thing that can be read after tapping. A splash whose button is below
    the fold has failed at the only job it has. */
-@media (max-height: 600px) {
+/* 620, not 600. The strip needs its own band, and a sweep of every height
+   from 500 to 900 across five widths puts the boundary at about 620 - below
+   that the three bands do not fit however small the strip is made, and a
+   360x610 browser overflowed by 16px. The old 600 was close enough to be
+   wrong only in a 20px window, which is exactly the kind of gap a
+   hand-measurement misses. */
+@media (max-height: 620px) {
   .intro-strip { display: none; }
   .intro { --frame: 12px; }
 }
