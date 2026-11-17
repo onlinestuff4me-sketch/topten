@@ -475,7 +475,10 @@ section { margin-top: var(--s8); }
    must not be mistaken for on a screen full of other people. */
 .lockedbadge { width: 44px; height: 44px; display: block; }
 .lockedbadge .plate { fill: var(--locked); opacity: .22; }
-.lockedbadge .shackle { stroke: var(--locked); fill: none; stroke-width: 3; stroke-linecap: round; opacity: .75; }
+/* The motif showing through the frost: present, not readable. */
+.lockedbadge .ghost { fill: var(--locked); stroke: var(--locked); opacity: .3;
+  stroke-linejoin: round; stroke-linecap: round; }
+.lockedbadge .shackle { stroke: var(--locked); fill: none; stroke-width: 7; stroke-linecap: round; opacity: .75; }
 .lockedbadge .body { fill: var(--locked); opacity: .75; }
 .lockedbadge.big { width: 128px; height: 128px; margin: 0 auto; }
 .tenrow.shared { box-shadow: inset 0 0 0 1px var(--accent-muted); border-radius: var(--r-card); }
@@ -575,7 +578,8 @@ footer.notes .build { color: var(--text-disabled); margin-top: var(--s2); }
    to be opened rather than something withheld, so it keeps the badge's own
    gold rather than going grey. */
 .hero-badge .lockedbadge .plate { fill: var(--accent-muted); stroke: var(--accent); stroke-width: 1.5; }
-.hero-badge .lockedbadge .shackle { fill: none; stroke: var(--accent); stroke-width: 3; stroke-linecap: round; }
+.hero-badge .lockedbadge .shackle { fill: none; stroke: var(--accent); stroke-width: 7; stroke-linecap: round; }
+.hero-badge .lockedbadge .ghost { fill: var(--accent); stroke: var(--accent); opacity: .26; }
 .hero-badge .lockedbadge .body { fill: var(--accent); }
 
 /* Four posters, a name and a list title — the smallest unit that still reads
@@ -2184,7 +2188,7 @@ function renderIntro() {
           <span class="rk">${i + 1}</span>
         </div>`).join('')}
       </div>
-      <div class="hero-badge" aria-hidden="true">${lockedBadge(false)}</div>
+      <div class="hero-badge" aria-hidden="true">${lockedBadge(false, badgeHash(t.topic.title))}</div>
     </figure>`;
 
   const strip = !rest.length ? '' : `
@@ -2477,7 +2481,7 @@ function renderDiscover() {
           `<span class="mini" aria-hidden="true"><img src="${IMG}w185${f.p}" alt=""><b>${j + 1}</b></span>`).join('')}</div>
         <div class="badgecell ${open ? 'open' : 'locked'}">
           ${open ? badgeSVG(compose(t.ranked.map(f => f.id), t.person.topic), 200).replace(/class="layer"/g, 'class="layer on"')
-                 : lockedBadge(false)}
+                 : lockedBadge(false, badgeHash(t.person.topic.title))}
           <span class="gate"><span class="state">${open ? 'Badge unlocked' : 'Badge locked'}</span>
             <span class="how">${open ? `You have your own ${topic}` : `Unlocks when you make your own ${topic}`}</span></span>
         </div>
@@ -2508,7 +2512,7 @@ function renderOther(name) {
     <section style="text-align:center">
       <div class="badge-inline">${open
         ? badgeSVG(compose(t.ranked.map(f => f.id), p.topic), 200).replace(/class="layer"/g, 'class="layer on"')
-        : lockedBadge(true)}</div>
+        : lockedBadge(true, badgeHash(p.topic.title))}</div>
       <p class="prompt">${open ? `Badge unlocked, because you made your own ${esc(p.topic.title)}.`
         : `Badge locked. It opens for every ${esc(p.topic.title)} at once when you make your own.`}</p>
       ${open ? '' : `<button class="btn gate-cta" data-topic='${esc(JSON.stringify(p.topic))}'>Make your ${esc(p.topic.title)}</button>`}

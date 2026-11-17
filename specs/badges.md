@@ -189,6 +189,28 @@ large glyph reads as a sticker; a border for the field to sit inside is what
 most separates a struck badge from a drawn one. It costs two paths and is
 visible on all eight plates.
 
+## A locked badge is a badge, frosted (2026-11-17)
+
+badges.md has always said "silhouette under frost". It was drawn as a rounded
+square with a padlock on it — the icon every app uses for every locked thing
+— and on the splash that is the first thing anybody sees of the badge system.
+
+It is now the real kit: a plate from the eight, a motif behind the lock, both
+in a flat frost tone. **The silhouette is seeded from the topic**, so a
+topic's locked badge is consistently ITS shape with ITS motif, and the shape
+you glimpse locked is the shape you get when it opens. A frosted silhouette
+says "there is a particular object here that you have not earned yet"; a
+padlock says "no".
+
+**A hash fix came with it.** The seed goes through `badgeHash`, and every use
+of that hash is a modulo — enamel, plate, motif — so the LOW bits are the
+only ones that matter, and FNV-1a's low bits are its weak end. Across 208 of
+the app's real topic names the raw hash spread fine (10.6–13.5% per bucket),
+but the seven stand-in people's topics put five of six on the same plate,
+which on one screen reads as a bug rather than as chance. A final avalanche
+mixes the high bits down: those six become four distinct shapes and the
+spread over real titles stays healthy (7.7–15.4%).
+
 ## Reveal & gating rules
 
 - The badge is **never previewable** during creation — no partial renders,

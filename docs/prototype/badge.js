@@ -131,11 +131,22 @@ const ENAMELS = [
    page, the topic page and the OG card cannot disagree about what colour a
    topic is — which is the whole point of hanging the hue on the topic. */
 function badgeHash(str) {
+  const s = String(str);
   let h = 0x811c9dc5;
-  for (let i = 0; i < String(str).length; i++) {
-    h ^= String(str).charCodeAt(i);
+  for (let i = 0; i < s.length; i++) {
+    h ^= s.charCodeAt(i);
     h = (h + ((h << 1) + (h << 4) + (h << 7) + (h << 8) + (h << 24))) >>> 0;
   }
+  // FNV-1a's LOW bits are its weak end, and every use here is a modulo - the
+  // enamel, the plate, the motif - so the low bits are the only ones that
+  // matter. Across 208 of the app's real topic names the raw hash spreads
+  // fine (10.6-13.5% per bucket), but the seven stand-in people's topics put
+  // five of six on the same plate, which on one screen reads as a bug rather
+  // than as chance. A final avalanche mixes the high bits down and takes
+  // those six to four distinct shapes.
+  h ^= h >>> 16; h = Math.imul(h, 0x45d9f3b) >>> 0;
+  h ^= h >>> 13; h = Math.imul(h, 0x45d9f3b) >>> 0;
+  h ^= h >>> 16;
   return h >>> 0;
 }
 
@@ -167,13 +178,6 @@ function fieldTones(primaryHex, seed = 0, topic = '') {
 
 const escBadge = s => String(s ?? '').replace(/[&<>"']/g, c =>
   ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
-
-const lockedBadge = (big) => `<svg class="lockedbadge${big ? ' big' : ''}" viewBox="0 0 44 44"
-  role="img" aria-label="Badge, locked">
-  <rect class="plate" x="1" y="1" width="42" height="42" rx="11"/>
-  <path class="shackle" d="M16.5 21v-4a5.5 5.5 0 0 1 11 0v4"/>
-  <rect class="body" x="13" y="20.5" width="18" height="13.5" rx="3.5"/>
-</svg>`;
 
 /* ── The kit ────────────────────────────────────────────────────────────────
    Drawn on a 200x200 field and scaled, so every shape shares one coordinate
@@ -230,6 +234,37 @@ const MOTIFS = {
    palette is already doing the identity work, so the material is allowed to
    be the quiet layer. */
 const MATERIALS = ['enamel', 'brass', 'velvet', 'lacquer'];
+
+/* The locked badge is a BADGE, frosted - not a padlock.
+
+   badges.md has always specified "silhouette under frost". It was drawn as
+   a rounded square with a padlock on it, which is the icon every app uses
+   for every locked thing, and on the splash it is the first thing anybody
+   sees of the badge system. A frosted silhouette says "there is a specific
+   object here that you have not earned"; a padlock says "no".
+
+   The silhouette varies by seed, so a topic's locked badge is consistently
+   ITS shape with ITS motif. You can see there is something particular
+   underneath before you can see what. The plate and motif are drawn from
+   the same kit the real badge uses, so the shape you glimpse locked is the
+   shape you get when it opens.
+
+   Class names are unchanged (plate, shackle, body): the share page styles
+   and asserts on them. */
+const lockedBadge = (big, seed = 0) => {
+  const i = Math.abs(Number(seed) || 0);
+  const plate = PLATES[SHAPE_KEYS[i % SHAPE_KEYS.length]];
+  const motifKeys = Object.keys(MOTIFS);
+  const motif = MOTIFS[motifKeys[(i * 7) % motifKeys.length]];
+  return `<svg class="lockedbadge${big ? ' big' : ''}" viewBox="0 0 200 200"
+  role="img" aria-label="Badge, locked">
+  <path class="plate" d="${plate}"/>
+  <g class="ghost" transform="translate(100 76) scale(0.46) translate(-100 -100)">${motif}</g>
+  <path class="shackle" d="M88 118 v-10 a12 12 0 0 1 24 0 v10" fill="none"/>
+  <rect class="body" x="78" y="117" width="44" height="33" rx="9"/>
+</svg>`;
+};
+
 
 function badgeSVG(c, s = 200) {
   /* A composition can arrive from a URL, from a database row written by an
