@@ -80,6 +80,96 @@ const badgeInscription = page => page.evaluate(() => {
    selector closed badge.js's string; another closed this file's). The rule:
    nothing inside one of these strings is read by a JS parser the way it
    looks. Double every backslash, and never use a backtick. */
+
+/* ── VoiceOver: every control named, every rank spoken ──────────────────────
+   AGENTS.md: "VoiceOver pass on every new screen; ranked positions announced
+   meaningfully." design.md: "Rank announced semantically: 'Number one: Pulp
+   Fiction' - numerals are never unlabeled decoration."
+
+   A screen reader cannot be run here, but what it would read can be checked:
+   every interactive control resolves to an accessible name, and no rank
+   numeral is left as a bare digit. Name resolution follows the spec's order
+   - aria-labelledby, aria-label, content, title - which is enough to catch a
+   control with nothing at all.
+
+   Two things this found. The discover cards' preview strips read as
+   "1 2 3 4 5 6" with nothing attached, and the splash's hero grid read as
+   "1 2 3 4 5 6 7 8 9 10" on the first screen of the app. Both are now a
+   single labelled image announcing their list in order, because six or ten
+   separate announcements ahead of a card's own call to action would bury it.
+
+   Backslashes are doubled in here. See the banner above TAP_SWEEP. */
+const VO_SWEEP = `(() => {
+  const nameOf = el => {
+    const by = el.getAttribute('aria-labelledby');
+    if (by) {
+      const t = by.split(/\\s+/).map(id => (document.getElementById(id) || {}).textContent || '').join(' ').trim();
+      if (t) return t;
+    }
+    const al = el.getAttribute('aria-label');
+    if (al && al.trim()) return al.trim();
+    if (el.tagName === 'IMG') return (el.getAttribute('alt') || '').trim();
+    if (el.tagName === 'INPUT') {
+      const ph = el.getAttribute('placeholder');
+      const lab = el.labels && el.labels[0];
+      if (lab && lab.textContent.trim()) return lab.textContent.trim();
+      if (ph && ph.trim()) return ph.trim();
+      return (el.value || '').trim();
+    }
+    const txt = (el.innerText || el.textContent || '').replace(/\\s+/g, ' ').trim();
+    if (txt) return txt;
+    return (el.getAttribute('title') || '').trim();
+  };
+
+  const unnamed = [], hiddenTrap = [], bareNumerals = [];
+  for (const el of document.querySelectorAll('button, a[href], input, select, textarea, [role="button"]')) {
+    const r = el.getBoundingClientRect();
+    if (r.width < 1 || r.height < 1) continue;
+    const cs = getComputedStyle(el);
+    if (cs.visibility === 'hidden' || cs.display === 'none') continue;
+    if (el.getAttribute('aria-hidden') === 'true' || el.closest('[aria-hidden="true"]')) {
+      hiddenTrap.push({ sel: el.tagName.toLowerCase() + '.' + String(el.className).split(/\\s+/)[0],
+                        name: nameOf(el).slice(0, 24) });
+      continue;
+    }
+    const n = nameOf(el);
+    if (!n) unnamed.push({
+      sel: el.tagName.toLowerCase() + '.' + String(el.className).split(/\\s+/)[0],
+      w: Math.round(r.width), h: Math.round(r.height),
+      html: el.outerHTML.replace(/\\s+/g, ' ').slice(0, 70),
+    });
+  }
+
+  /* A rank numeral on its own is "1" to a screen reader. It needs either an
+     aria-label that says what it ranks, or a container that carries the whole
+     sentence. */
+  for (const el of document.querySelectorAll('.num, .rk, .slotmini .gh, .mini b, .strip b')) {
+    const r = el.getBoundingClientRect();
+    if (r.width < 1 || r.height < 1) continue;
+    const txt = (el.textContent || '').trim();
+    if (!/^\\d+$/.test(txt)) continue;
+    const hidden = el.getAttribute('aria-hidden') === 'true' || !!el.closest('[aria-hidden="true"]');
+    const labelled = !!el.getAttribute('aria-label');
+    let owned = false;
+    for (let n = el.parentElement; n; n = n.parentElement) {
+      if (n.getAttribute && (n.getAttribute('aria-label') || n.getAttribute('role') === 'listitem'
+          || n.tagName === 'LI' || n.tagName === 'BUTTON')) { owned = true; break; }
+    }
+    if (!hidden && !labelled && !owned) bareNumerals.push({
+      sel: el.tagName.toLowerCase() + '.' + String(el.className).split(/\\s+/)[0], txt,
+      parent: el.parentElement ? el.parentElement.tagName.toLowerCase() + '.' + String(el.parentElement.className).split(/\\s+/)[0] : '-',
+    });
+  }
+
+  // Images that are decorative must say so; images that carry meaning must
+  // have alt text. An empty alt is correct for a poster beside its own title.
+  const imgs = [...document.querySelectorAll('img')].filter(i => {
+    const r = i.getBoundingClientRect();
+    return r.width > 1 && r.height > 1 && i.getAttribute('alt') === null;
+  }).map(i => (i.src || '').slice(-28));
+
+  return { unnamed, bareNumerals, hiddenTrap: hiddenTrap.slice(0, 4), imgsNoAlt: imgs.slice(0, 4) };
+})()`;
 const TAP_SWEEP = `(() => {
   const SEL = 'button, a[href], input, select, textarea, [role="button"], [tabindex]:not([tabindex="-1"])';
   const MIN = 44, out = [];
@@ -2296,6 +2386,49 @@ const CONTRAST = `(() => {
     + `(badge ${endStates['no-preference'].layers}, letters ${endStates['no-preference'].letters})`
     + (differing.length ? ` \u2014 differs on: ${differing.join(', ')}` : ''));
   await page.evaluate(() => { document.querySelectorAll('.vault').forEach(n => n.remove()); });
+
+  console.log('\n\u2500\u2500 VoiceOver: names and spoken ranks \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500');
+  await page.evaluate(() => {
+    document.querySelectorAll('.sheet, .scrim, .vault, .coach, .coachscrim').forEach(n => n.remove());
+    const b = document.createElement('button');
+    b.id = 'vo-canary';
+    b.style.cssText = 'position:fixed;top:200px;left:4px;width:50px;height:50px;z-index:99999';
+    document.body.appendChild(b);                       // no label, no text
+    const holder = document.createElement('div');
+    holder.id = 'vo-canary2';
+    const n = document.createElement('span');
+    n.className = 'num'; n.textContent = '7';
+    n.style.cssText = 'position:fixed;top:260px;left:4px;z-index:99999';
+    holder.appendChild(n);                              // no li, no aria
+    document.body.appendChild(holder);
+  });
+  await page.waitForTimeout(120);
+  const voCanary = await page.evaluate(VO_SWEEP);
+  check(voCanary.unnamed.some(u => /vo-canary/.test(u.html)) && voCanary.bareNumerals.some(x => x.txt === '7'),
+    `the VoiceOver sweep catches an unlabelled button and a bare numeral before it is trusted `
+    + `(${voCanary.unnamed.length} unnamed, ${voCanary.bareNumerals.length} bare)`);
+  await page.evaluate(() => {
+    ['vo-canary', 'vo-canary2'].forEach(id => { const e = document.getElementById(id); if (e) e.remove(); });
+  });
+
+  for (const [where, fn] of DT_SCREENS) {
+    await page.evaluate(fn);
+    await page.waitForTimeout(300);
+    await page.evaluate(() => {
+      document.querySelectorAll('.coach, .coachscrim').forEach(n => n.remove());
+      window.scrollTo(0, 0);
+    });
+    await page.waitForTimeout(100);
+    const r = await page.evaluate(VO_SWEEP);
+    const faults = [
+      ...r.unnamed.map(u => `unnamed ${u.sel} ${u.w}x${u.h}`),
+      ...r.bareNumerals.map(x => `bare numeral "${x.txt}" in ${x.parent}`),
+      ...r.imgsNoAlt.map(i => `img with no alt attribute`),
+    ];
+    check(faults.length === 0,
+      `${where}: every control named and every rank spoken`
+      + (faults.length ? ` \u2014 ${faults.length}: ${faults.slice(0, 3).join('; ')}` : ''));
+  }
 
   check(errors.length === 0, 'no page errors: ' + JSON.stringify(errors));
   console.log('\nALL CHECKS PASSED');

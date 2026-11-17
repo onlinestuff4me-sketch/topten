@@ -1022,6 +1022,39 @@ names take two lines at 353px where they took three at 203 — and the label
 scrolling. Falsified by sinking it 260px and watching the check name the
 overlap.
 
+## VoiceOver: every control named, every rank spoken (2026-11-17)
+
+The fourth stated gate, swept on five screens by `drive.js`. A screen reader
+cannot be run here, but what it would read can be checked: every interactive
+control resolves to an accessible name (aria-labelledby, then aria-label,
+then content, then title - the spec's own order), and no rank numeral is left
+as a bare digit.
+
+**Two findings, both the same shape.** The discover cards' preview strips
+read as *"1 2 3 4 5 6"* with nothing attached to the numbers, and the splash's
+hero grid read as *"1 2 3 4 5 6 7 8 9 10"* - on the first screen of the app.
+
+design.md's rule is that a rank is "announced semantically ... numerals are
+never unlabeled decoration", and the obvious reading of that is to label each
+cell. **That is wrong here.** Six or ten separate announcements ahead of a
+card's own call to action buries the thing the card is for. Both are a single
+labelled image instead, announcing the list once and in order:
+
+> *"Sam's first six: 1, The Shawshank Redemption; 2, Pulp Fiction; 3, The
+> Silence of the Lambs; ..."*
+
+The rule holds - a rank is never a bare numeral - but the unit it applies to
+is the artifact, not the cell. Per-item announcement is right where the rank
+is the interaction (your own Ten, where you move things up and down), and
+wrong where the ranking is a picture of somebody else's finished list.
+
+**The sweep has a canary**, like the other three: it plants an unlabelled
+button and a bare numeral, confirms both are caught, removes them, then runs
+for real. That canary earned itself immediately - the numeral half of the
+check was dead on its first run, because its regex was over-escaped inside
+the template literal (`\\\\d` where it needed `\\d`), the mirror image of
+the bug that had killed the contrast check an hour earlier.
+
 ## Contrast at WCAG AA, and Reduce Motion (2026-11-17)
 
 Both are stated gates in AGENTS.md and design.md; both are now swept by

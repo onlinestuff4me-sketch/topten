@@ -2168,8 +2168,13 @@ function renderIntro() {
         <p class="by">From ${roughly(t.voters)} Top 10s</p>
         <p class="what">${esc(listName(t.ranked, t.topic))}</p>
       </figcaption>
-      <div class="hero-grid">
-        ${t.ranked.map((f, i) => `<div class="hero-cell">
+      <!-- The hero is ONE artifact - the crowd's ranking of this topic - so
+           it is announced as one, in order. Ten separate cells meant a
+           screen reader met "1 2 3 4 5 6 7 8 9 10" with nothing attached, on
+           the first screen of the app. -->
+      <div class="hero-grid" role="img" aria-label="${esc(listName(t.ranked, t.topic))}, from ${roughly(t.voters)} Top 10s: ${
+        t.ranked.map((f, i) => `${i + 1}, ${f.t}`).join('; ')}">
+        ${t.ranked.map((f, i) => `<div class="hero-cell" aria-hidden="true">
           <img src="${art(f, 'w185')}" alt="" loading="eager" decoding="async">
           <span class="rk">${i + 1}</span>
         </div>`).join('')}
@@ -2454,8 +2459,17 @@ function renderDiscover() {
       return `<article class="other-ten" data-who="${who}" aria-labelledby="ln${i}">
         <h2 class="listname" id="ln${i}">${esc(listName(t.ranked, t.person.topic))}</h2>
         <p class="claim">${esc(claimFor(t))}</p>
-        <div class="strip">${t.ranked.slice(0, 6).map((f, j) =>
-          `<span class="mini"><img src="${IMG}w185${f.p}" alt=""><b>${j + 1}</b></span>`).join('')}</div>
+        <!-- One label for the whole strip, read once and in order, rather
+             than six bare numerals. A screen reader met "1 2 3 4 5 6" here
+             with nothing attached to them. design.md's rule is that a rank
+             is "announced semantically ... numerals are never unlabeled
+             decoration" - and six separate announcements ahead of the card's
+             own call to action would bury it, so the strip speaks as the one
+             thing it looks like: a preview of the top six. -->
+        <div class="strip" role="img" aria-label="${esc(who)}\u2019s first six: ${
+          t.ranked.slice(0, 6).map((f, j) => `${j + 1}, ${f.t}`).join('; ')}">${
+          t.ranked.slice(0, 6).map((f, j) =>
+          `<span class="mini" aria-hidden="true"><img src="${IMG}w185${f.p}" alt=""><b>${j + 1}</b></span>`).join('')}</div>
         <div class="badgecell ${open ? 'open' : 'locked'}">
           ${open ? badgeSVG(compose(t.ranked.map(f => f.id), t.person.topic), 200).replace(/class="layer"/g, 'class="layer on"')
                  : lockedBadge(false)}
