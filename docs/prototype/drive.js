@@ -73,136 +73,122 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
 
   // ── Intro ───────────────────────────────────────────────────────────────
   check(await page.locator('.intro').count() === 1, 'a new user lands on the intro, not on a form');
-  check(await page.locator('.intro .marquee').count() === 2, 'it shows the product — two drifting rows of real artwork');
-  check(await page.locator('.intro .tile .rank').count() > 0, 'wearing the app\'s own rank numerals');
+
+  /* ── The splash opens on somebody's actual Ten (Mischa, 2026-11-17) ──────
+     It used to open on the rules — three bullets explaining the limit, the
+     badge and the price — and those tests are gone with them. Nobody arrives
+     wanting to obey a limit; they arrive because they saw a list and thought
+     theirs would be better. So the assertions now are about the artifact:
+     that a real, complete, ranked Ten is the first thing on the screen. */
+  const hero = await page.evaluate(() => {
+    const f = document.querySelector('.hero-ten');
+    if (!f) return null;
+    const card = f.getBoundingClientRect();
+    const grid = f.querySelector('.hero-grid').getBoundingClientRect();
+    return {
+      posters: f.querySelectorAll('.hero-cell img').length,
+      ranks: [...f.querySelectorAll('.hero-cell .rk')].map(r => r.textContent.trim()),
+      by: (f.querySelector('.by') || {}).innerText,
+      title: (f.querySelector('.what') || {}).innerText,
+      badge: !!f.querySelector('.hero-badge svg'),
+      // The card is an object, so its contents have to be inside it. A padding
+      // written with an undefined token voids the whole declaration and the
+      // posters escape the card silently — which is exactly what shipped.
+      inside: grid.right <= card.right + 1 && grid.bottom <= card.bottom + 1,
+      padded: parseFloat(getComputedStyle(f).paddingLeft) > 0,
+      // Measured as ink against the badge, not as scrollWidth. A grid item
+      // with the default `min-width: auto` grows past its parent's padding
+      // instead of overflowing it, so spill reads zero while the title sits
+      // underneath the badge at full size.
+      titleClearsBadge: (() => {
+        const w = f.querySelector('.what'), bg = f.querySelector('.hero-badge');
+        if (!w || !bg) return true;
+        const r = document.createRange(); r.selectNodeContents(w);
+        return r.getBoundingClientRect().right <= bg.getBoundingClientRect().left + 1;
+      })(),
+    };
+  });
+  check(!!hero, 'the first screen is somebody else\'s Top 10, not a pitch');
+  check(hero.posters === 10, `all ten of it, not a teaser (${hero.posters} posters)`);
+  check(hero.ranks.join(',') === '1,2,3,4,5,6,7,8,9,10',
+    `ranked one through ten — the order IS the product (${hero.ranks.join(',')})`);
+  check(/'S$/.test((hero.by || '').trim()), `with a byline, so it is somebody's taste ("${hero.by}")`);
+  check(/^Top 10 /.test((hero.title || '').trim()), `and a real list name ("${hero.title}")`);
+  check(hero.badge, 'and its badge — the thing you only get by finishing one');
+  check(hero.padded && hero.inside,
+    'the whole Ten sits inside the card, which needs its padding to survive');
+  check(hero.titleClearsBadge, 'and the list title stops before the badge rather than running under it');
+
+  // The "browse other lists" half of the opening, before anyone is asked to
+  // join. Four posters each: the most identity readable in one glance.
+  const strip = await page.evaluate(() => {
+    const minis = [...document.querySelectorAll('.mini-ten')];
+    return { n: minis.length,
+      posters: minis.map(m => m.querySelectorAll('img').length),
+      names: minis.map(m => (m.querySelector('.who') || {}).innerText) };
+  });
+  check(strip.n >= 3, `other people's lists are on screen too (${strip.n} of them)`);
+  check(strip.posters.every(n => n === 4), `four posters each (${[...new Set(strip.posters)].join(',')})`);
+  check(new Set(strip.names).size === strip.names.length,
+    `each a different person (${strip.names.slice(0, 3).join(', ')}…)`);
+  /* Every list name begins "Top 10 ", which is identical on every card and
+     eats the half of an 84px line that says WHICH list this is. With the
+     prefix in, four of six read "Top 10…" and told you nothing. */
+  const titles = await page.evaluate(() =>
+    [...document.querySelectorAll('.mini-ten .what')].map(e => e.innerText.trim()));
+  check(titles.length > 0 && !titles.some(t => /^Top 10/.test(t)),
+    `each labelled by what makes it different, not by the words they share (${titles.slice(0, 3).join(' · ')}…)`);
+  check(titles.every(t => t.length > 3), 'and none of them reduced to an ellipsis');
+
   const introText = await page.locator('.intro').innerText();
   check(/free/i.test(introText), 'it answers what this costs before asking for anything');
   check(await page.locator('.intro [data-act="begin"]').count() === 1, 'one CTA');
-
-  // ── The 2026-08-15 copy pass: less of it, and every claim on one line ────
   check((await page.locator('.intro h1').innerText()).trim() === "What's your Top 10?",
-    'the headline is "What\'s your Top 10?"');
-  check((await page.locator('.intro .pitch').innerText()).trim() === 'The list you would defend to the death',
-    'the sub-line is "The list you would defend to the death"');
-  const bullets = (await page.locator('.intro li').allInnerTexts()).map(t => t.replace(/^\S+\s+/, '').trim());
-  const wanted = ['Ten and only ten. The limit is the point.',
-                  'Finish it and earn a secret badge.',
-                  'Free. No ads. No subscription. Ever.'];
-  check(bullets.length === 3, `three bullets, not more (${bullets.length})`);
-  wanted.forEach((w, i) => check(bullets[i] === w, `bullet ${i + 1} reads "${w}" (got "${bullets[i]}")`));
-  // Bullet 3 now carries the cost, so the separate line under the CTA is gone.
-  check(await page.locator('.intro .cost').count() === 0,
-    'no separate cost line under the CTA — the third bullet carries it');
+    'the headline is still "What\'s your Top 10?" — the locked product voice');
+  check(/Free\. No ads\. No subscription\. Ever\./.test(introText),
+    'and the promise survives the redesign, as fine print under the CTA');
 
-  /* Mischa's actual requirement: ONE line per bullet at iPhone width. Measured
-     two ways because either alone can lie — the height ratio misses a bullet
-     whose second line happens to be short in a shrunk box, and a Range's line
-     boxes miss nothing but depend on the text being one node. The spare width
-     is reported alongside, because "fits" and "fits with room" are different
-     answers to whether the next copy edit is safe. */
-  const measureBullets = () => page.evaluate(() => [...document.querySelectorAll('.intro li')].map(li => {
-    const span = li.querySelector('span:last-child');
-    const lh = parseFloat(getComputedStyle(span).lineHeight);
-    const box = span.getBoundingClientRect();
-    const r = document.createRange(); r.selectNodeContents(span);
-    const rects = [...r.getClientRects()].filter(x => x.width > 0.5);
-    const tops = new Set(rects.map(x => Math.round(x.top)));
-    const used = Math.max(...rects.map(x => x.right)) - Math.min(...rects.map(x => x.left));
-    return { text: span.innerText.trim(), h: Math.round(box.height), lh,
-      byHeight: Math.round(box.height / lh), lineBoxes: tops.size, spare: Math.round(box.width - used) };
-  }));
-  const oneLineAt = async label => {
-    for (const b of await measureBullets()) {
-      check(b.byHeight === 1 && b.lineBoxes === 1,
-        `intro bullet is one line at ${label} — ${b.lineBoxes} line box, ${b.h}px against a ` +
-        `${b.lh}px line-height, ${b.spare}px spare: "${b.text}"`);
-    }
-  };
-  // Mischa, 2026-08-15: the splash "breaks our one-line rule twice" — the
-  // headline and the sub-line were each wrapping. The rule covers all five
-  // lines on this screen, not just the three bullets.
-  const headLines = () => page.evaluate(() => ['h1', '.pitch'].map(sel => {
+  /* The one-line rule still covers the headline and the list title. Mischa,
+     2026-08-15: the splash "breaks our one-line rule twice". The bullets it
+     was written for are gone; the rule is not. */
+  const headLines = () => page.evaluate(() => ['h1', '.hero-ten .what'].map(sel => {
     const el = document.querySelector('.intro ' + sel);
+    if (!el) return null;
     const lh = parseFloat(getComputedStyle(el).lineHeight);
     return { sel, text: el.innerText.trim(), lines: Math.round(el.getBoundingClientRect().height / lh),
       fs: Math.round(parseFloat(getComputedStyle(el).fontSize) * 10) / 10,
       spill: Math.round(el.scrollWidth - el.clientWidth) };
-  }));
+  }).filter(Boolean));
   const headOneLineAt = async label => {
     for (const h of await headLines()) {
       check(h.lines === 1 && h.spill <= 1,
-        `the ${h.sel === 'h1' ? 'headline' : 'sub-line'} is one line at ${label} — ` +
-        `${h.lines} line at ${h.fs}px, ${h.spill}px spill: "${h.text}"`);
+        `${h.sel} is one line at ${label} — ${h.lines} line at ${h.fs}px, ` +
+        `${h.spill}px spill: "${h.text}"`);
     }
   };
   await headOneLineAt('iPhone 15 Pro width (393px)');
-  await oneLineAt('iPhone 15 Pro width (393px)');
-  /* And at the narrowest iPhone iOS 26 runs on — the SE 3rd gen and 13 mini at
-     375pt. That is where the rule is actually load-bearing: bullet 1 clears it
-     by single-digit pixels, so a longer word in a future edit breaks here long
-     before it breaks on the Pro this suite otherwise drives. */
   await page.setViewportSize({ width: 375, height: 667 });
-  await page.waitForTimeout(120);
+  await page.waitForTimeout(140);
   await headOneLineAt('the narrowest supported iPhone (375px)');
-  await oneLineAt('the narrowest supported iPhone (375px)');
+  const fitsSE = await page.evaluate(() => ({
+    over: document.querySelector('.intro').scrollHeight > window.innerHeight + 2,
+    ctaIn: document.querySelector('.intro [data-act="begin"]').getBoundingClientRect().bottom
+           <= window.innerHeight + 1 }));
+  check(!fitsSE.over && fitsSE.ctaIn,
+    'and the whole splash still fits the smallest supported iPhone without scrolling');
   await page.setViewportSize({ width: 393, height: 852 });
-  await page.waitForTimeout(120);
+  await page.waitForTimeout(140);
 
   await noBritishSpelling('the intro');
   await page.screenshot({ path: SHOTS + '/13-intro-copy.png' });
   check(!/\bskip\b/i.test(introText), 'and no Skip — this screen only tells, so a Skip would compete with the CTA');
   check(apiCalls.length === 0, `the intro makes no API calls (${apiCalls.length})`);
-  // The one action on the screen must be reachable without scrolling for it.
   const ctaVisible = await page.evaluate(() => {
     const b = document.querySelector('.intro [data-act="begin"]');
     const r = b.getBoundingClientRect();
     return r.bottom <= window.innerHeight + 1 && r.top >= 0;
   });
   check(ctaVisible, 'the CTA is on screen without scrolling');
-
-  // ── The splash is three bands: 40% artwork, 40% pitch, 20% CTA ───────────
-  // Mischa, 2026-08-15. Measured as a share of the viewport rather than in
-  // pixels, because the whole point of the change is that the ratio holds on
-  // any phone. Tolerance is +/-5 points: the gaps between bands are real
-  // pixels and come out of the three shares.
-  for (const [w, h, label] of [[393, 852, 'iPhone 15 Pro'], [375, 667, 'SE'], [430, 932, 'Pro Max']]) {
-    await page.setViewportSize({ width: w, height: h });
-    await page.waitForTimeout(150);
-    const band = await page.evaluate(() => {
-      const vh = window.innerHeight, R = sel => document.querySelector(sel).getBoundingClientRect();
-      const art = R('.intro .art'), copy = R('.intro-copy'), cta = R('.intro .cta');
-      // The 40/40/20 is a share of the space the three bands DIVIDE, not of the
-      // raw viewport — the frame and the gaps between bands sit outside it.
-      // Measuring against the viewport would be measuring the frame too, and
-      // would move every time the frame did.
-      const split = art.height + copy.height + cta.height;
-      const pct = h => Math.round(h / split * 100);
-      return { art: pct(art.height), copy: pct(copy.height), cta: pct(cta.height),
-        ofScreen: Math.round(art.height / vh * 100),
-        topGap: Math.round(R('.marquee .tile').top),
-        bottomGap: Math.round(vh - R('.intro .cta .btn').bottom),
-        tile: Math.round(R('.marquee .tile').height),
-        clip: Math.round(R('.marquee .tile').height - R('.marquee').height),
-        over: document.querySelector('.intro').scrollHeight > vh + 2 };
-    });
-    const near = (got, want) => Math.abs(got - want) <= 2;
-    check(near(band.art, 40) && near(band.copy, 40) && near(band.cta, 20),
-      `the splash holds 40/40/20 on the ${label} (${band.art}/${band.copy}/${band.cta}; ` +
-      `artwork is ${band.ofScreen}% of the raw screen once the frame is taken out)`);
-    check(!band.over, `and nothing overflows the screen on the ${label}`);
-    // Sized to its row, not merely large: `.marquee` clips what overflows, so a
-    // poster that is 26px too tall looks fine and is silently cropped.
-    check(band.tile >= 104 && band.clip === 0,
-      `the artwork fills its band on the ${label} without being cropped ` +
-      `(${band.tile}px posters in a ${band.tile - band.clip}px row)`);
-    // Mischa, 2026-08-15: the posters come down so their inset matches the one
-    // under the CTA. Equal on every screen, or the frame is not a frame.
-    check(band.topGap === band.bottomGap,
-      `the frame is even on the ${label} — ${band.topGap}px above the posters, ` +
-      `${band.bottomGap}px under the CTA`);
-  }
-  await page.setViewportSize({ width: 393, height: 852 });
-  await page.waitForTimeout(150);
   check((await page.locator('.intro [data-act="begin"]').innerText()).trim() === 'Make your first list',
     'the CTA says "Make your first list"');
 
@@ -521,6 +507,32 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   await page.waitForTimeout(300);
   const verbs = await page.locator('.section-head .more').count();
   check(verbs === 0, 'no per-section "Back"/"Go deeper" verbs competing with each other');
+
+  // ── Every spacing token used is a token that exists ─────────────────────
+  // The 4pt scale is 4/8/12/16/24/32 — there is deliberately no --s5 or --s7,
+  // because "nothing gets a bespoke gap" (design.md). A var() pointing at a
+  // token that was never defined does not fall back: it voids the WHOLE
+  // declaration, silently. `.title-cta { margin-top: var(--s5) }` shipped that
+  // way and the button simply had no top margin, through every round of
+  // screenshots, because nothing was looking (2026-11-17).
+  const tokens = await page.evaluate(async () => {
+    // Every stylesheet, not only the inline ones — tokens.css is where the
+    // scale lives.
+    let css = [...document.querySelectorAll('style')].map(s => s.textContent).join('\n');
+    for (const l of document.querySelectorAll('link[rel=stylesheet]')) {
+      try { css += '\n' + await (await fetch(l.href)).text(); } catch (e) { /* ignore */ }
+    }
+    const used = [...new Set((css.match(/var\(--[a-z0-9-]+\)/g) || []).map(v => v.slice(4, -1)))];
+    // Declared ANYWHERE, not only on :root — `--frame` lives on `.intro` and
+    // `--tile-h` on `.marquee`, and a locally scoped token is a legitimate
+    // token. The first version of this check only looked at the root element
+    // and called both of them missing.
+    const declared = new Set((css.match(/--[a-z0-9-]+\s*:/g) || []).map(d => d.replace(/\s*:$/, '')));
+    return { used: used.length, missing: used.filter(n => !declared.has(n)) };
+  });
+  check(tokens.missing.length === 0,
+    `every CSS token the stylesheet uses is defined (${tokens.used} used, ` +
+    `${tokens.missing.length} undefined${tokens.missing.length ? ': ' + tokens.missing.join(', ') : ''})`);
 
   // The query must be stated, not inferred.
   check(await page.locator('.showing').count() === 1, 'a Now showing bar states what is on screen');

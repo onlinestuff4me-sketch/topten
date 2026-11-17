@@ -635,3 +635,52 @@ Open question below.)
 See `KICKOFF.md` for the milestone plan (M0–M6). P0 requirements 1–8 are the
 launchable core ("make, reveal, share"); 9–12 complete the social loop;
 13–14 are continuous gates, not phases.
+
+## The first screen shows somebody's Ten, not the rules (2026-11-17, Mischa)
+
+**Decision.** The splash opens on a real, complete, ranked Top 10 — byline,
+badge and all ten posters — with a strip of other people's lists beneath it,
+then the headline and one CTA. The three bullets that explained the limit, the
+badge and the price are gone; the price promise survives as one line of fine
+print under the button.
+
+**Reasoning.** The trigger was the Letterboxd sale: The New York Times entered
+advanced talks at roughly $330 million in November 2026, after A24, Sony and
+the Times had all registered interest in September. Three buyers with nothing
+else in common valued the same asset, and none of them wanted the tracking
+app — they wanted the community that forms around curated lists.
+
+The mechanism underneath that is not onboarding, it is the **shareable
+artifact**. Letterboxd's "Top 4" — four posters on a profile — is the most
+imitated object in film social media precisely because it is small, visual,
+identity-dense and shaped like a screenshot. People post it unprompted.
+
+Our equivalent already existed (the Ten plus its badge, the share pages, the
+OG card) and the splash was not using it. A screen that opens by explaining a
+constraint is asking for compliance; a screen that opens with somebody's taste
+is asking a question. Nobody downloads a list app because they want to be
+limited to ten — they download it because they saw a list and thought theirs
+would be better.
+
+**What this supersedes.** The 40/40/20 splash frame (poster marquee / copy /
+CTA) and its three bullets, agreed 2026-08-15. The one-line rule from that
+round still applies and still has tests; the bullets it was written for do not
+exist any more.
+
+**Related decisions taken the same day (Mischa):**
+
+- **Launch domains: movies, TV and books.** Restaurants wait. Books already
+  carry a catalog of 232 titles with covers, authors and co-read edges, and
+  are already offered by `otherDomains()`; restaurants need a new data source
+  (Yelp or Google Places), location handling and their own licensing answer.
+  Three domains ship now rather than four stalling.
+- **Trending and AI editorial picks: prototype them against fixtures now**,
+  the way the rest of the prototype works, rather than waiting for published
+  lists. The cheapest moment to discover the design is wrong is before any
+  backend depends on it.
+- **Institutional seeding is a TOPIC, never a byline.** "Top 10 Movies of
+  2026 — the critics' pick. What's yours?" The institution sets the prompt;
+  every list in the product is still a person's own. This keeps the object
+  model intact (a Ten belongs to somebody) and avoids republishing editorial
+  selections we have no permission to republish — which matters more while the
+  TMDB non-commercial question is still open.

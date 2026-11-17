@@ -998,3 +998,45 @@ CSS custom properties from `TopTenKit` (single source), New York substituted
 by `Georgia`-stack with matched metrics (or licensed alternative later), no
 glass (static header), same Share Card renderer for OG images. The page's
 job: look worthy of the list, convert to "Make your Ten."
+
+## The hero Ten, and the phone viewport we actually get (2026-11-17)
+
+**The component.** `.hero-ten` presents a finished Top 10 as a physical
+object: a surface, an edge, a shadow, and inside it the byline, the list name,
+the badge and ten posters in a 5x2 grid with the rank on each. Five across and
+two down is deliberate — the shape of the grid is the promise. A complete
+thing, not a feed that keeps going.
+
+`.mini-ten` is the same idea at a glance: four posters, a name, and what makes
+that list different. Four is Letterboxd's number and it is not an accident —
+it is the most identity you can read in one look. The list name has its
+`Top 10 ` prefix stripped in this context, because the prefix is identical on
+every card and at 84px wide it was consuming the half of the line that says
+which list this is. Four of six read "Top 10…" before the strip.
+
+**A phone gives you 659px, not 852.** Playwright's own `iPhone 15 Pro`
+profile is 393x659: mobile Safari's chrome takes about 190px off the height on
+the spec sheet, and `100svh` on the device reflects that. The prototype is
+read in a browser, so **659 is the default case and the roomier layout is the
+`min-height: 741px` enhancement**, not the other way round. Designing at 852
+and adding a "short phone" exception gets this backwards and hides the real
+target behind a media query.
+
+**Two layout traps found building this, both silent:**
+
+1. **An undefined custom property voids its whole declaration.** The 4pt scale
+   is 4/8/12/16/24/32 — there is deliberately no `--s5`. `padding: var(--s5)
+   16px 16px` therefore computed to `0px`, and the hero grid escaped its card.
+   The same bug was already live in `.title-cta { margin-top: var(--s5) }`,
+   where the title page's Add button had had no top margin since it was built
+   and no screenshot had caught it. `drive.js` now fails on any `var(--token)`
+   the stylesheets never declare, checking every sheet and accepting tokens
+   scoped to a selector rather than only those on `:root`.
+
+2. **A grid item defaults to `min-width: auto`,** so a `nowrap` title refuses
+   to shrink below its own text and GROWS past its parent's padding instead of
+   overflowing it. `scrollWidth` then equals `clientWidth`, so a fit-to-width
+   helper concludes the largest size fits and a spill assertion reads zero —
+   while the title sits underneath the badge at full size. Measure ink against
+   the thing it must not touch (a `Range`'s bounding box against the badge),
+   never `scrollWidth`, and put `min-width: 0` on the children.
