@@ -97,6 +97,35 @@ git config user.email "onlinestuff4me@gmail.com"
 **Pushed is not shipped.** Verify a deploy ran (deployment list or a literal
 from the change grepped out of the served bundle) before reporting live.
 
+## ⚠️ Trap — a shared script's `const` is not scoped to that script
+
+**Found 2026-11-17 (Claude).** `docs/prototype/badge.js` is a classic
+`<script>` loaded beside `index.html`, `ten.html`, `topic.html` and
+`card.html`. A top-level `const` in a classic script does **not** become a
+property of `window` and is **not** private to the file — it goes into the
+one global *lexical* environment shared by every classic script on the page.
+So `const MOTIFS` in `badge.js` beside `const MOTIFS` in `index.html` is not
+shadowing. It is a `SyntaxError`, it stops the entire page parsing, and the
+page is blank.
+
+Two things make it expensive:
+
+- **The symptom is four layers from the cause.** The app never boots, so the
+  first assertion to fail was `a new user lands on the intro, not on a form`
+  — which points at routing, at state, at anything but a name collision in
+  a different file.
+- **The obvious test does not work.** Asserting `window.MOTIFS` passes no
+  matter what either file does, because a top-level `const` is never on
+  `window`. The test has to read the **bare identifier** (`typeof MOTIFS`),
+  evaluated inside the page.
+
+The rule: **a shared script states its surface and closes over the rest.**
+`badge.js` is wrapped in an IIFE and assigns its four exports to `window`
+explicitly at the bottom. `drive.js` asserts both halves — that the exports
+are present and that the kit (`PLATES`, `ENAMELS`, `MATERIALS`, …) is not —
+and both halves were falsified by re-leaking a name and watching the suite
+go red.
+
 ## Verification workflow
 
 Three environments; every report names which one it verified in.

@@ -1,7 +1,7 @@
 # Top Ten — Badge System Specification
 
 **Status:** Draft v1
-**Last updated:** 2026-08-14
+**Last updated:** 2026-11-17
 **Owner:** Mischa
 
 ## What a badge is
@@ -27,10 +27,51 @@ return as a premium tier (P1, licensing permitting).
    scalloped medal). Each shape carries domain affinity metadata (ticket
    stub/film reel skew movies) but any shape is legal anywhere.
 2. **Field** — the backplate's fill: a material (enamel gloss, brushed
-   brass, velvet matte, frosted glass, lacquer) + a two-color palette.
-   Palette is derived from the Ten's artwork (dominant hues of the top 3
-   items, snapped into Laurel-safe LCH ranges: L 25–75, C ≤ 60) so the badge
-   visibly belongs to *this* list.
+   brass, velvet matte, frosted glass, lacquer) + a two-color palette, both
+   snapped into Laurel-safe LCH ranges (L 25–75, C ≤ 60).
+
+   **Amended 2026-11-17 (Claude, measured).** The hue comes from the
+   **topic**; the artwork sets the **tone** within it. This supersedes
+   "derived from the Ten's artwork (dominant hues of the top 3 items)",
+   which was measured against the real catalogue and found to do the
+   opposite of what it promised. The dominant hue of all 3,469 posters:
+
+   | Lab hue | what it is | share |
+   |---|---|---|
+   | 20–120° | amber / olive / yellow | **66%** |
+   | 220–300° | blue / violet | 25% |
+   | everything else | | 9% |
+
+   Two thirds of all artwork sits in one 100° band, because that is the band
+   the industry grades to. A badge whose hue is read off it is not a badge
+   that belongs to *this* list — it is the same badge as everybody else's,
+   and eleven of the first twenty rendered badges came out the same olive.
+   Raising chroma made them more olive; the band itself was the problem.
+
+   Hanging the hue on the topic fixes the distribution (a hash is flat where
+   poster hues are not — measured at 11.3–13.7% across the eight enamels
+   over 4,000 topic names) and is the better product rule besides: **every
+   take on one topic is one colour**, so a topic's badges read as a set.
+   The remix graph is the engine of this app, and a shared enamel makes a
+   topic visible as a place rather than a string. The artwork keeps its job
+   — a list of dark posters is fired deeper than a list of bright ones — so
+   two takes on a topic are the same colour and never the same badge.
+
+   **The enamels.** Eight, and the yellow band is deliberately absent:
+   anything in 62–128° at these lightnesses is olive, and olive beside a
+   gold rim is mud.
+
+   | | hue | | hue |
+   |---|---|---|---|
+   | oxblood | 12° | teal | 205° |
+   | terracotta | 38° | navy | 248° |
+   | forest | 148° | aubergine | 288° |
+   | verdigris | 176° | plum | 330° |
+
+   A palette of eight that recurs is a family you recognise across a shelf;
+   a continuous hue is a gradient soup where every badge is a near-miss of
+   its neighbour. Real enamel badges work this way because the kiln had a
+   finite set too.
 3. **Motif** — the central emblem. A curated library (~120 at launch,
    grows over time) of custom-drawn glyphs tagged with themes: genres
    (a tommy gun for crime, a katana, a rose, a spaceship, a briefcase-glow),
@@ -40,8 +81,29 @@ return as a premium tier (P1, licensing permitting).
 4. **Metals** — trim ring, rivets, laurel sprigs. Rank-signaling: sprigs
    appear only on badges for topics where the user's take was among the
    first three ever made (a quiet founder's mark).
-5. **Inscription** — a ribbon or arc carrying the LLM-written line. ≤ 6
-   words, set in New York per design.md.
+5. **Inscription** — a **ribbon** carrying the LLM-written line. ≤ 6 words,
+   set in New York per design.md.
+
+   **Amended 2026-11-17 (Claude).** "or arc" is struck. An arc is a circle,
+   and five of the eight backplates are not circles: drawn as an arc the
+   inscription ran outside the shape on every one of those and crossed the
+   motif on the rest. Clipping it to the plate only moved the fault — on the
+   ticket stub and the keystone the text then stopped dead at the edge,
+   which reads as a rendering bug rather than as a design.
+
+   The ribbon is a banner across the lower third with swallowtail ends that
+   **overhang** the plate. It is identical on all eight shapes by
+   construction, which an arc can never be. It is drawn in the enamel's own
+   shadow with gold lettering, not gold with dark lettering: the rim and the
+   motif are already gold, and a third gold mass turns the badge into one
+   metal blob.
+
+   The text is sized to the band and then pinned with `textLength` +
+   `lengthAdjust="spacingAndGlyphs"`. The serif differs on every surface a
+   badge renders on (New York on iOS, Georgia in most browsers, DejaVu Serif
+   on the CI runner, half again as wide), and a badge is an identity object
+   that has to look the same in the app, on the share page and in a link
+   preview. Identical beats unconstrained.
 
 A badge is fully described by a small JSON-able struct
 (`BadgeComposition`): shape id, material, palette seeds, motif id,

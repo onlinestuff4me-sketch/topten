@@ -2425,9 +2425,12 @@ function facts(ids) {
 function compose(ids, topic) {
   const F = facts(ids), seed = hash(ids.join(',') + topic.title);
   const pal = F.films.slice(0, 3).map(f => f.c);
+  // The topic rides along because the badge's hue is the TOPIC's, not this
+  // list's — see the enamel note in badge.js. Every take on one topic is one
+  // colour, which is what makes a topic's badges read as a set.
   return { shape: SHAPES[seed % SHAPES.length], motif: MOTIFS[F.genre[0]] || 'laurel', seed,
     primary: pal[0] || '#6E675D', secondary: pal[1] || pal[0] || '#3A311A', metal: '#C9A227',
-    inscription: inscribe(F, seed, topic) };
+    topic: topic.title || '', inscription: inscribe(F, seed, topic) };
 }
 function inscribe(F, seed, topic) {
   const [g, gn] = F.genre, [d, dn] = F.director, [dec, decn] = F.decade;

@@ -1588,6 +1588,30 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   check(await page.locator('.rail .card').count() > 0, 'the screen still builds');
   check(errors.length === beforeStale, 'a stale draft raises no errors: ' + JSON.stringify(errors.slice(beforeStale)));
 
+  // badge.js is a classic script loaded beside four different pages, so a
+  // top-level `const` in it shares one global lexical scope with each of
+  // them. `const MOTIFS` in both files is a SyntaxError that stops the page
+  // parsing, and the symptom shows up four layers away — the app boots to a
+  // blank screen and the first failure is "a new user lands on the intro".
+  // Assert the surface instead of trusting it.
+  console.log('\n\u2500\u2500 The badge renderer keeps itself to itself \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500');
+  // Read the BARE identifiers, not window.X: a top-level `const` in a
+  // classic script creates a global *lexical* binding and never a property
+  // of window, so `window.MOTIFS` is undefined even on the page that
+  // declares it. Checking window.X would have passed whatever badge.js did.
+  const leaked = await page.evaluate(() => ({
+    missing: ['badgeSVG', 'lockedBadge', 'fieldTones', 'badgeHash']
+      .filter(k => typeof window[k] !== 'function'),
+    // MOTIFS belongs to index.html here, and it is the genre map, not the
+    // renderer's glyph kit.
+    ownsMotifs: typeof MOTIFS === 'object' && !!MOTIFS.Crime,
+    kit: ['PLATES', 'ENAMELS', 'MATERIALS', 'SHAPE_KEYS', 'escBadge', 'nearestEnamel']
+      .filter(k => eval('typeof ' + k) !== 'undefined'),
+  }));
+  check(leaked.missing.length === 0, 'the renderer exports what the pages call: ' + JSON.stringify(leaked.missing));
+  check(leaked.ownsMotifs, "index.html's own MOTIFS survives loading the renderer");
+  check(leaked.kit.length === 0, 'and the renderer leaks none of its kit: ' + JSON.stringify(leaked.kit));
+
   check(errors.length === 0, 'no page errors: ' + JSON.stringify(errors));
   console.log('\nALL CHECKS PASSED');
   await browser.close();
