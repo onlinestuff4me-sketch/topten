@@ -953,6 +953,19 @@ Adding books to the prototype made two assumptions visible that had been free
 while every shelf came from TMDB. Both are now rules, and both are the kind of
 thing the fourth domain (games) should cost nothing to add.
 
+**Extended 2026-11-17 (Claude).** A domain also brings its own word for its
+artwork. The dock read *"Tap a poster to start"* in front of a wall of book
+covers — the same class of mistake as calling a TV network a studio, which
+this section already fixed one rule down. `DOMAINS` carries an `art` word
+(`poster` for movies and TV, `cover` for books, the fallback), and
+`artNounFor()` answers it the way `nounFor()` answers "movies / shows /
+books". `drive.js` asserts a books shelf is tapped by its covers.
+
+The pattern to keep: **anything a domain says out loud belongs in `DOMAINS`,
+not in a string at the call site.** Three have been caught this way now — the
+noun, the axis label, the artwork word — and each was invisible until a
+second domain existed.
+
 - **Artwork is asked for, never assembled at the call site.** Every screen
   used to build `image.tmdb.org/t/p/w185` + the item's path, in a dozen
   places. Books are not on TMDB and never will be, so an item may now carry an

@@ -1805,6 +1805,23 @@ const CONTRAST = `(() => {
   check(whys.some(w => /^(More |Also |Often read)/.test(w.trim())),
     `the claims are the book axes — series, author, subject, read-together (${whys.slice(0, 3).join(' | ')})`);
 
+  /* A domain brings its own word for its artwork, too.
+
+     The dock said "Tap a poster to start" in front of a wall of book covers
+     — the same class of mistake as calling a TV network a studio, which this
+     file already fixed. A books shelf has covers. */
+  const bookDockHint = await page.evaluate(() => {
+    const t = { ...window.S.topic };
+    window.S.topic = window.makeTopic({ domain: 'book' });
+    window.S.tray = [];
+    window.renderDock();
+    const h = document.querySelector('.dock-top .hint').innerText.trim();
+    window.S.topic = t;
+    return h;
+  });
+  check(/cover/i.test(bookDockHint) && !/poster/i.test(bookDockHint),
+    `a books shelf is tapped by its covers, not its posters ("${bookDockHint}")`);
+
   while (await page.evaluate(() => window.S.tray.length) < 10) {
     const free = page.locator('.rail .card[data-in="0"]').first();
     if (!(await free.count())) break;

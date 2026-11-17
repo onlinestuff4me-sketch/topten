@@ -816,9 +816,9 @@ const KEY = 'topten.proto.v5';
    have — a book has no cast and is not on Netflix — and its chip is not
    drawn rather than opening onto an empty sheet. */
 const DOMAINS = [
-  { id: 'movie', label: 'Movies', noun: 'movies', one: 'movie', ready: true,
+  { id: 'movie', label: 'Movies', noun: 'movies', one: 'movie', art: 'poster', ready: true,
     topic: { id: 'movie', domain: 'movie', title: 'Movies', prompt: 'Your 10 favorite movies of all time.' } },
-  { id: 'tv', label: 'TV shows', noun: 'shows', one: 'show', ready: true,
+  { id: 'tv', label: 'TV shows', noun: 'shows', one: 'show', art: 'poster', ready: true,
     // build_tv.py stores networks in the same field films use for studios, and
     // a network is not a studio. Same axis, different word.
     axes: { studio: 'Network' },
@@ -845,6 +845,11 @@ const domainOf = t => (t && t.domain) || 'movie';
    throughout, per specs/design.md "Voice and spelling" (2026-08-15, Mischa). */
 const domainMeta = (t = S.topic) => DOMAINS.find(d => d.id === domainOf(t)) || DOMAINS[0];
 const nounFor = (t = S.topic) => domainMeta(t).noun;
+/* A domain brings its own word for its artwork too. "Tap a poster to start"
+   is right in front of a wall of film posters and wrong in front of a wall
+   of book covers - the same class of mistake as calling a TV network a
+   studio, which this file already fixed one line above. */
+const artNounFor = (t = S.topic) => domainMeta(t).art || 'cover';
 const countNoun = (n, t = S.topic) => `${n} ${n === 1 ? domainMeta(t).one : domainMeta(t).noun}`;
 const TOPIC_ALL = DOMAINS[0].topic;
 const AXES = { services: 'Services', genre: 'Genre', director: 'Director',
@@ -1638,7 +1643,7 @@ function renderDock() {
   const onTitle = S.scene === 'title';
   const hint = over ? `${n - 10} too many — make the cut`
     : n === 10 ? 'Arrange them, then you are done'
-    : n === 0 ? (onTitle ? 'Add this one to start' : 'Tap a poster to start')
+    : n === 0 ? (onTitle ? 'Add this one to start' : `Tap a ${artNounFor()} to start`)
     : `${10 - n} to go`;
   const slots = [];
   for (let i = 0; i < Math.max(10, n); i++) {
