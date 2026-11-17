@@ -154,6 +154,31 @@ stopped parsing, and because it is a shared classic script the symptom was
 again the whole app failing to boot. Comments inside template literals get no
 backticks - name the selector in plain words.
 
+## WARNING - Trap: a layout assertion in one font measures one machine
+
+**Found 2026-11-17 (Claude), the hard way: main went red.** A new check said
+the browse screen's count line must not be ellipsised. It passed here and
+failed on the GitHub runner, which has none of this machine's fonts and falls
+back to something wider - so "All 2,500+ movies in our collection" fitted
+locally and was clipped there.
+
+Nothing about the test was wrong except its sample size. Any assertion about
+WIDTH - does it fit, does it wrap, does it ellipsise, does it stay on one
+line - is a statement about the font that rendered it, and CI's font is not
+yours. The fix is not to loosen the assertion; it is to check more fonts.
+`drive.js` now re-measures that row in `system-ui`, Georgia, DejaVu Serif and
+Liberation Sans, and the DejaVu pass reproduces the CI failure locally in
+under a second.
+
+The same applies to the `fitline` page-title checks, which have always had
+this exposure and have been lucky.
+
+**And the process lesson, which cost more than the bug.** The commit was
+pushed to `main` on the strength of three green local suites while CI was
+still running. "All green" meant "green here". Watch the run before calling
+a push good - the whole point of the macOS/Linux split in this repo is that
+one environment does not speak for another.
+
 ## Verification workflow
 
 Three environments; every report names which one it verified in.

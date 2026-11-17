@@ -999,6 +999,52 @@ by `Georgia`-stack with matched metrics (or licensed alternative later), no
 glass (static header), same Share Card renderer for OG images. The page's
 job: look worthy of the list, convert to "Make your Ten."
 
+## 44x44, hit-tested rather than measured (2026-11-17)
+
+AGENTS.md has always set a 44x44pt floor on touch targets. It had never been
+measured. A sweep of every interactive control on every screen found **62
+under it**, including the ten sheet's reorder arrows at 44x32 - which
+design.md names as the *accessible* path for ranking ("Ranking must be fully
+operable without drag"). `drive.js` now runs the sweep on five screens.
+
+**It hit-tests; it does not measure boxes.** A control is allowed to LOOK 32px
+tall and carry a bigger hit area - that is what Apple's own small controls do,
+and a box measurement calls those failures. The question asked is the real
+one: if a thumb lands anywhere in the 44x44 region centred on this control,
+does the tap reach it (`elementFromPoint`, centre plus four edge midpoints).
+
+Three things the test had to learn, each of which made it lie first:
+
+| it did | and that was wrong because |
+|---|---|
+| probe the square's **corners** | they fall outside a pill. A point 21px left and 21px up from a 64x44 chip's centre is 23.5px from the arc centre; the radius is 22. Every pill in the app failed however large. Edge midpoints ask the same question without demanding square corners. |
+| judge **occluded** controls | a control behind an open sheet or under the dock is unreachable by design. 177 "failures", of which 115 were that. |
+| clamp probe points to the **viewport** | a point pushed onto the screen edge lands on whatever is there. A control whose square runs off-screen is not judged. |
+
+**What got fixed, and how:**
+
+- **Reorder arrows**, 44x32 stacked. Fixed by growing the row to 88px, not by
+  expanding hit areas: the up and down targets would then overlap, and a
+  control that silently steals its neighbour's tap is worse than a small one
+  - here it would move the item the wrong way. The poster grew 40x60 to 48x72
+  with the row, which this screen wanted anyway.
+- **Filter chips**, 36px. Made 44px for real. A pseudo-element could not work:
+  `.chips` is `overflow-x: auto`, and overflow in one axis clips the other, so
+  a hit area reaching above the chip was cut off by its own row. Costs 8px of
+  header.
+- **Map / Start over**, 32px tall and 28px wide. Pseudo-element hit areas,
+  expanded in both axes. The gap between them is 12px and the expansion is
+  8px, so neither can reach the other - which the sweep verifies rather than
+  assumes.
+- **Links in prose** on the title page, 25px. The hardest case: expanding an
+  inline link upward steals taps from the line above. Laying the fact row out
+  as a wrapping flex of 44px items puts the LINES 44px apart too, so the
+  targets grow and cannot collide.
+
+The `.tap-y` / `.tap-xy` utilities expand a hit area in one axis or both
+without touching layout. Expand in **one** axis wherever the control sits in a
+wrapping flow.
+
 ## The main screen's vertical budget (2026-11-17)
 
 **The rule: one whole rail clears the dock, at 393x659, at rest.**

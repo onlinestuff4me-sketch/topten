@@ -33,6 +33,77 @@ const badgeInscription = page => page.evaluate(() => {
   return t ? t.textContent.trim() : '';
 });
 
+
+/* ── 44x44, hit-tested ──────────────────────────────────────────────────────
+   AGENTS.md sets a 44x44pt floor on touch targets. It had never been
+   measured, and a sweep found 62 controls under it - including the ten
+   sheet's reorder arrows, which design.md names as the ACCESSIBLE path for
+   ranking ("Ranking must be fully operable without drag").
+
+   This does not measure the element's box. A control may look 32px tall and
+   carry a larger hit area through padding, a label or a pseudo-element -
+   that is what Apple's own small controls do, and a box measurement calls
+   those failures. It asks the real question: if a thumb lands anywhere in
+   the 44x44 region centred on this control, does the tap reach it.
+
+   Three things the test had to learn, each of which made it lie first:
+
+   - EDGE MIDPOINTS, not corners. The corners of a 44x44 square fall outside
+     a 64x44 pill's rounded ends - a point 21px left and 21px up from a
+     filter chip's centre is 23.5px from the arc centre and the radius is 22
+     - so a corner test failed every pill in the app however large.
+   - SKIP WHAT IS OCCLUDED. A control behind an open sheet or under the dock
+     is unreachable by design; counting those buried the real findings under
+     a hundred false ones.
+   - SKIP WHAT RUNS OFF THE SCREEN. A probe point clamped to the viewport
+     edge lands on whatever is there and reports a miss nobody caused.
+
+   It catches the opposite fault for free: if a fix gives one control an
+   expanded area that covers a neighbour's edge, the neighbour fails. A
+   target that silently steals its neighbour's taps is worse than a small
+   one, which is why the stacked reorder arrows were fixed by growing the
+   row rather than by overlapping hit areas. */
+const TAP_SWEEP = `(() => {
+  const SEL = 'button, a[href], input, select, textarea, [role="button"], [tabindex]:not([tabindex="-1"])';
+  const MIN = 44, out = [];
+  let skipped = 0;
+  for (const el of document.querySelectorAll(SEL)) {
+    const r = el.getBoundingClientRect();
+    if (r.width < 1 || r.height < 1) continue;
+    const cs = getComputedStyle(el);
+    if (cs.visibility === 'hidden' || cs.display === 'none' || el.disabled) continue;
+    if (r.bottom < 0 || r.top > innerHeight) continue;
+    const cx = r.left + r.width / 2, cy = r.top + r.height / 2, h = MIN / 2 - 1;
+    if (cy - h < 0 || cy + h > innerHeight || cx - h < 0 || cx + h > innerWidth) { skipped++; continue; }
+    const at = document.elementFromPoint(cx, cy);
+    if (at && !(at === el || el.contains(at))) {
+      const over = at.closest('.dock, .sheet, .vault, .scrim, .coachscrim, .sheet-in');
+      if (over && !over.contains(el)) { skipped++; continue; }
+    }
+    let miss = 0;
+    for (const [x, y] of [[cx, cy], [cx, cy - h], [cx, cy + h], [cx - h, cy], [cx + h, cy]]) {
+      const hit = document.elementFromPoint(x, y);
+      if (!hit || !(hit === el || el.contains(hit))) miss++;
+    }
+    if (!miss) continue;
+    out.push({
+      sel: el.tagName.toLowerCase() + (typeof el.className === 'string' && el.className
+        ? '.' + el.className.split(/\s+/).filter(Boolean)[0] : ''),
+      w: Math.round(r.width), h: Math.round(r.height), miss,
+      label: (el.getAttribute('aria-label') || el.innerText || el.type || '').replace(/\s+/g, ' ').trim().slice(0, 28),
+    });
+  }
+  return { bad: out, skipped };
+})()`;
+
+async function sweepTaps(page, where, check) {
+  const { bad, skipped } = await page.evaluate(TAP_SWEEP);
+  const names = bad.map(b => `${b.sel} ${b.w}x${b.h} "${b.label}"`).slice(0, 4).join('; ');
+  check(bad.length === 0,
+    `every target on ${where} takes a 44x44 tap (${skipped} occluded or off-screen, not judged)`
+    + (bad.length ? ` — ${bad.length} do not: ${names}` : ''));
+}
+
 (async () => {
   const browser = await chromium.launch({ executablePath: CHROME });
   /* Browser viewports, not device sizes.
@@ -366,6 +437,27 @@ const badgeInscription = page => page.evaluate(() => {
   check(sum && sum.spill <= 1, 'the summary row does not overflow: ' + JSON.stringify(sum));
   check(sum && sum.countW >= 120 && !sum.clipped,
     'and the count it carries is still readable beside it: ' + JSON.stringify(sum));
+
+  /* The same row, in fonts this machine does not have.
+
+     This assertion went red on CI while passing here, because the runner
+     has none of the fonts this box does and its fallback is wider - so
+     "All 2,500+ movies in our collection" fitted locally and ellipsised
+     there. A layout assertion measured in one font is a measurement of this
+     machine, not of the design. Checking a few concrete fallbacks is the
+     cheap version of checking all of them. */
+  for (const font of ['system-ui', 'Georgia, serif', '"DejaVu Serif", serif', '"Liberation Sans", sans-serif']) {
+    await page.evaluate(f => { document.body.style.fontFamily = f; }, font);
+    await page.waitForTimeout(80);
+    const f = await page.evaluate(() => {
+      const c = document.querySelector('.showing .summary .count');
+      const row = document.querySelector('.showing .summary');
+      return { clipped: c.scrollWidth - c.clientWidth > 1,
+               spill: Math.round(row.scrollWidth - row.clientWidth) };
+    });
+    check(!f.clipped && f.spill <= 1, `and holds in ${font} (${JSON.stringify(f)})`);
+  }
+  await page.evaluate(() => { document.body.style.fontFamily = ''; });
   await page.setViewportSize(PHONE);
   await page.evaluate(() => { window.S.topic = window.makeTopic({ domain: 'movie' }); window.renderBuild(); });
   await page.waitForTimeout(200);
@@ -904,7 +996,7 @@ const badgeInscription = page => page.evaluate(() => {
   // A round figure and a "+" (Mischa, 2026-08-15): an exact count reads as the
   // end of the shelf, a floor reads as a collection that is still growing. The
   // figure must be a true floor — never larger than what is actually there.
-  const shelfClaim = bodyText.match(/All ([\d,]+)\+ movies in our collection/);
+  const shelfClaim = bodyText.match(/All ([\d,]+)\+ movies\b/);
   check(!!shelfClaim, `it states the size of the collection instead ("${(bodyText.match(/All [^\n]*collection/) || ['none'])[0]}")`);
   const claimed = shelfClaim ? Number(shelfClaim[1].replace(/,/g, '')) : Infinity;
   const realShelf = await page.evaluate(() => window.CAT.filter(f => (f.dm || 'movie') === 'movie').length);
@@ -1357,7 +1449,7 @@ const badgeInscription = page => page.evaluate(() => {
   check(await page.locator('.rail .card').count() > 0, 'and the TV collection is populated');
   // The domain noun follows the domain: a TV Ten must never say "movies".
   const tvText = await page.locator('body').innerText();
-  check(/All [\d,]+\+ shows in our collection/.test(tvText),
+  check(/All [\d,]+\+ shows\b/.test(tvText),
     'a TV Ten counts shows, not movies, in the Now showing bar');
   check(!/\bmovies?\b/i.test(await page.locator('#q').getAttribute('placeholder')),
     'and searches "shows", not "movies"');
@@ -1426,7 +1518,7 @@ const badgeInscription = page => page.evaluate(() => {
   const bodyBooks = await page.locator('body').innerText();
   const bookCount = await page.evaluate(() => window.CAT.filter(f => f.dm === 'book').length);
   const wholeCatalog = await page.evaluate(() => window.CAT.length);
-  const bookClaim = bodyBooks.match(/All ([\d,]+)\+ books in our collection/);
+  const bookClaim = bodyBooks.match(/All ([\d,]+)\+ books\b/);
   const bookN = bookClaim ? Number(bookClaim[1].replace(/,/g, '')) : Infinity;
   check(bookN <= bookCount && bookN >= bookCount * 0.9,
     `the Now showing bar counts this shelf's books (${bookN}+ of ${bookCount}), not the whole ` +
@@ -1793,6 +1885,30 @@ const badgeInscription = page => page.evaluate(() => {
   check(leaked.missing.length === 0, 'the renderer exports what the pages call: ' + JSON.stringify(leaked.missing));
   check(leaked.ownsMotifs, "index.html's own MOTIFS survives loading the renderer");
   check(leaked.kit.length === 0, 'and the renderer leaks none of its kit: ' + JSON.stringify(leaked.kit));
+
+  console.log('\n\u2500\u2500 Touch targets, hit-tested at 44x44 \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500');
+  await page.setViewportSize(PHONE);
+  const TAP_SCREENS = [
+    ['the splash', () => { localStorage.clear(); S.scene = 'intro'; S.seen = false; S.introSeen = 0; save(); render(); }],
+    ['the browse screen', () => { S.scene = 'build'; S.seen = true; S.tipDone = true; S.tray = []; save(); render(); }],
+    ['a title page', () => { S.title = 680; S.back = 'build'; S.scene = 'title'; save(); render(); }],
+    ['discovery', () => { S.done = []; S.scene = 'discover'; save(); render(); }],
+  ];
+  for (const [where, fn] of TAP_SCREENS) {
+    await page.evaluate(fn);
+    await page.waitForTimeout(350);
+    await page.evaluate(() => { const c = document.querySelector('.coachscrim'); if (c) c.click(); });
+    await page.waitForTimeout(150);
+    await sweepTaps(page, where, check);
+  }
+  // The ten sheet carries the reorder arrows, which are the accessible
+  // ranking path and were the worst offenders at 44x32.
+  await page.evaluate(ids => { S.scene = 'build'; S.tray = ids.slice(); save(); render(); },
+    [680, 155, 13, 550, 27205, 278, 238, 424, 129, 603]);
+  await page.waitForTimeout(300);
+  const sheetOpener = page.locator('[data-act="openten"]');
+  if (await sheetOpener.count()) { await sheetOpener.first().click(); await page.waitForTimeout(400); }
+  await sweepTaps(page, 'the Ten sheet', check);
 
   check(errors.length === 0, 'no page errors: ' + JSON.stringify(errors));
   console.log('\nALL CHECKS PASSED');

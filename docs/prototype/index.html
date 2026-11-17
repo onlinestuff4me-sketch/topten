@@ -62,7 +62,7 @@ section { margin-top: var(--s8); }
 /* nowrap because the list name beside it is now a full criteria sentence
    ("Top 10 Animated Movies of the 2000s") and wraps to two lines — which was
    folding "Start over" into "Start / over" beside it. */
-.topbar .link { color: var(--accent); font-size: 0.8125rem; font-weight: 600; min-height: 44px; display: inline-flex; align-items: center; padding-left: var(--s3); white-space: nowrap; flex: 0 0 auto; }
+.topbar .link { color: var(--accent); font-size: 0.8125rem; font-weight: 600; min-height: 44px; min-width: 44px; justify-content: flex-end; display: inline-flex; align-items: center; padding-left: var(--s3); white-space: nowrap; flex: 0 0 auto; }
 
 /* ── Search ─────────────────────────────────────────────────────────────── */
 .search { display: flex; align-items: center; gap: var(--s2); background: var(--bg-recessed); border: 1px solid var(--border-subtle); border-radius: var(--r-card); padding: 0 var(--s3); margin-top: var(--s6); }
@@ -74,9 +74,34 @@ section { margin-top: var(--s8); }
 /* ── Filter chips ───────────────────────────────────────────────────────── */
 .chips { display: flex; gap: var(--s2); overflow-x: auto; margin: var(--s3) calc(var(--margin) * -1) 0; padding: 0 var(--margin) var(--s1); scrollbar-width: none; }
 .chips::-webkit-scrollbar { display: none; }
-.chip { flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; min-height: 36px; padding: 0 var(--s3); border-radius: 999px; border: 1px solid var(--border-subtle); color: var(--text-secondary); font-size: 0.8125rem; font-weight: 600; background: var(--bg-surface); }
+/* Hit area, not visual size.
+
+   AGENTS.md sets a 44x44pt floor and it had never been measured: a sweep of
+   every interactive element on every screen found 62 controls under it. A
+   control is allowed to LOOK 32px tall - a row of 44px-tall filter chips
+   would eat the header space the browse screen just fought to reclaim - but
+   it has to be 44x44 to the thumb. This pseudo-element expands the target
+   without touching layout, which is what Apple's own small controls do.
+
+   It expands in one axis at a time by choice. Expanding both on controls
+   that sit in a wrapping flow makes neighbouring rows overlap, and a target
+   that silently steals its neighbour's taps is worse than one that is small
+   - which is exactly why the ten-sheet's stacked up/down arrows are NOT
+   fixed this way: an overlap there moves the item the wrong direction. */
+.tap-y { position: relative; }
+.tap-y::after { content: ''; position: absolute; left: 0; right: 0; top: 50%;
+  transform: translateY(-50%); height: 44px; }
+.tap-xy { position: relative; }
+.tap-xy::after { content: ''; position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%); height: 44px; width: max(100%, 44px); }
+
+.chip { position: relative; flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 var(--s3); border-radius: 999px; border: 1px solid var(--border-subtle); color: var(--text-secondary); font-size: 0.8125rem; font-weight: 600; background: var(--bg-surface); }
 .chip[aria-pressed="true"], .chip.on { background: var(--accent-muted); border-color: var(--accent); color: var(--accent); }
 .chip .x { font-size: 1rem; line-height: 1; opacity: .7; }
+/* No pseudo-element hit area here, deliberately: `.chips` is
+   `overflow-x: auto`, and overflow in one axis clips the other, so an area
+   reaching above a 36px chip was cut off by its own row. The chips are 44px
+   for real, which costs 8px of header and is worth it. */
 
 /* ── The title page ─────────────────────────────────────────────────────────
    Artwork large enough to be the reason you are here, facts beside it, and
@@ -90,14 +115,23 @@ section { margin-top: var(--s8); }
 .title-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .title-facts { min-width: 0; }
 .title-facts .year { color: var(--text-secondary); font-size: 0.9375rem; font-weight: 600; }
-.title-facts .fact { margin-top: var(--s3); font-size: 0.875rem; line-height: 1.5; }
+/* A wrapping flex row so each link can be a real 44px target.
+
+   These are links in prose, and prose is where the 44px floor is hardest:
+   expanding a 25px inline link's hit area upward makes it steal taps from
+   the line above, which is worse than a small target because the wrong
+   thing happens silently. Laying the row out as flex items 44px tall puts
+   the LINES 44px apart as well, so the targets grow and cannot collide. */
+.title-facts .fact { margin-top: var(--s3); font-size: 0.875rem; line-height: 1.5;
+  display: flex; flex-wrap: wrap; align-items: center; }
+.title-facts .fact > .k { flex: 0 0 100%; }
 .title-facts .k { display: block; font-size: 0.6875rem; font-weight: 700; letter-spacing: .04em;
   text-transform: uppercase; color: var(--text-secondary); margin-bottom: 2px; }
 /* A fact that narrows is a link, and looks like one. Underlined rather than
    chipped: four chips in a column is a menu, and this is prose. */
 .title-facts .linkish { color: var(--accent); font-weight: 600; text-align: left;
   text-decoration: underline; text-underline-offset: 3px; text-decoration-thickness: 1px;
-  min-height: 0; padding: 2px 0; }
+  min-height: 44px; min-width: 44px; display: inline-flex; align-items: center; padding: 0; }
 .title-facts .sep { color: var(--text-secondary); margin: 0 6px; }
 /* Each name carries its own separator so a break never leaves a dot leading a
    line — punctuation must not decide where the text wraps. */
@@ -273,7 +307,10 @@ section { margin-top: var(--s8); }
 .deadend p { margin: 0 0 var(--s2); }
 .escapes { display: flex; flex-wrap: wrap; gap: 6px; }
 .escape { min-height: 40px; padding: 0 var(--s3); border-radius: 999px; border: 1px solid var(--accent); color: var(--accent); font-weight: 600; font-size: 0.8125rem; }
-.showing .mapbtn { margin-left: auto; color: var(--accent); font-weight: 700; font-size: 0.8125rem; min-height: 32px; display: inline-flex; align-items: center; gap: 4px; }
+.showing .mapbtn { position: relative; margin-left: auto; color: var(--accent); font-weight: 700; font-size: 0.8125rem; min-height: 32px; display: inline-flex; align-items: center; gap: 4px; }
+.showing .mapbtn + .mapbtn { margin-left: 0; }
+.showing .mapbtn::after { content: ''; position: absolute; top: 50%; left: 50%;
+  transform: translate(-50%, -50%); height: 44px; width: max(100%, 44px); }
 
 /* The branch trail — where following one film led. Each step is walkable,
    because a path you can only read is a path you are stuck at the end of. */
@@ -318,19 +355,19 @@ section { margin-top: var(--s8); }
 .sheet-in { overflow-y: auto; padding: var(--s4) var(--margin) calc(env(safe-area-inset-bottom) + var(--s4)); max-width: 560px; margin-inline: auto; width: 100%; }
 .sheet-head { display: flex; align-items: center; justify-content: space-between; gap: var(--s3); margin-bottom: var(--s4); }
 .sheet-head h2 { font-family: var(--serif); font-weight: 600; font-size: 1.25rem; margin: 0; }
-.sheet-head .done { color: var(--accent); font-weight: 600; min-height: 44px; display: inline-flex; align-items: center; }
+.sheet-head .done { color: var(--accent); font-weight: 600; min-height: 44px; min-width: 44px; justify-content: flex-end; display: inline-flex; align-items: center; }
 
 /* Reorderable Ten */
-.tenrow { display: flex; align-items: center; gap: var(--s3); padding: var(--s2) 0; border-bottom: 1px solid var(--border-subtle); }
+.tenrow { display: flex; align-items: center; gap: var(--s3); min-height: 88px; padding: var(--s2) 0; border-bottom: 1px solid var(--border-subtle); }
 .tenrow .num { font-family: var(--serif); font-weight: 700; font-size: 1.375rem; min-width: 1.4em; text-align: right; color: var(--text-primary); }
 .tenrow.one .num { color: var(--accent-bright); font-size: 1.75rem; }
-.tenrow .thumb { flex: 0 0 40px; width: 40px; height: 60px; border-radius: 4px; overflow: hidden; background: var(--bg-recessed); }
+.tenrow .thumb { flex: 0 0 48px; width: 48px; height: 72px; border-radius: 4px; overflow: hidden; background: var(--bg-recessed); }
 .tenrow .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .tenrow .meta { flex: 1; min-width: 0; }
 .tenrow .meta .t { display: block; font-weight: 600; line-height: 1.25; }
 .tenrow .meta .s { display: block; color: var(--text-secondary); font-size: 0.8125rem; margin-top: 2px; }
 .tenrow .mv { display: flex; flex-direction: column; }
-.tenrow .mv button { width: 44px; height: 32px; display: grid; place-items: center; color: var(--accent); }
+.tenrow .mv button { width: 44px; height: 44px; display: grid; place-items: center; color: var(--accent); }
 .tenrow .mv button[disabled] { color: var(--text-disabled); }
 .tenrow .rm { width: 44px; height: 44px; display: grid; place-items: center; color: var(--text-disabled); font-size: 1.25rem; }
 
@@ -1346,7 +1383,15 @@ function showingBar(q, results) {
         // catalog holds movies, shows and books; a movie Ten can reach the
         // movies. Counting all three and calling the total "movies" was the
         // second lie in the same sentence.
-        : `<span class="count">All ${roughly(shelfSize())} ${nounFor()} in our collection</span>`}
+        // "in our collection" was dropped on 2026-11-17: the row carries two
+        // actions now (Map, Start over), and at 393px the sentence was being
+        // ellipsised on any machine whose fallback font is wider than the
+        // one on this one - which CI's is, so the suite went red on main
+        // while passing locally. The claim is unchanged; the round-3
+        // correction was about not saying "Everything" about a 600-title
+        // catalogue, and "All 2,500+ movies" still says exactly what is
+        // there.
+        : `<span class="count">All ${roughly(shelfSize())} ${nounFor()}</span>`}
       <button class="mapbtn" data-act="openmap">Map</button>
       <button class="mapbtn" data-act="restart">Start over</button>
     </div>
