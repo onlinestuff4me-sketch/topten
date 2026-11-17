@@ -1022,6 +1022,50 @@ names take two lines at 353px where they took three at 203 — and the label
 scrolling. Falsified by sinking it 260px and watching the check name the
 overlap.
 
+## Dynamic Type, XS to accessibility sizes (2026-11-17)
+
+AGENTS.md: "Dynamic Type from XS to accessibility sizes without truncation or
+overlap." Unmeasured until now, and **failing on four of six screens**. On
+iOS this is the system text-size setting; in a browser it is the root font
+size, which every `rem` in the stylesheet follows. `drive.js` now sweeps five
+screens at **12, 16, 20, 24, 28 and 32px** root.
+
+What was broken, worst first:
+
+- **The splash headline.** `.intro h1` had `white-space: nowrap` and a
+  `clamp()` whose floor is `2rem`. A floor that grows with the reader's text
+  size and a refusal to wrap cannot both hold: at a 24px root the headline
+  was 48px, "What's your Top 10?" ran 440px wide on a 393px screen, and **the
+  first screen anybody sees scrolled sideways**. Wrapping costs nothing at
+  the default (the `10vw` term resolves to 39px and the line still fits).
+- **The finished screen's last row** was an inline `display:flex` with no
+  wrap; its two buttons ran 57px off the side at 24px and 176px at 32px.
+  Two buttons that do not fit side by side stack, like everywhere else.
+- **The dock's top row**, same fault, 19px.
+- **The add glyph** is an ICON in a fixed 44px target on a poster corner.
+  Sized in `rem` it outgrew its own 28px disc. Icons that live inside a
+  fixed-size control are sized in px; the control is the thing that must be
+  44pt, not the glyph inside it.
+- **Names in the title page's fact column.** This one was self-inflicted:
+  giving the links 44px targets made them `inline-flex`, and **a flex
+  container puts its text in one anonymous item that never breaks**, so
+  "Quentin Tarantino" stayed 242px wide in a 203px column. `display: block`
+  with vertical padding reaches 44px *and* wraps.
+
+**The separators between those names are gone.** Each name used to carry its
+own dot inside a `white-space: nowrap` wrapper, so a line could never start
+with punctuation - a good rule that had the side effect of stopping the NAME
+wrapping too. The dots have no job left now that the names are spaced flex
+items with underlines; the row breaks wherever it needs to.
+
+**Measure the text, not the box.** The sweep uses a `Range` over each
+element's own text nodes. `scrollWidth` counts absolutely-positioned
+descendants, and several controls carry a `::after` deliberately wider than
+the button (the 44px hit areas), which reported "Map clipped by 6px" at every
+size including the default. Three things are explicitly not failures: an
+ellipsis that was asked for, a `-webkit-line-clamp` on a card title, and
+anything inside a horizontal scroller - a rail is meant to run off the edge.
+
 ## 44x44, hit-tested rather than measured (2026-11-17)
 
 AGENTS.md has always set a 44x44pt floor on touch targets. It had never been

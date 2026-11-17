@@ -80,11 +80,16 @@ const TAP_SWEEP = `(() => {
       const over = at.closest('.dock, .sheet, .vault, .scrim, .coachscrim, .sheet-in');
       if (over && !over.contains(el)) { skipped++; continue; }
     }
-    let miss = 0;
+    let miss = 0, covered = false;
     for (const [x, y] of [[cx, cy], [cx, cy - h], [cx, cy + h], [cx - h, cy], [cx + h, cy]]) {
       const hit = document.elementFromPoint(x, y);
-      if (!hit || !(hit === el || el.contains(hit))) miss++;
+      if (!hit || !(hit === el || el.contains(hit))) {
+        const ov = hit && hit.closest('.dock, .sheet, .vault, .scrim, .coachscrim, .sheet-in');
+        if (ov && !ov.contains(el)) { covered = true; break; }
+        miss++;
+      }
     }
+    if (covered) { skipped++; continue; }
     if (!miss) continue;
     out.push({
       sel: el.tagName.toLowerCase() + (typeof el.className === 'string' && el.className
@@ -103,6 +108,87 @@ async function sweepTaps(page, where, check) {
     `every target on ${where} takes a 44x44 tap (${skipped} occluded or off-screen, not judged)`
     + (bad.length ? ` — ${bad.length} do not: ${names}` : ''));
 }
+
+
+/* ── Dynamic Type ───────────────────────────────────────────────────────────
+   AGENTS.md: "Dynamic Type from XS to accessibility sizes without truncation
+   or overlap." On iOS that is the system text-size setting; in a browser the
+   equivalent is the root font size, which every `rem` here follows. 16px is
+   the default and iOS's accessibility sizes run to roughly double.
+
+   Unmeasured until 2026-11-17, and it was failing on four screens. The worst
+   was the splash: `.intro h1` had `white-space: nowrap` and a clamp whose
+   floor is `2rem`, so at a 24px root the headline was 48px, ran 440px wide
+   on a 393px screen, and the FIRST screen anybody sees scrolled sideways.
+
+   What counts as a failure, and what deliberately does not:
+     - the PAGE spilling sideways counts; a rail scrolling does not, that is
+       what a rail is for
+     - text clipped by its own box counts, unless it asked for an ellipsis
+       or a -webkit-line-clamp - those are choices, not failures
+     - a control pushed outside the viewport counts, unless it is inside a
+       horizontal scroller
+
+   Text is measured with a Range over the element's own text nodes rather
+   than by scrollWidth: several controls carry a ::after that is wider than
+   the button on purpose (the 44px hit areas), and scrollWidth counts it,
+   which reported "Map clipped by 6px" at every size including the default. */
+const DT_CHECK = `(() => {
+  const doc = document.documentElement;
+  const pageSpill = Math.round(doc.scrollWidth - doc.clientWidth);
+  const clipped = [], offscreen = [];
+  const inScroller = el => {
+    for (let n = el.parentElement; n; n = n.parentElement) {
+      const o = getComputedStyle(n).overflowX;
+      if (o === 'auto' || o === 'scroll') return true;
+    }
+    return false;
+  };
+  for (const el of document.querySelectorAll('h1,h2,h3,p,span,button,label,div')) {
+    const r = el.getBoundingClientRect();
+    if (r.width < 1 || r.height < 1 || r.bottom < 0 || r.top > innerHeight * 3) continue;
+    if (![...el.childNodes].some(n => n.nodeType === 3 && n.textContent.trim())) continue;
+    const cs = getComputedStyle(el);
+    if (cs.textOverflow === 'ellipsis' || cs.webkitLineClamp !== 'none') continue;
+    if (/auto|scroll/.test(cs.overflowX + cs.overflowY)) continue;
+    const range = document.createRange();
+    let hi = null, lx = null, rx = null;
+    for (const n of el.childNodes) {
+      if (n.nodeType !== 3 || !n.textContent.trim()) continue;
+      range.selectNodeContents(n);
+      const b = range.getBoundingClientRect();
+      if (b.width < 1 && b.height < 1) continue;
+      hi = hi === null ? b.bottom : Math.max(hi, b.bottom);
+      lx = lx === null ? b.left : Math.min(lx, b.left);
+      rx = rx === null ? b.right : Math.max(rx, b.right);
+    }
+    if (hi === null) continue;
+    const box = el.getBoundingClientRect();
+    const pad = k => parseFloat(cs['padding' + k]) || 0;
+    const overX = Math.round(Math.max(Math.max(0, (box.left + pad('Left')) - lx),
+                                      Math.max(0, rx - (box.right - pad('Right')))));
+    const overY = Math.round(Math.max(0, hi - (box.bottom - pad('Bottom'))));
+    // A serif glyph's ink overhangs its box by a pixel or two; that is a
+    // font, not a truncation.
+    if (Math.max(overX, overY) > 3) clipped.push({
+      sel: el.tagName.toLowerCase() + (typeof el.className === 'string' && el.className
+        ? '.' + el.className.split(/\s+/).filter(Boolean)[0] : ''),
+      over: Math.max(overX, overY),
+      text: el.textContent.replace(/\s+/g, ' ').trim().slice(0, 26),
+    });
+  }
+  for (const el of document.querySelectorAll('button, a[href], input')) {
+    const r = el.getBoundingClientRect();
+    if (r.width < 1 || r.height < 1 || inScroller(el)) continue;
+    if (r.left < -1 || r.right > innerWidth + 1) offscreen.push({
+      sel: el.tagName.toLowerCase() + (typeof el.className === 'string' && el.className
+        ? '.' + el.className.split(/\s+/).filter(Boolean)[0] : ''),
+      text: (el.getAttribute('aria-label') || el.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 22),
+    });
+  }
+  const uniq = a => [...new Map(a.map(o => [o.sel + o.text, o])).values()];
+  return { pageSpill, clipped: uniq(clipped).slice(0, 4), offscreen: uniq(offscreen).slice(0, 4) };
+})()`;
 
 (async () => {
   const browser = await chromium.launch({ executablePath: CHROME });
@@ -1932,6 +2018,41 @@ async function sweepTaps(page, where, check) {
   const sheetOpener = page.locator('[data-act="openten"]');
   if (await sheetOpener.count()) { await sheetOpener.first().click(); await page.waitForTimeout(400); }
   await sweepTaps(page, 'the Ten sheet', check);
+
+  console.log('\n\u2500\u2500 Dynamic Type, XS to accessibility sizes \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500');
+  // The block above leaves the Ten sheet open, and a sheet outlives a
+  // re-render of the screen behind it — the first run of this sweep reported
+  // the finished list's rows as faults on the splash.
+  await page.evaluate(() => { document.querySelectorAll('.sheet, .scrim, .vault').forEach(n => n.remove()); });
+  await page.waitForTimeout(150);
+  const DT_SIZES = [12, 16, 20, 24, 28, 32];
+  const DT_SCREENS = [
+    ['the splash', () => { localStorage.clear(); S.scene = 'intro'; S.seen = false; S.introSeen = 0; save(); render(); }],
+    ['the browse screen', () => { S.scene = 'build'; S.seen = true; S.tipDone = true; S.tray = []; save(); render(); }],
+    ['a title page', () => { S.title = 680; S.back = 'build'; S.scene = 'title'; save(); render(); }],
+    ['discovery', () => { S.done = []; S.scene = 'discover'; save(); render(); }],
+    ['a finished Ten', () => { S.ranked = [680, 155, 13, 550, 27205, 278, 238, 424, 129, 603];
+                               S.scene = 'done'; save(); render(); }],
+  ];
+  for (const [where, fn] of DT_SCREENS) {
+    const bad = [];
+    for (const px of DT_SIZES) {
+      await page.evaluate(v => { document.documentElement.style.fontSize = v + 'px'; }, px);
+      await page.evaluate(fn);
+      await page.waitForTimeout(220);
+      await page.evaluate(() => { const c = document.querySelector('.coachscrim'); if (c) c.click(); });
+      await page.waitForTimeout(100);
+      const r = await page.evaluate(DT_CHECK);
+      if (r.pageSpill > 1) bad.push(`${px}px: page spills ${r.pageSpill}px sideways`);
+      for (const c of r.clipped) bad.push(`${px}px: ${c.sel} clipped by ${c.over}px ("${c.text}")`);
+      for (const o of r.offscreen) bad.push(`${px}px: ${o.sel} off-screen ("${o.text}")`);
+    }
+    check(bad.length === 0,
+      `${where} holds from ${DT_SIZES[0]}px to ${DT_SIZES[DT_SIZES.length - 1]}px root text`
+      + (bad.length ? ` — ${bad.length} problems: ${bad.slice(0, 3).join('; ')}` : ''));
+  }
+  await page.evaluate(() => { document.documentElement.style.fontSize = ''; });
+  await page.waitForTimeout(150);
 
   check(errors.length === 0, 'no page errors: ' + JSON.stringify(errors));
   console.log('\nALL CHECKS PASSED');
