@@ -481,7 +481,7 @@ footer.notes .build { color: var(--text-disabled); margin-top: var(--s2); }
    title slides under the badge at full size. Nothing reports an error. */
 .hero-ten figcaption { display: grid; gap: 2px; padding-right: 70px; min-width: 0; }
 .hero-ten figcaption > * { min-width: 0; }
-.hero-ten .by { margin: 0; font-size: 0.8125rem; font-weight: 700; letter-spacing: .04em;
+.hero-ten .by { margin: 0; font-size: 0.75rem; font-weight: 700; letter-spacing: .05em;
   text-transform: uppercase; color: var(--accent); }
 .hero-ten .what { margin: 0; font-family: var(--serif); font-weight: 600;
   font-size: clamp(1.0625rem, 5vw, 1.5rem); line-height: 1.15; }
@@ -498,6 +498,12 @@ footer.notes .build { color: var(--text-disabled); margin-top: var(--s2); }
   text-shadow: 0 1px 3px rgba(0,0,0,.9), 0 0 10px rgba(0,0,0,.6); }
 .hero-badge { position: absolute; right: var(--s4); top: var(--s4); width: 62px; height: 62px; }
 .hero-badge svg { width: 100%; height: 100%; display: block; }
+/* The locked state is a promise, not an error — it reads as something waiting
+   to be opened rather than something withheld, so it keeps the badge's own
+   gold rather than going grey. */
+.hero-badge .lockedbadge .plate { fill: var(--accent-muted); stroke: var(--accent); stroke-width: 1.5; }
+.hero-badge .lockedbadge .shackle { fill: none; stroke: var(--accent); stroke-width: 3; stroke-linecap: round; }
+.hero-badge .lockedbadge .body { fill: var(--accent); }
 
 /* Four posters, a name and a list title — the smallest unit that still reads
    as somebody's taste. Scrolls sideways, so the number of lists on screen is
@@ -531,8 +537,21 @@ footer.notes .build { color: var(--text-disabled); margin-top: var(--s2); }
    a browser — Playwright's own iPhone 15 Pro profile is 393x659, because
    Safari's chrome takes about 190px off the 852 on the spec sheet. That is
    the screen this prototype is read on, so it is the default, and the
-   generous version is the enhancement. */
-@media (min-height: 741px) {
+   generous version is the enhancement.
+
+   800, not 741: a Pro Max in a browser gives 745, and the roomier padding
+   tipped it 15px over its own viewport. The breakpoint has to sit above
+   every height a phone actually hands us, not just above the smallest. */
+/* Under 600px of viewport — an SE in a browser gives 553 — the strip goes.
+   The hero is the thesis and the CTA is the point; a row of other lists is
+   the thing that can be read after tapping. A splash whose button is below
+   the fold has failed at the only job it has. */
+@media (max-height: 600px) {
+  .intro-strip { display: none; }
+  .intro { --frame: 12px; }
+}
+
+@media (min-height: 800px) {
   .intro { --frame: 28px; gap: var(--s4); }
   .intro-strip { padding-top: var(--s4); padding-bottom: var(--s1); gap: var(--s3); }
   .mini-ten { flex: 0 0 104px; }
@@ -1969,13 +1988,66 @@ function introTiles(n, offset) {
 
    The Ten rotates per visit so the app is never the same twice, which is also
    the honest preview: this is a place with other people's taste in it. */
+/* What a stranger is shown on screen one (Mischa, 2026-11-17, round two).
+   
+   The first version put a fictional person's Ten here — "Sam's Top 10 Crime
+   Movies of the 90s" — and Mischa asked the three questions that killed it:
+   who is Sam, why do I care, and why would that make me make my own?
+   
+   No good answer exists. The Letterboxd Top 4 works because it sits on the
+   profile of somebody you already follow; identity-density only pays off once
+   identity is attached. On a cold first screen a stranger's byline is not an
+   asset, it is noise with a possessive apostrophe.
+   
+   So the hero is not a person. It is the CROWD'S VERDICT on one topic, which
+   is the one thing a stranger has a reaction to — and the reaction we want is
+   disagreement. Nobody argues with a stranger's taste. Everybody argues with
+   a ranking that claims to be definitive.
+   
+   The badge is LOCKED, which is the mechanic the product already runs on
+   (PRD Req 12): you cannot see what somebody earned on a topic until you have
+   your own take on it. On the splash it turns the artifact into a door.
+   
+   The strip underneath is other TOPICS, not other people, for the same
+   reason: a cold visitor is choosing an argument to join, not a person to
+   follow. The people arrive later, when they mean something. */
+
+/* The voter count is a FIXTURE and is marked as one here so nobody reads it
+   as data. The prototype has seven invented people, two of whom share this
+   topic — "according to 2 people" would have Mischa judging the fixture
+   rather than the design. Derived from the topic so it is stable between
+   renders rather than flickering on every repaint. */
+const consensusVoters = topic =>
+  1200 + (Math.abs(hash(String(topic.id || topic.title))) % 4300);
+
+/* The crowd's ranking of a topic. In the product this is `consensus_ten` —
+   Borda over everybody's published Ten, position 1 scoring ten. Here it is
+   the catalog's own reach, which is the same shape of claim from a real
+   crowd: how many people have rated each film. */
+function consensusTen(topic) {
+  const shelf = CAT.filter(f => inTopic(f, topic));
+  const ranked = [...shelf].sort((a, b) => (b.vc || 0) - (a.vc || 0)).slice(0, 10);
+  return ranked.length === 10 ? { topic, ranked, voters: consensusVoters(topic) } : null;
+}
+
+/* The topics worth opening on: ones the catalog can actually fill, named the
+   way every list in the product is named. */
+const INTRO_TOPICS = [
+  { genre: 'Crime', decade: 1990 },
+  { genre: 'Science Fiction' },
+  { genre: 'Animation', decade: 2000 },
+  { director: 'Alfred Hitchcock' },
+  { genre: 'Horror', decade: 1980 },
+  { domain: 'tv', genre: 'Drama' },
+];
+
 function introTens() {
-  const tens = PEOPLE.map(theirTen).filter(t => t.ranked.length === 10);
-  if (!tens.length) return { hero: null, rest: [] };
+  const all = INTRO_TOPICS.map(c => consensusTen(makeTopic(c))).filter(Boolean);
+  if (!all.length) return { hero: null, rest: [] };
   // Rotates on each visit rather than randomly per render — a splash that
   // reshuffles under a re-render is a splash that flickers.
-  const n = (S.introSeen || 0) % tens.length;
-  return { hero: tens[n], rest: tens.slice(n + 1).concat(tens.slice(0, n)) };
+  const n = (S.introSeen || 0) % all.length;
+  return { hero: all[n], rest: all.slice(n + 1).concat(all.slice(0, n)) };
 }
 
 function renderIntro() {
@@ -1985,13 +2057,11 @@ function renderIntro() {
   app.className = 'wrap bare';
   const { hero: t, rest } = introTens();
 
-  // No fixture Ten can be built (a thin catalog) — the question still works
-  // on its own, so the screen degrades to it rather than to a blank.
   const artifact = !t ? '' : `
     <figure class="hero-ten">
       <figcaption>
-        <p class="by">${esc(t.person.name)}'s</p>
-        <p class="what">${esc(listName(t.ranked, t.person.topic))}</p>
+        <p class="by">From ${roughly(t.voters)} Top 10s</p>
+        <p class="what">${esc(listName(t.ranked, t.topic))}</p>
       </figcaption>
       <div class="hero-grid">
         ${t.ranked.map((f, i) => `<div class="hero-cell">
@@ -1999,22 +2069,15 @@ function renderIntro() {
           <span class="rk">${i + 1}</span>
         </div>`).join('')}
       </div>
-      <div class="hero-badge" aria-hidden="true">
-        ${badgeSVG(compose(t.ranked.map(f => f.id), t.person.topic), 62).replace(/class="layer"/g, 'class="layer on"')}
-      </div>
+      <div class="hero-badge" aria-hidden="true">${lockedBadge(false)}</div>
     </figure>`;
 
-  /* And a taste of everyone else's, four posters at a time.
-     Four is Letterboxd's number and it is not an accident: it is the most
-     identity you can read in one glance, and the shape people screenshot.
-     Here it does the "browse other lists" half of the opening — the splash
-     says there are people in here before asking you to join them. */
   const strip = !rest.length ? '' : `
-    <div class="intro-strip" aria-label="Other people's Top 10 lists">
+    <div class="intro-strip" aria-label="Other lists you could argue with">
       ${rest.slice(0, 6).map(o => `<figure class="mini-ten">
         <div class="mini-grid">${o.ranked.slice(0, 4).map(f =>
           `<img src="${art(f, 'w185')}" alt="" loading="lazy" decoding="async">`).join('')}</div>
-        <figcaption><span class="who">${esc(o.person.name)}</span><span class="what">${esc(listName(o.ranked, o.person.topic).replace(/^Top 10 /, ''))}</span></figcaption>
+        <figcaption><span class="what">${esc(listName(o.ranked, o.topic).replace(/^Top 10 /, ''))}</span></figcaption>
       </figure>`).join('')}
     </div>`;
 
@@ -2022,14 +2085,13 @@ function renderIntro() {
     <div class="art">${artifact}${strip}</div>
     <div class="intro-copy">
       <h1>What's your Top 10?</h1>
+      ${t ? `<p class="pitch">Yours will be different. See how.</p>` : ''}
     </div>
     <div class="cta">
       <button class="btn" data-act="begin">Make your first list</button>
       <p class="promise">Free. No ads. No subscription. Ever.</p>
     </div>
   </div>`;
-  // Not the headline: its clamp already sizes it and fitOneLine's 30px
-  // ceiling would quietly shrink it from the 44px the clamp asks for.
   fitOneLine($('.hero-ten .what'), 24, 13);
   dockEl.innerHTML = '';
 }

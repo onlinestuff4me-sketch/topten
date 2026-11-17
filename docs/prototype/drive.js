@@ -91,6 +91,19 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
       by: (f.querySelector('.by') || {}).innerText,
       title: (f.querySelector('.what') || {}).innerText,
       badge: !!f.querySelector('.hero-badge svg'),
+      badgeLocked: !!f.querySelector('.hero-badge .lockedbadge'),
+      badgeInside: (() => {
+        const b = f.querySelector('.hero-badge svg');
+        if (!b) return false;
+        const r = b.getBoundingClientRect();
+        // `.lockedbadge.big` is 128px and its two classes outrank
+        // `.hero-badge svg`, so the badge ignored its 62px slot entirely.
+        return r.right <= card.right + 1 && r.top >= card.top - 1 && r.width <= 80;
+      })(),
+      badgeBox: (() => {
+        const b = f.querySelector('.hero-badge svg');
+        return b ? Math.round(b.getBoundingClientRect().width) + 'px' : 'none';
+      })(),
       // The card is an object, so its contents have to be inside it. A padding
       // written with an undefined token voids the whole declaration and the
       // posters escape the card silently — which is exactly what shipped.
@@ -112,25 +125,36 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
   check(hero.posters === 10, `all ten of it, not a teaser (${hero.posters} posters)`);
   check(hero.ranks.join(',') === '1,2,3,4,5,6,7,8,9,10',
     `ranked one through ten — the order IS the product (${hero.ranks.join(',')})`);
-  check(/'S$/.test((hero.by || '').trim()), `with a byline, so it is somebody's taste ("${hero.by}")`);
+  /* NOT a byline. The first version showed a fictional person's Ten and
+     Mischa asked who Sam is, why he should care, and why that would make him
+     make his own — and there is no good answer. A stranger's taste is noise;
+     a crowd's verdict is a claim you can disagree with, and disagreement is
+     the thing that makes somebody open the app (2026-11-17). */
+  check(/^From [\d,+]+ Top 10s$/i.test((hero.by || '').trim()),
+    `attributed to the crowd, not to a stranger ("${hero.by}")`);
   check(/^Top 10 /.test((hero.title || '').trim()), `and a real list name ("${hero.title}")`);
-  check(hero.badge, 'and its badge — the thing you only get by finishing one');
+  check(hero.badge, 'and its badge');
+  check(hero.badgeLocked,
+    'LOCKED — the artifact is a door, which is the mechanic the product already runs on (PRD Req 12)');
+  check(hero.badgeInside, `and sized to its slot rather than bleeding off the card (${hero.badgeBox})`);
   check(hero.padded && hero.inside,
     'the whole Ten sits inside the card, which needs its padding to survive');
   check(hero.titleClearsBadge, 'and the list title stops before the badge rather than running under it');
 
   // The "browse other lists" half of the opening, before anyone is asked to
   // join. Four posters each: the most identity readable in one glance.
+  /* Other TOPICS, not other people. A cold visitor is choosing an argument to
+     join, not a person to follow — the people matter later, when they mean
+     something. */
   const strip = await page.evaluate(() => {
     const minis = [...document.querySelectorAll('.mini-ten')];
     return { n: minis.length,
       posters: minis.map(m => m.querySelectorAll('img').length),
-      names: minis.map(m => (m.querySelector('.who') || {}).innerText) };
+      people: document.querySelectorAll('.mini-ten .who').length };
   });
-  check(strip.n >= 3, `other people's lists are on screen too (${strip.n} of them)`);
+  check(strip.n >= 3, `other lists are on screen too (${strip.n} of them)`);
   check(strip.posters.every(n => n === 4), `four posters each (${[...new Set(strip.posters)].join(',')})`);
-  check(new Set(strip.names).size === strip.names.length,
-    `each a different person (${strip.names.slice(0, 3).join(', ')}…)`);
+  check(strip.people === 0, 'and not one of them is attributed to an invented person');
   /* Every list name begins "Top 10 ", which is identical on every card and
      eats the half of an 84px line that says WHICH list this is. With the
      prefix in, four of six read "Top 10…" and told you nothing. */
@@ -147,11 +171,16 @@ const MIRROR = process.env.POSTER_MIRROR || './posters';
     'the headline is still "What\'s your Top 10?" — the locked product voice');
   check(/Free\. No ads\. No subscription\. Ever\./.test(introText),
     'and the promise survives the redesign, as fine print under the CTA');
+  // The answer to "why would that make me make my own?" has to be ON the
+  // screen, not implied by it. `shared_with_consensus` is the payoff and this
+  // line is the promise of it.
+  check(/different/i.test(introText) && /see how/i.test(introText),
+    'the screen says what making one gets you: yours will differ, and we show you how');
 
   /* The one-line rule still covers the headline and the list title. Mischa,
      2026-08-15: the splash "breaks our one-line rule twice". The bullets it
      was written for are gone; the rule is not. */
-  const headLines = () => page.evaluate(() => ['h1', '.hero-ten .what'].map(sel => {
+  const headLines = () => page.evaluate(() => ['h1', '.pitch', '.hero-ten .what'].map(sel => {
     const el = document.querySelector('.intro ' + sel);
     if (!el) return null;
     const lh = parseFloat(getComputedStyle(el).lineHeight);

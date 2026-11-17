@@ -636,7 +636,50 @@ See `KICKOFF.md` for the milestone plan (M0–M6). P0 requirements 1–8 are the
 launchable core ("make, reveal, share"); 9–12 complete the social loop;
 13–14 are continuous gates, not phases.
 
+## The first screen shows the crowd's verdict, not a stranger's taste (2026-11-17, Mischa)
+
+**Amends the decision below, the same day.** The first build of this screen
+put a fictional person's list on it — "Sam's Top 10 Crime Movies of the 90s" —
+and Mischa asked the three questions that killed it: *who is Sam, why do I
+care about his Top 10, and why would that make me want to make my own?*
+
+There is no good answer, and the failure is in the analogy. The Letterboxd
+Top 4 works because it sits on the profile of somebody you already follow;
+identity-density only pays off once identity is attached. On a cold first
+screen a stranger's byline is not an asset, it is noise with a possessive
+apostrophe.
+
+So the hero is **the consensus Ten for a topic**, labelled with where it came
+from ("From 5,000+ Top 10s"), and the three questions answer themselves:
+
+- **Who is it?** Not a person — everyone. The thing only this product can
+  show, and the thing that gets better as the product grows.
+- **Why care?** A stranger's taste is noise; a crowd's ranking is a *claim*,
+  and the reaction we want is disagreement. Nobody argues with somebody's
+  taste. Everybody argues with a ranking that presents itself as definitive.
+- **Why make my own?** Because `shared_with_consensus` can then tell you
+  exactly how far from the crowd you are, and that number does not exist until
+  you have made one. The screen says so: *"Yours will be different. See how."*
+
+**The badge on the hero is LOCKED**, which is the mechanic the product already
+runs on (Req 12): you cannot see what was earned on a topic until you have
+your own take on it. On the splash it turns the artifact into a door.
+
+**The strip underneath is other TOPICS, not other people.** A cold visitor is
+choosing an argument to join, not a person to follow. People belong on this
+screen later, in one case specifically: a visitor arriving from a shared link
+should see *their friend's* Ten with the byline intact, because then the name
+is the whole point. That is the referred-visit splash and it is not built yet.
+
+**Fixture honesty.** The voter count is invented and marked as a fixture in
+the code. The prototype has seven fictional people, two of whom share this
+topic; "according to 2 people" would have had Mischa judging the fixture
+instead of the design.
+
 ## The first screen shows somebody's Ten, not the rules (2026-11-17, Mischa)
+
+*(Superseded the same day by the section above — the structure survives, the
+byline does not.)*
 
 **Decision.** The splash opens on a real, complete, ranked Top 10 — byline,
 badge and all ten posters — with a strip of other people's lists beneath it,
