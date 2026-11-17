@@ -1417,8 +1417,14 @@ const DOMAIN_SPEECH = `(() => {
   check(keyCount >= 3, `the legend is a key of ${keyCount} separate marked states`);
   check(await page.locator('.map-key li svg').count() === keyCount, 'every key carries its own drawn swatch');
   const keyLabels = (await page.locator('.map-key li span').allInnerTexts()).map(s => s.trim());
-  check(keyLabels.length === keyCount && keyLabels.every(l => l.length > 0 && l.split(/\s+/).length <= 3),
-    `each key is a two-or-three-word label (${keyLabels.join(' | ')})`);
+  /* "Top 10" is the product's own name for the object (AGENTS.md, amended
+     2026-08-15: product copy says it in digits), and it reads as a single
+     noun, so it counts as one word here. Without this the rule would push the
+     legend back into the word "Ten", which every other user-facing string has
+     just stopped saying. The gate still bites: a sentence-shaped label fails. */
+  const keyWords = l => l.replace(/Top 10/g, 'Ten').split(/\s+/).length;
+  check(keyLabels.length === keyCount && keyLabels.every(l => l.length > 0 && keyWords(l) <= 3),
+    `each key is a short label, three words at most (${keyLabels.join(' | ')})`);
   check(new Set(keyLabels).size === keyLabels.length, 'no two keys carry the same label');
   // Accessibility gate: the states must be told apart with the colour thrown
   // away. In the vault theme --accent and --accent-bright are the same gold,

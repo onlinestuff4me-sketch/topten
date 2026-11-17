@@ -1665,7 +1665,7 @@ function renderDock() {
       </div>
       <button class="btn" data-act="${over ? 'cut' : 'arrange'}" ${n === 10 || over ? '' : 'disabled'}>${over ? 'Make the cut' : 'Arrange'}</button>
     </div>
-    <button class="slots" data-act="openten" aria-label="Open your Ten to reorder">${slots.join('')}</button>
+    <button class="slots" data-act="openten" aria-label="Open your Top 10 to reorder">${slots.join('')}</button>
   </div></div>`;
   measureDock();
 }
@@ -1809,7 +1809,7 @@ function flyTo(img, from, to) {
 function openSheet(kind) {
   let inner = '';
   if (kind === 'ten') {
-    inner = `<div class="sheet-head"><h2>Your Ten</h2><button class="done" data-act="closesheet">Done</button></div>
+    inner = `<div class="sheet-head"><h2>Your Top 10</h2><button class="done" data-act="closesheet">Done</button></div>
       ${S.tray.length ? `<ol id="tenlist">${S.tray.map((id, i) => tenRow(id, i)).join('')}</ol>` : '<p class="empty">Nothing picked yet.</p>'}
       <div style="display:flex;gap:var(--s2);margin-top:var(--s4)">
         ${S.tray.length >= 2 ? `<button class="btn ghost" data-act="duel">Rank them for me</button>` : ''}
@@ -1965,7 +1965,7 @@ const KEY_SWATCH = {
 const MAP_KEY = [
   ['here', 'You are here'],
   ['plain', 'Path you took'],
-  ['ten', 'In your Ten'],
+  ['ten', 'In your Top 10'],
   ['next', 'Not explored yet'],
 ];
 /* Only the states actually on screen. A key is a reading aid for what is
@@ -1992,7 +1992,7 @@ const MAP_BLANK = `<div class="map-empty">
   <p>This is the record of where you have actually been. It draws your own path
      and nothing else, so it stays blank until you go somewhere.</p>
   <ul>
-    <li><span class="m">+ Add</span><span>puts a film here the moment it joins your Ten.</span></li>
+    <li><span class="m">+ Add</span><span>puts a film here the moment it joins your Top 10.</span></li>
     <li><span class="m">Similar</span><span>follows a film, and the map keeps whatever led you to it — stepping back never erases a branch.</span></li>
   </ul>
   <p class="hint">Nothing on this map is ever a film you did not choose.</p>
@@ -2062,7 +2062,7 @@ function drawMap(ghosts, focus) {
     if (isFocus) states.add('here');
     return `<g class="map-node ${isFocus ? 'focus' : ''} ${picked ? 'picked' : ''}"
         data-mapnode="${p.id}" tabindex="0" role="button"
-        aria-label="${esc(f.t)}${picked ? ', in your Ten' : ', followed'}${isFocus ? ', where you are' : ''}">
+        aria-label="${esc(f.t)}${picked ? ', in your Top 10' : ', followed'}${isFocus ? ', where you are' : ''}">
       ${isFocus ? hereMark(c.cx, top) : ''}
       <rect class="plate" x="${c.cx - MAP.w / 2 - 2}" y="${top}" width="${MAP.w + 4}" height="${MAP.h + 4}" rx="8"/>
       <image href="${IMG}w185${f.p}" x="${c.cx - MAP.w / 2}" y="${c.cy - MAP.h / 2}" width="${MAP.w}" height="${MAP.h}"
@@ -2717,7 +2717,7 @@ function renderReveal() {
     <div class="stage">
       <div class="badge-wrap">${badgeSVG(c)}</div>
       <p class="revealed-name">${esc(listName(S.ranked, S.topic))}</p>
-      <div class="after"><button class="btn ghost" data-act="replay">Replay</button><button class="btn" data-act="done">Your Ten</button></div>
+      <div class="after"><button class="btn ghost" data-act="replay">Replay</button><button class="btn" data-act="done">Your Top 10</button></div>
     </div>`;
   document.body.appendChild(v);
   setBackgroundInert(true);

@@ -578,10 +578,24 @@ on your path."* Nothing that is not on your path may wear it.
 *"Solid: followed or picked. Faint: where you could go next… Gold: in your
 Ten"* — which asked the reader to hold three colour words in their head while
 looking at a tree. It is now four keys, each a drawn swatch beside a
-three-word name: **You are here**, **Path you took**, **In your Ten**, **Not
-explored yet**. It lists only the states actually on screen, because a key is a
-reading aid for what is drawn and a marker listed but absent sends the reader
-hunting for it.
+three-word name: **You are here**, **Path you took**, **In your Top 10**,
+**Not explored yet**. It lists only the states actually on screen, because a
+key is a reading aid for what is drawn and a marker listed but absent sends the
+reader hunting for it.
+
+**Amended 2026-11-17 (Claude).** The key read *"In your Ten"* until now. The
+2026-08-15 naming amendment says product copy says **Top 10** in digits
+wherever a person reads it, and six user-facing strings had been missed — the
+arrange sheet's heading, the button at the end of the reveal, this key, the
+coach line, and two VoiceOver labels. They now all say **Top 10**. The word
+*Ten* survives only in this file, the other specs, and the code.
+
+The three-word ceiling on a key label stands, but **"Top 10" counts as one
+word** in it: it is the product's name for the object and reads as a single
+noun. Without that, the rule would push exactly this key back into the word the
+rest of the app has just stopped saying. The gate still bites — a
+sentence-shaped label fails — and the test was re-run against a sentence to
+prove it.
 
 **Every state carries a shape, not only a colour** — the accessibility gate,
 and not a theoretical one. In the vault theme `accent.laurel` and
