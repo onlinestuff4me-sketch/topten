@@ -168,6 +168,49 @@ literally unobservable: unlocking "every take on that topic" and unlocking "the
 one take on that topic" look identical. Two lists on one topic make the
 simultaneous open visible on screen and assertable in the harness.*
 
+**Amended 2026-11-18 (Mischa raised it, Claude built it) — where the seed
+lists come from, and what they are allowed to claim to be.** The seven lists
+were attributed to Sam, Priya, Marcus, Nour, Theo, Eddie and Rae: invented
+users. Mischa, reviewing the build: *"who is this Mischa guy, do I know him,
+is he someone from my contacts?"* — and the question lands harder against a
+fabricated name than a real one, because in an identity product a stranger's
+name reads as somebody you were supposed to recognise, and failing to is a
+small social embarrassment. They were also not real, which is the one thing a
+product about honest self-description cannot be casual about.
+
+Three candidates were weighed, all Mischa's:
+
+| | what it gives | why it is not the whole answer |
+|---|---|---|
+| **A real person** (him, MySpace-Tom style) | keeps a human in a product whose thesis is being *seen*; the only option that does | *"who?"* — solved by a role line, not by hiding the name. Does not scale: one human credibly holding a Top 10 for every topic the engine invents is the same fiction, one level up |
+| **An authority** (NYT, Rotten Tomatoes) | the most arguable list there is; people enjoy disagreeing with critics | a named third-party brand is a licensing and partnership decision, not a design one. And it tilts the frame from *what do you love* to *how close are you to correct*, which is this product inverted |
+| **"From the community"** | no name problem, no brand problem, scales | a lie at zero users, and **unarguable**: you cannot disagree with an average, only sit above or below it |
+
+**The decision: every seed list states what it is.** Either a **person**, shown
+with a role you can read in three words, or a **house list**, openly derived
+from the collection and named for its own ordering rule — *Best known* (most
+rated), *Rated highest* (score, not fame), *Less obvious* (well scored, less
+rated). A derived list says what the derivation found — *"Alien scores above
+Interstellar, on a fraction of the ratings"* — rather than wearing a person's
+name. House lists scale to any topic the engine invents, because they are
+functions of the shelf rather than of a person.
+
+Two consequences follow and are binding:
+
+1. **A generated list is never attributed to a named real person.** Mischa's
+   two cards are stand-ins whose contents come from the same engine, and that
+   is only acceptable in a prototype whose job is to settle anatomy. His
+   actual ten replaces them before anyone outside the team sees the screen.
+2. **No third-party brand appears until that is a decided partnership.** The
+   house lists stand on data the collection already carries; nothing here
+   needs anyone's permission.
+
+Still seven lists, still two topics carrying two takes — and the demonstration
+is better than it was, because Mischa's crime ten and the crowd's crime ten
+disagree for a reason that is visible on the card. The two takes on a topic
+are no longer adjacent in the list: identical headings stacked read as a
+rendering fault rather than as the point being made.
+
 **2. Gather.** Building a Ten is two phases; phase one is *gathering* — an
 unordered tray of up to 10 candidates. Sources: search (catalog-backed with
 artwork) and a suggestion rail (popular/classic/acclaimed for the topic,

@@ -445,3 +445,28 @@ topten/
 - Apple Music catalog adapter — P1.
 - Image-gen badge tier — P1, blocked on licensing re-audit.
 - iPad/visionOS layouts — P2.
+
+## A crash is not a pass, and a filtered pipe hides both (2026-11-18, Claude)
+
+`drive.js` ended `})().catch(e => { console.error('\n' + e.message); ... })`.
+A run that threw two checks from the end therefore printed **no line matching
+`FAILED`** and **no line matching `ALL CHECKS PASSED`** — just a bare sentence.
+Run as `node drive.js 2>&1 | grep -E "^FAILED|ALL CHECKS"`, that produced empty
+output, and because a pipeline's exit status is the **last** command's, the
+harness reported **exit code 0**. A suite that died looked exactly like a suite
+that had not run a failing check.
+
+It cost a round trip, and it is the same shape as the two vacuous gates in the
+November sweep: the thing that was supposed to tell me something could not.
+
+Two fixes, both kept:
+
+1. **Every suite's top-level catch prints `FAILED:` and a stack.** A crash is a
+   failure and must use the word every filter looks for. The stack names the
+   line, which the bare message did not — the actual error was
+   `Cannot read properties of undefined (reading 'length')`, which could have
+   been anywhere in 2,400 lines.
+2. **Do not filter a suite through `grep` in a pipe.** Redirect to a file and
+   read the tail: `node drive.js > run.log 2>&1; echo $?`. The exit status is
+   then the suite's own, and nothing that was not anticipated by the pattern
+   is thrown away. If a filter is wanted, `set -o pipefail` first.

@@ -447,6 +447,15 @@ section { margin-top: var(--s8); }
 .other-ten .topic { display: block; font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-disabled); }
 .other-ten .listname { font-family: var(--serif); font-weight: 600; font-size: 1.375rem; line-height: 1.18; letter-spacing: -0.012em; margin: var(--s1) 0 0; }
 .other-ten .claim { margin: var(--s2) 0 0; font-size: 0.875rem; line-height: 1.35; color: var(--text-secondary); }
+/* Attribution, under the claim. Two parts on one line: who, then what they
+   are - the second half is what stops a bare name reading as somebody you
+   were supposed to recognise. It wraps rather than truncating, because at
+   accessibility sizes "the ones most people have voted on" is wider than a
+   phone and a clipped role answers nothing. */
+.other-ten .byline { margin: var(--s1) 0 0; display: flex; flex-wrap: wrap; column-gap: var(--s2);
+  font-size: 0.75rem; line-height: 1.4; color: var(--text-secondary); }
+.other-ten .byline .src { font-weight: 700; color: var(--text-primary); }
+.other-ten .byline .role::before { content: '\00b7'; margin-right: var(--s2); }
 .other-ten .strip { display: flex; gap: 4px; margin: var(--s3) 0 0; }
 .other-ten .mini { position: relative; width: 40px; height: 60px; border-radius: 4px; overflow: hidden; flex: 0 0 40px; background: var(--bg-recessed); }
 .other-ten .mini img { width: 100%; height: 100%; object-fit: cover; display: block; }
@@ -2330,14 +2339,75 @@ function renderIntro() {
    Two of these seven share a topic (Sam and Theo, both on Crime). That is not
    filler: Req 12 promises a take unlocks EVERY list on that topic at once, and
    with one list per topic that promise is unobservable and untestable. */
-const PEOPLE = [
-  { name: 'Sam', crit: { genre: 'Crime', decade: 1990 } },
-  { name: 'Priya', crit: { genre: 'Science Fiction' } },
-  { name: 'Marcus', crit: { genre: 'Animation', decade: 2000 } },
-  { name: 'Nour', crit: { director: 'Alfred Hitchcock' } },
-  { name: 'Theo', crit: { genre: 'Crime', decade: 1990 } },
-  { name: 'Eddie', crit: { actor: 'Al Pacino' } },
-  { name: 'Rae', crit: { domain: 'tv', genre: 'Drama' } },
+/* Amended 2026-11-18 (Mischa raised it, Claude built it). The seven names
+   above were Sam, Priya, Marcus, Nour, Theo, Eddie and Rae: invented users.
+   Mischa's objection, reviewing the build: "who is this Mischa guy, do I know
+   him, is he someone from my contacts?" - and that question is worse against a
+   fabricated name than against a real one, because in an identity product a
+   stranger's name reads as somebody you are supposed to recognise, and failing
+   to is a small social embarrassment. They were also simply not real, which is
+   the one thing a product about honest self-description cannot afford.
+
+   He offered three ways out: himself as a MySpace-Tom first friend, an
+   authority like the NYT or Rotten Tomatoes, or a blanket "from the
+   community". Taken one at a time:
+
+     - A REAL PERSON works, and is the only option that keeps a human in a
+       product whose whole thesis is being seen. It fails only on "who?", and
+       that is fixed by a role line rather than a bare name.
+     - AN AUTHORITY is the most arguable kind of list there is - people love
+       disagreeing with critics - but a named third-party brand is a licensing
+       and partnership decision, not a design one, and it tilts the frame from
+       "what do you love" to "how close are you to correct", which is the
+       opposite of this product. Left for Mischa to decide; nothing here uses
+       anyone's brand.
+     - "FROM THE COMMUNITY" is a lie at zero users, and worse, it is
+       unarguable: you cannot disagree with an average, only sit above or
+       below it.
+
+   So: every seed list states what it IS. Either a real person with a role you
+   can read in three words, or a house list openly derived from the collection
+   - and a derived list is honest about being derived rather than wearing a
+   person's name. Both scale to any topic the engine invents, which the one
+   real person alone could not: a single human credibly having a Top 10 for
+   every generated topic is exactly the kind of fiction this replaces.
+
+   Two sources sharing a topic is still deliberate (PRD Req 12: a take unlocks
+   EVERY list on that topic at once, which is unobservable with one list per
+   topic) - and it is now a better demonstration, because Mischa's crime ten
+   and the crowd's crime ten disagree for a reason you can see. */
+const SOURCES = [
+  { id: 'mischa-crime', kind: 'person', rank: 'taste',
+    label: 'Mischa', role: 'made this app', subject: 'Mischa', plural: false,
+    crit: { genre: 'Crime', decade: 1990 } },
+  { id: 'rated-scifi', kind: 'house', rank: 'rated',
+    label: 'Rated highest', role: 'ordered by score, not by fame',
+    subject: 'The ratings', plural: true,
+    crit: { genre: 'Science Fiction' } },
+  { id: 'known-crime', kind: 'house', rank: 'reach',
+    label: 'Best known', role: 'the ones most people have rated',
+    subject: 'The crowd', plural: false,
+    crit: { genre: 'Crime', decade: 1990 } },
+  { id: 'known-anim', kind: 'house', rank: 'reach',
+    label: 'Best known', role: 'the ones most people have rated',
+    subject: 'The crowd', plural: false,
+    crit: { genre: 'Animation', decade: 2000 } },
+  { id: 'deep-scifi', kind: 'house', rank: 'overlooked',
+    /* Not "Overlooked": the ranking drops the most-rated quarter of the shelf
+       and takes the best scored of the rest, which on sci-fi surfaces Alien,
+       2001 and A Clockwork Orange - films nobody has overlooked. What is
+       true of them is only that the chart is currently busy elsewhere, and a
+       label has to say the true thing, not the flattering one. */
+    label: 'Less obvious', role: 'well scored, less rated',
+    subject: 'This one', plural: false,
+    crit: { genre: 'Science Fiction' } },
+  { id: 'mischa-hitch', kind: 'person', rank: 'taste',
+    label: 'Mischa', role: 'made this app', subject: 'Mischa', plural: false,
+    crit: { director: 'Alfred Hitchcock' } },
+  { id: 'rated-tv', kind: 'house', rank: 'rated',
+    label: 'Rated highest', role: 'ordered by score, not by fame',
+    subject: 'The ratings', plural: true,
+    crit: { domain: 'tv', genre: 'Drama' } },
 ];
 
 /* ── Naming a list: the name IS the criteria ──────────────────────────────
@@ -2474,15 +2544,58 @@ for (const d of DOMAINS) if (d.topic) {
 // The fixture people get their topics from the same function too. Assigned
 // here rather than at the declaration because the namer's tables are consts
 // further down the file, and a const is not readable before it is written.
-for (const p of PEOPLE) p.topic = makeTopic(p.crit);
+for (const p of SOURCES) p.topic = makeTopic(p.crit);
 
 
 // Their ten is drawn from the criteria their list is named for, so the name is
 // true of all ten of them — the same guarantee a real user gets, because the
 // build screen filters by exactly this predicate.
-function theirTen(person) {
-  const dm = person.topic.domain;
-  const seed = hash(person.name + dm);
+/* How each kind of source orders its ten. The shelf arrives sorted by reach
+   (vote count), because every ranker wants titles somebody has heard of as its
+   starting population - the lesson from the obscure-title bug below.
+
+   These are the orderings the collection can honestly support: it carries a
+   rating average (`v`) and a vote count (`vc`), and nothing else that amounts
+   to a point of view. No awards data, so no awards list. */
+const RANKERS = {
+  // A person's ten. Titles anybody would know, ordered by rating with a jitter
+  // that is stable per person - the one ranking that has to look like taste
+  // rather than a chart, because a person who agrees with the chart is not a
+  // person you would argue with.
+  /* The jitter is 1.8 wide, not 1. Ratings across a shelf span roughly 6.5
+     to 8.7, so a jitter of 1 can shuffle neighbours but can never move the
+     top-rated title off number one - and a person whose number one is the
+     consensus number one is not a person, it is the chart with a name on it.
+     Measured, not guessed: at 1.0 Mischa's crime ten and the crowd's crime
+     ten both opened on The Shawshank Redemption and their two cards read the
+     same. 1.8 reorders across about two thirds of the spread and still keeps
+     the ten recognisable. */
+  taste: (shelf, src) => shelf.slice(0, 60)
+    .map(f => [((hash(f.t + src.label + src.id) % 1000) / 1000) * 1.8 + f.v, f])
+    .sort((a, b) => b[0] - a[0]).slice(0, 10).map(x => x[1]),
+
+  // Straight reach. What everybody has already met.
+  reach: shelf => shelf.slice(0, 10),
+
+  // Best rated among the reasonably known, so it is a judgement rather than a
+  // list of titles with eleven generous votes.
+  rated: shelf => shelf.slice(0, 80).slice().sort((a, b) => (b.v || 0) - (a.v || 0)).slice(0, 10),
+
+  /* Loved, by fewer people. Drop the famous quarter of the shelf and take the
+     best rated of what is left - the one list here that can tell you something
+     you did not know, which is the whole reason it earns a card. The cut is a
+     FRACTION of the shelf, not a fixed 40: a narrow topic (one director) has a
+     shelf of dozens, and a fixed cut would eat all of it. */
+  overlooked: shelf => {
+    const cut = Math.min(40, Math.floor(shelf.length * 0.25));
+    return shelf.slice(cut, cut + 160).slice()
+      .sort((a, b) => (b.v || 0) - (a.v || 0)).slice(0, 10);
+  },
+};
+
+function theirTen(src) {
+  const dm = src.topic.domain;
+  const seed = hash(src.id + dm);
   /* Ranked by rating with a per-person jitter, but only over titles the shelf
      actually has something to say about.
 
@@ -2494,14 +2607,10 @@ function theirTen(person) {
      nobody has heard of it. A stand-in person has to look like a person: a
      list of titles you recognise, in an order you would fight about. The
      reach gate gives the first half, the jitter the second. */
-  const CANDIDATES = 60;
-  const shelf = CAT.filter(f => inTopic(f, person.topic))
-    .sort((a, b) => (b.vc || 0) - (a.vc || 0))
-    .slice(0, CANDIDATES);
-  const ranked = shelf
-    .map(f => [((hash(f.t + person.name) % 1000) / 1000) + f.v, f])
-    .sort((a, b) => b[0] - a[0]).slice(0, 10).map(x => x[1]);
-  return { person, dm, ranked, seed };
+  const shelf = CAT.filter(f => inTopic(f, src.topic))
+    .sort((a, b) => (b.vc || 0) - (a.vc || 0));
+  const ranked = (RANKERS[src.rank] || RANKERS.taste)(shelf, src);
+  return { src, dm, ranked, seed };
 }
 
 // Every topic you have finished. A locked badge opens the moment you have a
@@ -2538,38 +2647,71 @@ const unlockedTopics = () => new Set((S.done || []).map(d => d.topicId));
    want to make your own because the card has just told you something about
    your own taste that you cannot check any other way. */
 function claimFor(t) {
-  const who = t.person.name;
+  /* The subject of the sentence is the source's, not its label: a list headed
+     "Best known" has to say "The crowd puts ...", because a claim needs
+     somebody making it. `plural` is carried per source rather than guessed
+     from the string - "The ratings put" and "The crowd puts" differ by one
+     letter and no rule short of a dictionary gets both right. */
+  const who = t.src.subject, verb = t.src.plural ? 'put' : 'puts';
+  /* Mid-sentence the subject is not sentence-initial any more: "You and The
+     crowd agree" is wrong and "You and mischa" is worse. Only a leading
+     article drops its capital; a name keeps it. */
+  const mid = who.replace(/^The /, 'the ');
   const short = str => String(str).split(/[:\u2014\u2013]/)[0].trim();
-  const mine = (S.done || []).find(d => d.topicId === t.person.topic.id);
+  const mine = (S.done || []).find(d => d.topicId === t.src.topic.id);
   if (mine) {
     const ids = new Set(mine.ranked || []);
     const n = t.ranked.filter(f => ids.has(f.id)).length;
     return n === 0
-      ? `You and ${who} agree on nothing at all.`
-      : `You and ${who} agree on ${n} of 10.`;
+      ? `You and ${mid} agree on nothing at all.`
+      : `You and ${mid} agree on ${n} of 10.`;
   }
-  // Where they break from the crowd is the most arguable thing about a list.
-  const crowd = consensusTen(t.person.topic);
-  if (crowd && crowd.ranked[0] && crowd.ranked[0].id !== t.ranked[0].id) {
-    return `${who} puts ${short(t.ranked[0].t)} above ${short(crowd.ranked[0].t)}.`;
+  /* Where it breaks from the crowd is the most arguable thing about a list,
+     so the claim is built from the departure wherever there is one.
+
+     The sentence is the SOURCE'S though, not one template with a name slotted
+     in. "The crowd puts Pulp Fiction above Se7en" is nonsense - the crowd is
+     the thing being compared against - and "Overlooked puts X above Y" makes
+     an ordering rule sound like a person with opinions. A list that is openly
+     derived should say what the derivation found; only a person claims. */
+  const crowd = consensusTen(t.src.topic);
+  const a = short(t.ranked[0].t);
+  const b = crowd && crowd.ranked[0] && crowd.ranked[0].id !== t.ranked[0].id
+    ? short(crowd.ranked[0].t) : null;
+  switch (t.src.rank) {
+    case 'reach':
+      return b ? `More people have rated ${a} than ${b}.`
+               : `${a} is the one most people have rated.`;
+    case 'rated':
+      return b ? `By score alone, ${a} comes above ${b}.`
+               : `By score alone, ${a} comes first.`;
+    case 'overlooked':
+      return b ? `${a} scores above ${b}, on a fraction of the ratings.`
+               : `${a} scores highest, on a fraction of the ratings.`;
+    default:
+      return b ? `${who} ${verb} ${a} above ${b}.` : `${who}\u2019s number one is ${a}.`;
   }
-  return `${who}\u2019s number one is ${short(t.ranked[0].t)}.`;
 }
 
 function renderDiscover() {
   const unlocked = unlockedTopics();
-  const tens = PEOPLE.map(theirTen).filter(t => t.ranked.length === 10);
+  const tens = SOURCES.map(theirTen).filter(t => t.ranked.length === 10);
   app.innerHTML = `
     <div class="topbar"><h1 class="display-lg">Other Top 10 Lists</h1><button class="link" data-act="backhome">Done</button></div>
     ${tens.map((t, i) => {
-      const open = unlocked.has(t.person.topic.id);
-      const who = esc(t.person.name), topic = esc(t.person.topic.title);
+      const open = unlocked.has(t.src.topic.id);
+      const who = esc(t.src.label), topic = esc(t.src.topic.title);
       // No topic line above the name any more: since the correction of
       // 2026-08-15 the name IS the topic, and printing it twice is just
       // printing it twice.
-      return `<article class="other-ten" data-who="${who}" aria-labelledby="ln${i}">
-        <h2 class="listname" id="ln${i}">${esc(listName(t.ranked, t.person.topic))}</h2>
+      return `<article class="other-ten" data-who="${esc(t.src.id)}" aria-labelledby="ln${i}">
+        <h2 class="listname" id="ln${i}">${esc(listName(t.ranked, t.src.topic))}</h2>
         <p class="claim">${esc(claimFor(t))}</p>
+        <!-- Attribution sits UNDER the claim, not over it: the card leads with
+             the argument (2026-11-17), and a byline above it would put the
+             name back in front. Its job is only to answer "who is this" the
+             moment the claim has already earned the glance. -->
+        <p class="byline"><span class="src">${who}</span><span class="role">${esc(t.src.role)}</span></p>
         <!-- One label for the whole strip, read once and in order, rather
              than six bare numerals. A screen reader met "1 2 3 4 5 6" here
              with nothing attached to them. design.md's rule is that a rank
@@ -2577,25 +2719,26 @@ function renderDiscover() {
              decoration" - and six separate announcements ahead of the card's
              own call to action would bury it, so the strip speaks as the one
              thing it looks like: a preview of the top six. -->
-        <div class="strip" role="img" aria-label="${esc(who)}\u2019s first six: ${
+        <div class="strip" role="img" aria-label="First six of ${esc(t.src.topic.title)}: ${
           t.ranked.slice(0, 6).map((f, j) => `${j + 1}, ${f.t}`).join('; ')}">${
           t.ranked.slice(0, 6).map((f, j) =>
           `<span class="mini" aria-hidden="true"><img src="${IMG}w185${f.p}" alt=""><b>${j + 1}</b></span>`).join('')}</div>
         <div class="badgecell ${open ? 'open' : 'locked'}">
-          ${open ? badgeSVG(compose(t.ranked.map(f => f.id), t.person.topic), 200).replace(/class="layer"/g, 'class="layer on"')
-                 : lockedBadge(false, badgeHash(t.person.topic.title))}
+          ${open ? badgeSVG(compose(t.ranked.map(f => f.id), t.src.topic), 200).replace(/class="layer"/g, 'class="layer on"')
+                 : lockedBadge(false, badgeHash(t.src.topic.title))}
           <span class="gate"><span class="state">${open ? 'Badge unlocked' : 'Badge locked'}</span>
             <span class="how">${open ? `You have your own ${topic}` : `Unlocks when you make your own ${topic}`}</span></span>
         </div>
-        <button class="cta" data-other="${who}">Read ${who}&rsquo;s Top 10</button>
+        <button class="cta" data-other="${esc(t.src.id)}">${t.src.kind === 'person'
+          ? `Read ${who}&rsquo;s Top 10` : 'Read this Top 10'}</button>
       </article>`;
     }).join('')}
     ${notes()}`;
   dockEl.innerHTML = '';
 }
 
-function renderOther(name) {
-  const p = PEOPLE.find(x => x.name === name); if (!p) return renderDiscover();
+function renderOther(id) {
+  const p = SOURCES.find(x => x.id === id); if (!p) return renderDiscover();
   const t = theirTen(p);
   const open = unlockedTopics().has(p.topic.id);
   const mine = (S.done || []).find(d => d.topicId === p.topic.id);
@@ -2603,7 +2746,7 @@ function renderOther(name) {
   const shared = t.ranked.filter(f => mineIds.has(f.id));
   app.innerHTML = `
     <div class="topbar"><h1 class="display-lg">${esc(listName(t.ranked, p.topic))}</h1><button class="link" data-act="discover">Back</button></div>
-    <p class="prompt">A Top 10 by ${esc(p.name)}</p>
+    <p class="prompt">${p.kind === 'person' ? `A Top 10 by ${esc(p.label)}` : esc(p.label)} \u00b7 ${esc(p.role)}</p>
     ${mine ? `<p class="prompt"><b>You share ${shared.length} of 10.</b>${shared.length === 0 ? ` Not one ${domainMeta(p.topic).one} in common. Incredible.` : ''}</p>` : ''}
     <section><ol>${t.ranked.map((f, i) => {
       const yours = mine ? (mine.ranked || []).indexOf(f.id) : -1;
@@ -3263,7 +3406,7 @@ document.addEventListener('click', e => {
 // restart and on entering a new topic, and a stale copy would make the tests
 // assert against a state the app has already left.
 Object.defineProperty(window, 'S', { get: () => S });
-window.byId = byId; window.PEOPLE = PEOPLE;
+window.byId = byId; window.SOURCES = SOURCES;
 window.theirTen = theirTen; window.listName = listName;
 window.topicTitle = topicTitle; window.topicPrompt = topicPrompt; window.makeTopic = makeTopic;
 window.supply = supply; window.offerable = offerable; window.inTopic = inTopic; window.KEY = KEY;

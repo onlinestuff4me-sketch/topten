@@ -236,4 +236,9 @@ async function withPage(browser, fn, opts = {}) {
   await browser.close();
   console.log(`\n${passed} passed, ${failed} failed`);
   process.exit(failed ? 1 : 0);
-})();
+// A crash is a failure; say so in the word any filter looks for.
+})().catch(e => {
+  console.error('\nFAILED: the database suite crashed before reaching the end \u2014 ' + e.message);
+  console.error(e.stack);
+  process.exit(1);
+});

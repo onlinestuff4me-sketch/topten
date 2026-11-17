@@ -2000,9 +2000,9 @@ const DOMAIN_SPEECH = `(() => {
   // Movies of the 90s" holds ten crime movies from the 90s, not four. The name
   // comes from the criteria, the criteria filter the shelf, so the only way
   // this can fail is if the two ever come apart.
-  const named = await page.evaluate(() => window.PEOPLE.map(p => {
+  const named = await page.evaluate(() => window.SOURCES.map(p => {
     const ten = window.theirTen(p);
-    return { who: p.name, name: window.listName(ten.ranked, p.topic), title: p.topic.title,
+    return { who: p.label, name: window.listName(ten.ranked, p.topic), title: p.topic.title,
       crit: p.crit, supply: window.supply(p.topic),
       hold: ten.ranked.filter(f => window.inTopic(f, p.topic)).length, n: ten.ranked.length };
   }));
@@ -2019,7 +2019,7 @@ const DOMAIN_SPEECH = `(() => {
   // produce the same name, or the badge gate would be unreadable.
   const byName = await page.evaluate(() => {
     const m = {};
-    for (const p of window.PEOPLE) (m[p.topic.title] = m[p.topic.title] || new Set()).add(p.topic.id);
+    for (const p of window.SOURCES) (m[p.topic.title] = m[p.topic.title] || new Set()).add(p.topic.id);
     return Object.entries(m).map(([title, ids]) => [title, ids.size]);
   });
   check(byName.every(([, n]) => n === 1),
@@ -2102,16 +2102,41 @@ const DOMAIN_SPEECH = `(() => {
      a proxy for the rule and not the rule: the claim line beneath each name
      is a `p`, and it is generated from the list, not written by anyone.
 
-     So assert the rule itself. Every claim must match one of the three
-     shapes `claimFor` can produce, which is a stronger statement than "there
-     is no paragraph" — a hand-written sentence would fail it. */
-  const strays = await page.evaluate(() => [...document.querySelectorAll('.other-ten')]
-    .reduce((n, c) => n + c.querySelectorAll('p:not(.claim), .ln, .desc, .blurb').length, 0));
-  check(strays === 0, 'no card carries a description line');
+     So assert the rule itself. Every claim must match one of the shapes
+     `claimFor` can produce, which is a stronger statement than "there is no
+     paragraph" — a hand-written sentence would fail it.
+
+     Widened 2026-11-18, and the proxy failed a second time: cards now carry a
+     BYLINE, and the proxy counted it as free text because it is a `p`. It is
+     not free text — its two halves are the label and role of a source in
+     `SOURCES`, a closed set shipped with the app, no more user-entered than a
+     button label. The rule has never been "no paragraphs", it is "nobody
+     types anything onto this surface". So a byline is allowed only when both
+     halves match a source we ship, character for character; anything else,
+     including a byline with a word added to it, still counts as a stray. */
+  const strays = await page.evaluate(() => {
+    const shipped = new Set(window.SOURCES.map(s => `${s.label}\u0000${s.role}`));
+    return [...document.querySelectorAll('.other-ten')].reduce((n, c) => n +
+      [...c.querySelectorAll('p:not(.claim), .ln, .desc, .blurb')].filter(el => {
+        if (!el.classList.contains('byline')) return true;
+        const who = el.querySelector('.src'), role = el.querySelector('.role');
+        return !who || !role
+          || !shipped.has(`${who.textContent.trim()}\u0000${role.textContent.trim()}`);
+      }).length, 0);
+  });
+  check(strays === 0, 'every line on a card is either the claim or the source it came from');
+  /* The shapes `claimFor` can produce. Widened 2026-11-18: a derived list
+     states what the derivation found rather than speaking as a person, so
+     each ranking rule has its own sentence. "You and ..." takes a multi-word
+     subject now ("you and the crowd"), which the old \S+ could not match. */
   const SHAPES = [
-    /^You and \S+ agree on (\d+ of 10|nothing at all)\.$/,
-    /^\S+ puts .+ above .+\.$/,
-    /^\S+\u2019s number one is .+\.$/,
+    /^You and (\S+|the \S+) agree on (\d+ of 10|nothing at all)\.$/,
+    /^.+ puts .+ above .+\.$/,                       // a person, departing
+    /^.+\u2019s number one is .+\.$/,                 // a person, agreeing
+    /^More people have rated .+ than .+\.$/,         // Best known
+    /^.+ is the one most people have rated\.$/,
+    /^By score alone, .+ comes (above .+|first)\.$/, // Rated highest
+    /^.+ scores (above .+|highest), on a fraction of the ratings\.$/, // Less obvious
   ];
   const generated = type.filter(t => SHAPES.some(re => re.test(t.claim)));
   check(generated.length === type.length,
@@ -2179,12 +2204,18 @@ const DOMAIN_SPEECH = `(() => {
   // ── The gate: per topic, and retroactive across every list on it ─────────
   const shared = await page.evaluate(() => {
     const byTopic = {};
-    for (const p of window.PEOPLE) (byTopic[p.topic.id] = byTopic[p.topic.id] || []).push(p.name);
+    /* Identify a card by its source ID, never by its label. Since the seed
+       sources became kinds rather than people (2026-11-18) a label is shared
+       - "Best known" heads a crime list and an animation list - so matching
+       on labels would mark the wrong cards as opened and still, by luck of
+       the count, sometimes pass. The id is what the card carries in the DOM. */
+    for (const p of window.SOURCES) (byTopic[p.topic.id] = byTopic[p.topic.id] || []).push(p.id);
     const id = Object.keys(byTopic).sort((a, b) => byTopic[b].length - byTopic[a].length)[0];
-    return { topic: window.PEOPLE.find(p => p.topic.id === id).topic, names: byTopic[id] };
+    const on = window.SOURCES.filter(p => p.topic.id === id);
+    return { topic: on[0].topic, ids: byTopic[id], labels: on.map(p => p.label) };
   });
-  check(shared.names.length >= 2,
-    `more than one person has taken on the same topic (${shared.names.join(' and ')} on ${shared.topic.title})`);
+  check(shared.ids.length >= 2,
+    `more than one source has taken on the same topic (${shared.labels.join(' and ')} on ${shared.topic.title})`);
   await page.evaluate(t => {
     window.S.done.push({ topicId: t.id, title: t.title, domain: t.domain,
       ranked: window.S.done[0].ranked, badge: window.S.done[0].badge });
@@ -2193,20 +2224,20 @@ const DOMAIN_SPEECH = `(() => {
   await page.locator('[data-act="discover"]').click();
   await page.waitForTimeout(300);
   const lockedAfter = await page.locator('.lockedbadge').count();
-  check(lockedAfter === lockedOnList - shared.names.length,
+  check(lockedAfter === lockedOnList - shared.ids.length,
     `one take opens every badge on that topic at once, and no others ` +
-    `(${lockedOnList} locked → ${lockedAfter}, ${shared.names.length} opened)`);
+    `(${lockedOnList} locked → ${lockedAfter}, ${shared.ids.length} opened)`);
   const opened = await page.evaluate(() => [...document.querySelectorAll('.other-ten')]
     .filter(c => c.querySelector('.badgecell.open')).map(c => c.dataset.who));
-  check(opened.slice().sort().join(',') === shared.names.slice().sort().join(','),
+  check(opened.slice().sort().join(',') === shared.ids.slice().sort().join(','),
     `and exactly the lists on that topic opened, retroactively, without visiting them (${opened.join(', ')})`);
-  check(await page.locator('.other-ten .badgecell.open svg').count() === shared.names.length,
+  check(await page.locator('.other-ten .badgecell.open svg').count() === shared.ids.length,
     'each opened card shows the real badge where the lock was');
   const openGate = (await page.locator('.other-ten .badgecell.open').first().innerText()).replace(/\s+/g, ' ').trim();
   check(/unlocked/i.test(openGate), `and says so ("${openGate}")`);
   const stillLocked = await page.evaluate(() => [...document.querySelectorAll('.other-ten')]
     .filter(c => c.querySelector('.badgecell.locked')).map(c => c.dataset.who));
-  check(stillLocked.length === cardCount - shared.names.length,
+  check(stillLocked.length === cardCount - shared.ids.length,
     `every other topic stays shut (${stillLocked.join(', ')})`);
   await page.screenshot({ path: SHOTS + '/15-discover-unlocked.png', fullPage: true });
 
@@ -2645,4 +2676,14 @@ const DOMAIN_SPEECH = `(() => {
   check(errors.length === 0, 'no page errors: ' + JSON.stringify(errors));
   console.log('\nALL CHECKS PASSED');
   await browser.close();
-})().catch(e => { console.error('\n' + e.message); process.exit(1); });
+/* A crash is a FAILURE and has to look like one. This read `console.error`
+   of the bare message, so a run that died two checks from the end printed
+   no line matching FAILED, no line matching ALL CHECKS PASSED, and - piped
+   through a filter, where the exit status is the filter's - looked exactly
+   like a clean run. It cost a round trip. The prefix makes any grep that
+   looks for failures find it, and the stack names the line. */
+})().catch(e => {
+  console.error('\nFAILED: the suite crashed before reaching the end \u2014 ' + e.message);
+  if (e.stack) console.error(e.stack.split('\n').slice(1, 4).join('\n'));
+  process.exit(1);
+});

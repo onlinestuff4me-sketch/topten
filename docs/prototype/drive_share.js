@@ -322,4 +322,9 @@ const q = (o) => {
   console.log(`\n${passed} passed, ${failed} failed`);
   if (failed) process.exit(1);
   console.log('ALL SHARE CHECKS PASSED');
-})().catch(e => { console.error('\n' + e.stack); process.exit(1); });
+// A crash is a failure; say so in the word any filter looks for.
+})().catch(e => {
+  console.error('\nFAILED: the share suite crashed before reaching the end \u2014 ' + e.message);
+  console.error(e.stack);
+  process.exit(1);
+});

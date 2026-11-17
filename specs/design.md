@@ -910,7 +910,8 @@ the person won by being first. The anatomy is now a hierarchy, top to bottom:
 | Part | Token | Why |
 |---|---|---|
 | **List name** | `display.md` (22pt New York Semibold) | The artifact — the reason to tap |
-| Creator | 12pt `text.secondary`, *"A Top 10 by Sam"* | Attribution, subordinate |
+| Claim | 14pt `text.secondary`, generated | The argument you can answer (2026-11-17) |
+| Byline | 12pt, source bold + `·` + role | Who or what made it (2026-11-18) |
 | Six-poster strip | 40 × 60 minis, ranked | What the list actually contains |
 | Badge state | 44pt badge or lock + `label.sm` + one line | The gate, stated |
 | **One CTA** | 48pt full-width pill, accent outline | The single action |
@@ -921,8 +922,35 @@ different strings worth two different rows. Since the naming correction the
 name *is* the criteria, so the topic row printed the name a second time in
 11pt. One row, one name.
 
+**The byline, and why it sits under the claim (2026-11-18, Claude — Mischa
+raised it).** The *Creator* row above said *"A Top 10 by Sam"*. Two things
+were wrong with it by November: Sam was invented, and the row was doing the
+"who" job in a product that had since decided the card leads with the
+**argument** and keeps the name as attribution. The byline is now two parts on
+one line — the source in `text.primary` bold, then a middle dot, then its role
+in `text.secondary` — and it sits **below** the claim, not above it. Above the
+claim it would put the name back in front, which is the thing the 2026-11-17
+pass removed.
+
+The role is what makes a byline work: *"Mischa · made this app"* answers "who
+is this" in three words, and *"Best known · the ones most people have rated"*
+says a list is derived rather than dressing a ranking rule as a person. See
+the PRD Req 12 amendment of the same date for which sources exist and why.
+
+It **wraps rather than truncates**: at accessibility sizes a role runs wider
+than a phone, and a clipped role answers nothing, so the line is a
+`flex-wrap` row and not an ellipsis. The dot is a CSS `::before` on the role,
+so it never reaches `textContent` and a screen reader hears "Mischa, made this
+app" rather than "Mischa middle dot".
+
 Nothing on the card is typed by a person, and the name states the rule all ten
-entries satisfy (PRD Req 12 amendment). **Names for a design pass to look
+entries satisfy (PRD Req 12 amendment). **That rule is now asserted rather
+than proxied.** The harness used to count `p` elements on a card, which was a
+stand-in for "nobody types anything here" and failed twice: once when the
+generated claim arrived as a `p`, and again when the byline did. It now
+accepts a byline only when both halves match a source the app ships,
+character for character — so a byline with a word added to it still counts as
+free text. Falsified both ways before it was kept. **Names for a design pass to look
 at:** *"Top 10 Crime Movies of the 90s"*, *"Top 10 Hitchcock Movies"*, *"Top 10
 Animated Movies of the 2000s"*, *"Top 10 Sci-Fi Movies"*, *"Top 10 Pacino
 Movies"*, *"Top 10 Drama Shows"*, *"Top 10 Books of All Time"*. They run 4–7
