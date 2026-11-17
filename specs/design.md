@@ -1022,6 +1022,46 @@ names take two lines at 353px where they took three at 203 — and the label
 scrolling. Falsified by sinking it 260px and watching the check name the
 overlap.
 
+## Contrast at WCAG AA, and Reduce Motion (2026-11-17)
+
+Both are stated gates in AGENTS.md and design.md; both are now swept by
+`drive.js`.
+
+**Contrast.** Measured against the background a pixel is actually painted on
+- walking up the ancestors, compositing any translucent fill, until
+something opaque is found - rather than the one the stylesheet nominally
+sets. Two exemptions: WCAG 1.4.3 excludes inactive controls, so a disabled
+button is skipped (the "Arrange" button at 0 of 10 measures 2.2:1 and is
+meant to recede, while its enabled state is 5.2:1), and text over artwork is
+skipped because the backdrop is a photograph.
+
+Two real failures, both in light mode:
+
+| | was | now |
+|---|---|---|
+| service pills, and a pressed filter chip | `--accent` on `--accent-muted`, **3.93:1** | `--accent-ink`, 5.3:1 |
+| the rank numeral on a finished Ten | `--accent-bright`, **2.28:1** at 28px, under the 3.0 large text needs | `--accent`, 4.7:1 |
+
+**New token: `--accent-ink`.** Accent text ON the muted fill. Darkening the
+ink was the only move available - lightening the fill enough to carry
+`--accent` would need it at 91% luminance, which is not a fill any more. In
+dark mode `--accent` already clears 6.4:1 on `--accent-muted`, so the token
+resolves to the same value there.
+
+**`--accent-bright` is a FILL colour**, not a text colour: badge metal, a
+slot ring, a focus edge. It fails as text on the light background even at
+28px. `--accent` is the text weight of the same gold, and in dark mode the
+two tokens are already identical.
+
+**Reduce Motion.** design.md calls the identical-end-state rule non-optional
+and "tested per milestone". The reveal ceremony was rewritten the same day -
+the inscription moved onto the badge's ribbon and types letter by letter - so
+the claim is now asserted rather than assumed: the suite runs the reveal
+twice, with and without `prefers-reduced-motion`, and compares the end state
+field by field (layers landed, letters struck, inscription text, list name,
+buttons shown). Falsified by skipping the ribbon when reduced and watching
+the check name the differing field.
+
 ## Dynamic Type, XS to accessibility sizes (2026-11-17)
 
 AGENTS.md: "Dynamic Type from XS to accessibility sizes without truncation or

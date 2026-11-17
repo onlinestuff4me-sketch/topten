@@ -96,7 +96,7 @@ section { margin-top: var(--s8); }
   transform: translate(-50%, -50%); height: 44px; width: max(100%, 44px); }
 
 .chip { position: relative; flex: 0 0 auto; display: inline-flex; align-items: center; gap: 6px; min-height: 44px; padding: 0 var(--s3); border-radius: 999px; border: 1px solid var(--border-subtle); color: var(--text-secondary); font-size: 0.8125rem; font-weight: 600; background: var(--bg-surface); }
-.chip[aria-pressed="true"], .chip.on { background: var(--accent-muted); border-color: var(--accent); color: var(--accent); }
+.chip[aria-pressed="true"], .chip.on { background: var(--accent-muted); border-color: var(--accent); color: var(--accent-ink); }
 .chip .x { font-size: 1rem; line-height: 1; opacity: .7; }
 /* No pseudo-element hit area here, deliberately: `.chips` is
    `overflow-x: auto`, and overflow in one axis clips the other, so an area
@@ -145,7 +145,7 @@ section { margin-top: var(--s8); }
 .title-facts .fact { column-gap: var(--s3); }
 .title-facts .watch { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 2px; }
 .title-facts .sv { font-size: 0.75rem; font-weight: 600; padding: 4px 8px; border-radius: 999px;
-  background: var(--accent-muted); color: var(--accent); }
+  background: var(--accent-muted); color: var(--accent-ink); }
 .title-facts .watch.none { color: var(--text-secondary); font-size: 0.8125rem; }
 .title-cta { margin-top: var(--s6); }
 .title-cta .btn { width: 100%; }
@@ -369,7 +369,7 @@ section { margin-top: var(--s8); }
 /* Reorderable Ten */
 .tenrow { display: flex; align-items: center; gap: var(--s3); min-height: 88px; padding: var(--s2) 0; border-bottom: 1px solid var(--border-subtle); }
 .tenrow .num { font-family: var(--serif); font-weight: 700; font-size: 1.375rem; min-width: 1.4em; text-align: right; color: var(--text-primary); }
-.tenrow.one .num { color: var(--accent-bright); font-size: 1.75rem; }
+.tenrow.one .num { color: var(--accent); font-size: 1.75rem; }
 .tenrow .thumb { flex: 0 0 48px; width: 48px; height: 72px; border-radius: 4px; overflow: hidden; background: var(--bg-recessed); }
 .tenrow .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
 .tenrow .meta { flex: 1; min-width: 0; }

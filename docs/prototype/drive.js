@@ -63,6 +63,23 @@ const badgeInscription = page => page.evaluate(() => {
    target that silently steals its neighbour's taps is worse than a small
    one, which is why the stacked reorder arrows were fixed by growing the
    row rather than by overlapping hit areas. */
+/* Backslashes in here are DOUBLED on purpose.
+
+   These checks are template literals evaluated in the page, and a template
+   literal processes escapes before the browser ever sees the text: `\(`
+   becomes `(` and `\s` becomes the letter `s`. That silently turned
+
+       /rgba?\\(([^)]+)\\)/      into      /rgba?(([^)]+))/
+
+   so parsing "rgb(201, 162, 39)" captured "(201, 162, 39", Number() of that
+   is NaN, every contrast ratio was NaN, and `NaN < need` is false - the
+   check examined every element on every screen and could not report a
+   failure if one existed. It passed a deliberately planted 2.1:1 element.
+
+   This is the third escape-in-a-template bug today (a backtick quoting a CSS
+   selector closed badge.js's string; another closed this file's). The rule:
+   nothing inside one of these strings is read by a JS parser the way it
+   looks. Double every backslash, and never use a backtick. */
 const TAP_SWEEP = `(() => {
   const SEL = 'button, a[href], input, select, textarea, [role="button"], [tabindex]:not([tabindex="-1"])';
   const MIN = 44, out = [];
@@ -77,25 +94,27 @@ const TAP_SWEEP = `(() => {
     if (cy - h < 0 || cy + h > innerHeight || cx - h < 0 || cx + h > innerWidth) { skipped++; continue; }
     const at = document.elementFromPoint(cx, cy);
     if (at && !(at === el || el.contains(at))) {
-      const over = at.closest('.dock, .sheet, .vault, .scrim, .coachscrim, .sheet-in');
+      const over = at.closest('.dock, .sheet, .vault, .scrim, .coach, .coachscrim, .sheet-in');
       if (over && !over.contains(el)) { skipped++; continue; }
     }
     let miss = 0, covered = false;
     for (const [x, y] of [[cx, cy], [cx, cy - h], [cx, cy + h], [cx - h, cy], [cx + h, cy]]) {
       const hit = document.elementFromPoint(x, y);
       if (!hit || !(hit === el || el.contains(hit))) {
-        const ov = hit && hit.closest('.dock, .sheet, .vault, .scrim, .coachscrim, .sheet-in');
+        const ov = hit && hit.closest('.dock, .sheet, .vault, .scrim, .coach, .coachscrim, .sheet-in');
         if (ov && !ov.contains(el)) { covered = true; break; }
         miss++;
       }
     }
     if (covered) { skipped++; continue; }
     if (!miss) continue;
+    const at2 = document.elementFromPoint(cx, cy - h) || document.elementFromPoint(cx, cy);
     out.push({
       sel: el.tagName.toLowerCase() + (typeof el.className === 'string' && el.className
-        ? '.' + el.className.split(/\s+/).filter(Boolean)[0] : ''),
+        ? '.' + el.className.split(/\\s+/).filter(Boolean)[0] : ''),
       w: Math.round(r.width), h: Math.round(r.height), miss,
-      label: (el.getAttribute('aria-label') || el.innerText || el.type || '').replace(/\s+/g, ' ').trim().slice(0, 28),
+      thief: at2 ? at2.tagName.toLowerCase() + '.' + String(at2.className).split(/\\s+/)[0] : 'null',
+      label: (el.getAttribute('aria-label') || el.innerText || el.type || '').replace(/\\s+/g, ' ').trim().slice(0, 28),
     });
   }
   return { bad: out, skipped };
@@ -103,7 +122,7 @@ const TAP_SWEEP = `(() => {
 
 async function sweepTaps(page, where, check) {
   const { bad, skipped } = await page.evaluate(TAP_SWEEP);
-  const names = bad.map(b => `${b.sel} ${b.w}x${b.h} "${b.label}"`).slice(0, 4).join('; ');
+  const names = bad.map(b => `${b.sel} ${b.w}x${b.h} "${b.label}" <- ${b.thief}`).slice(0, 4).join('; ');
   check(bad.length === 0,
     `every target on ${where} takes a 44x44 tap (${skipped} occluded or off-screen, not judged)`
     + (bad.length ? ` — ${bad.length} do not: ${names}` : ''));
@@ -172,9 +191,9 @@ const DT_CHECK = `(() => {
     // font, not a truncation.
     if (Math.max(overX, overY) > 3) clipped.push({
       sel: el.tagName.toLowerCase() + (typeof el.className === 'string' && el.className
-        ? '.' + el.className.split(/\s+/).filter(Boolean)[0] : ''),
+        ? '.' + el.className.split(/\\s+/).filter(Boolean)[0] : ''),
       over: Math.max(overX, overY),
-      text: el.textContent.replace(/\s+/g, ' ').trim().slice(0, 26),
+      text: el.textContent.replace(/\\s+/g, ' ').trim().slice(0, 26),
     });
   }
   for (const el of document.querySelectorAll('button, a[href], input')) {
@@ -182,12 +201,82 @@ const DT_CHECK = `(() => {
     if (r.width < 1 || r.height < 1 || inScroller(el)) continue;
     if (r.left < -1 || r.right > innerWidth + 1) offscreen.push({
       sel: el.tagName.toLowerCase() + (typeof el.className === 'string' && el.className
-        ? '.' + el.className.split(/\s+/).filter(Boolean)[0] : ''),
-      text: (el.getAttribute('aria-label') || el.innerText || '').replace(/\s+/g, ' ').trim().slice(0, 22),
+        ? '.' + el.className.split(/\\s+/).filter(Boolean)[0] : ''),
+      text: (el.getAttribute('aria-label') || el.innerText || '').replace(/\\s+/g, ' ').trim().slice(0, 22),
     });
   }
   const uniq = a => [...new Map(a.map(o => [o.sel + o.text, o])).values()];
   return { pageSpill, clipped: uniq(clipped).slice(0, 4), offscreen: uniq(offscreen).slice(0, 4) };
+})()`;
+
+
+/* ── Contrast at WCAG AA, light and dark ────────────────────────────────────
+   AGENTS.md: "contrast at WCAG AA in both light and dark". Measured against
+   the background a pixel is ACTUALLY painted on - walk up the ancestors
+   compositing any translucent fill until something opaque is found - rather
+   than the one the stylesheet nominally sets.
+
+   Two exemptions, both deliberate. WCAG 1.4.3 excludes inactive controls, so
+   a disabled button is skipped: the "Arrange" button at 0 of 10 measures
+   2.2:1 and is meant to recede, while its enabled state is 5.2:1. And text
+   sitting on artwork is skipped, because the backdrop is a photograph and
+   this function can only reason about colours. */
+const CONTRAST = `(() => {
+  const lin = c => (c <= 0.03928 ? c / 12.92 : Math.pow((c + 0.055) / 1.055, 2.4));
+  const lum = ([r, g, b]) => 0.2126 * lin(r / 255) + 0.7152 * lin(g / 255) + 0.0722 * lin(b / 255);
+  const parse = s => {
+    const m = /rgba?\\(([^)]+)\\)/.exec(s || '');
+    if (!m) return null;
+    const p = m[1].split(/[\\s,/]+/).filter(Boolean).map(Number);
+    return { rgb: p.slice(0, 3), a: p.length > 3 ? p[3] : 1 };
+  };
+  const over = (fg, bg, a) => fg.map((c, i) => c * a + bg[i] * (1 - a));
+  const bgOf = el => {
+    let acc = null;
+    for (let n = el; n; n = n.parentElement) {
+      const p = parse(getComputedStyle(n).backgroundColor);
+      if (!p || p.a === 0) continue;
+      acc = acc === null ? { rgb: p.rgb, a: p.a }
+                         : { rgb: over(acc.rgb, p.rgb, acc.a), a: acc.a + p.a * (1 - acc.a) };
+      if (acc.a >= 0.99) return acc.rgb;
+    }
+    return acc ? acc.rgb : [255, 255, 255];
+  };
+  const out = [];
+  let seen = 0;
+  for (const el of document.querySelectorAll('h1,h2,h3,p,span,button,a,label,div,li')) {
+    const r = el.getBoundingClientRect();
+    if (r.width < 2 || r.height < 2 || r.bottom < 0 || r.top > innerHeight) continue;
+    if (![...el.childNodes].some(n => n.nodeType === 3 && n.textContent.trim())) continue;
+    const cs = getComputedStyle(el);
+    if (cs.visibility === 'hidden' || +cs.opacity === 0) continue;
+    if (el.disabled || el.closest('[disabled]')) continue;
+    let overArt = false;
+    for (let n = el; n; n = n.parentElement) {
+      if (n.tagName === 'DIV' && /card|hero-cell|mini|thumb|title-art/.test(String(n.className))) { overArt = true; break; }
+    }
+    if (overArt) continue;
+    const fg = parse(cs.color); if (!fg) continue;
+    seen++;
+    const bg = bgOf(el);
+    const f = fg.a < 1 ? over(fg.rgb, bg, fg.a) : fg.rgb;
+    const L1 = lum(f), L2 = lum(bg);
+    const ratio = (Math.max(L1, L2) + 0.05) / (Math.min(L1, L2) + 0.05);
+    const px = parseFloat(cs.fontSize), bold = +cs.fontWeight >= 700;
+    const need = (px >= 24 || (bold && px >= 18.66)) ? 3 : 4.5;
+    if (ratio + 0.05 < need) out.push({
+      sel: el.tagName.toLowerCase() + (typeof el.className === 'string' && el.className
+        ? '.' + el.className.split(/\\s+/).filter(Boolean)[0] : ''),
+      ratio: Math.round(ratio * 100) / 100, need,
+      text: el.textContent.replace(/\\s+/g, ' ').trim().slice(0, 22),
+    });
+  }
+  // The seen count guards against the worst kind of pass: a screen that did
+  // not render, examined nothing and reported no problems. A check that is
+  // green because it looked at an empty page is worse than no check.
+  // (No backticks in here - this whole function is a template literal, and
+  // quoting an identifier in one closes the string. Second time today.)
+  return { seen, bad: [...new Map(out.map(o => [o.sel + o.text, o])).values()].slice(0, 5) };
 })()`;
 
 (async () => {
@@ -1997,6 +2086,27 @@ const DT_CHECK = `(() => {
     + `(ends at ${cta && cta.bottom}px, dock starts at ${cta && cta.dockTop}px)`);
 
   console.log('\n\u2500\u2500 Touch targets, hit-tested at 44x44 \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500');
+  // Same reasoning as the contrast canary below: "nothing is too small" is
+  // green when the sweep works and the screen is clean, and equally green
+  // when it is quietly not running.
+  await page.evaluate(() => {
+    // Clear anything left open by an earlier block: the sweep skips controls
+    // behind an overlay, and a stray sheet would make the canary itself get
+    // skipped rather than caught.
+    document.querySelectorAll('.sheet, .scrim, .vault, .coach, .coachscrim').forEach(n => n.remove());
+    const b = document.createElement('button');
+    b.id = 'tap-canary';
+    b.textContent = 'x';
+    b.style.cssText = 'position:fixed;top:120px;left:120px;width:20px;height:20px;z-index:99999';
+    document.body.appendChild(b);
+  });
+  await page.waitForTimeout(100);
+  const tapCanary = await page.evaluate(TAP_SWEEP);
+  check(tapCanary.bad.some(o => o.label === 'x' || /tap-canary/.test(o.sel)),
+    `the 44x44 sweep catches a planted 20x20 button before it is trusted `
+    + `(${tapCanary.bad.length} reported)`);
+  await page.evaluate(() => { const b = document.getElementById('tap-canary'); if (b) b.remove(); });
+  await page.waitForTimeout(80);
   const TAP_SCREENS = [
     ['the splash', () => { localStorage.clear(); S.scene = 'intro'; S.seen = false; S.introSeen = 0; save(); render(); }],
     ['the browse screen', () => { S.scene = 'build'; S.seen = true; S.tipDone = true; S.tray = []; save(); render(); }],
@@ -2020,6 +2130,22 @@ const DT_CHECK = `(() => {
   await sweepTaps(page, 'the Ten sheet', check);
 
   console.log('\n\u2500\u2500 Dynamic Type, XS to accessibility sizes \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500');
+  // And the same for this one.
+  await page.evaluate(() => {
+    document.querySelectorAll('.sheet, .scrim, .vault, .coach, .coachscrim').forEach(n => n.remove());
+    const d = document.createElement('div');
+    d.id = 'dt-canary';
+    d.style.cssText = 'position:fixed;top:160px;left:0;width:60px;height:20px;overflow:hidden;white-space:nowrap;z-index:99999;background:#fff';
+    d.textContent = 'a line far too long for the box it is in';
+    document.body.appendChild(d);
+  });
+  await page.waitForTimeout(100);
+  const dtCanary = await page.evaluate(DT_CHECK);
+  check(dtCanary.clipped.some(o => /dt-canary/.test(o.sel) || /far too long/.test(o.text)),
+    `the Dynamic Type sweep catches planted clipped text before it is trusted `
+    + `(${dtCanary.clipped.length} clipped, ${dtCanary.offscreen.length} off-screen reported)`);
+  await page.evaluate(() => { const d = document.getElementById('dt-canary'); if (d) d.remove(); });
+  await page.waitForTimeout(80);
   // The block above leaves the Ten sheet open, and a sheet outlives a
   // re-render of the screen behind it — the first run of this sweep reported
   // the finished list's rows as faults on the splash.
@@ -2040,7 +2166,10 @@ const DT_CHECK = `(() => {
       await page.evaluate(v => { document.documentElement.style.fontSize = v + 'px'; }, px);
       await page.evaluate(fn);
       await page.waitForTimeout(220);
-      await page.evaluate(() => { const c = document.querySelector('.coachscrim'); if (c) c.click(); });
+      await page.evaluate(() => {
+        const c = document.querySelector('.coachscrim'); if (c) c.click();
+        window.scrollTo(0, 0);
+      });
       await page.waitForTimeout(100);
       const r = await page.evaluate(DT_CHECK);
       if (r.pageSpill > 1) bad.push(`${px}px: page spills ${r.pageSpill}px sideways`);
@@ -2053,6 +2182,103 @@ const DT_CHECK = `(() => {
   }
   await page.evaluate(() => { document.documentElement.style.fontSize = ''; });
   await page.waitForTimeout(150);
+
+  /* A canary, because this is an ABSENCE assertion.
+
+     "No element fails AA" is green when the function works and the page is
+     clean, and equally green when the function is silently not running - a
+     screen that did not render, a selector that stopped matching, a
+     measurement taken against the wrong state. I have shipped one vacuous
+     check today already (a budget assertion measured at 852px, which passed
+     no matter what the header did), so this one proves itself first: plant
+     an element that MUST fail, confirm it is caught, remove it, then run for
+     real. If the canary is not caught, the suite says so instead of
+     reporting a clean sweep it did not perform. */
+  console.log('\n\u2500\u2500 Contrast at WCAG AA, light and dark \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500');
+  await page.emulateMedia({ colorScheme: 'light' });
+  await page.evaluate(() => {
+    const c = document.createElement('p');
+    c.id = 'contrast-canary';
+    c.textContent = 'canary';
+    // #BFBFBF on white is 2.1:1 — well under the 4.5 a 16px body needs.
+    c.style.cssText = 'color:#BFBFBF;background:#FFFFFF;font-size:16px;padding:4px;position:fixed;top:4px;left:4px;z-index:99999';
+    document.body.appendChild(c);
+  });
+  await page.waitForTimeout(100);
+  const caught = await page.evaluate(CONTRAST);
+  const sawCanary = caught.bad.some(o => o.text === 'canary');
+  check(sawCanary,
+    `the contrast check catches a planted 2.1:1 element before it is trusted `
+    + `(examined ${caught.seen}, reported ${JSON.stringify(caught.bad.map(o => o.sel + ' ' + o.ratio))})`);
+  await page.evaluate(() => { const c = document.getElementById('contrast-canary'); if (c) c.remove(); });
+
+  for (const scheme of ['light', 'dark']) {
+    await page.emulateMedia({ colorScheme: scheme });
+    await page.waitForTimeout(120);
+    const bad = [];
+    for (const [where, fn] of DT_SCREENS) {
+      await page.evaluate(fn);
+      await page.waitForTimeout(250);
+      await page.evaluate(() => {
+        const c = document.querySelector('.coachscrim'); if (c) c.click();
+        window.scrollTo(0, 0);
+      });
+      await page.waitForTimeout(120);
+      const res = await page.evaluate(CONTRAST);
+      if (res.seen < 6) bad.push(`${where}: only ${res.seen} text elements on screen — did it render?`);
+      for (const o of res.bad) {
+        bad.push(`${where}: ${o.sel} ${o.ratio}:1 needs ${o.need} ("${o.text}")`);
+      }
+    }
+    check(bad.length === 0,
+      `every text colour clears AA in ${scheme}`
+      + (bad.length ? ` \u2014 ${bad.length} do not: ${bad.slice(0, 3).join('; ')}` : ''));
+  }
+  await page.emulateMedia({ colorScheme: null });
+
+  /* ── Reduce Motion lands on the identical end state ─────────────────────
+     design.md calls this non-optional and "tested per milestone". The reveal
+     ceremony was rewritten today - the inscription moved onto the badge's
+     ribbon and types letter by letter - so the claim needs re-checking
+     against the thing that changed. */
+  console.log('\n\u2500\u2500 Reduce Motion lands on the same end state \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500');
+  const END = `(() => {
+    const v = document.querySelector('.vault');
+    if (!v) return { none: true };
+    const t = v.querySelector('#l-ribbon text');
+    const cls = (sel, c) => { const e = v.querySelector(sel); return !!e && e.classList.contains(c); };
+    return {
+      layers: [...v.querySelectorAll('.layer')].map(l => l.id + ':' + (l.classList.contains('on') ? 1 : 0)).join(','),
+      letters: [...v.querySelectorAll('#l-ribbon .ich')].filter(e => e.classList.contains('on')).length
+        + '/' + v.querySelectorAll('#l-ribbon .ich').length,
+      inscription: t ? t.textContent.trim() : '',
+      name: (v.querySelector('.revealed-name') || {}).textContent || '',
+      nameOn: cls('.revealed-name', 'on'), afterOn: cls('.after', 'on'),
+    };
+  })()`;
+  const endStates = {};
+  for (const mode of ['no-preference', 'reduce']) {
+    await page.emulateMedia({ reducedMotion: mode });
+    await page.evaluate(ids => {
+      document.querySelectorAll('.vault, .sheet, .scrim').forEach(n => n.remove());
+      S.topic = makeTopic({}); S.tray = ids.slice(); S.ranked = ids.slice();
+      S.rank = null; S.scene = 'reveal'; save(); render();
+    }, [680, 155, 13, 550, 27205, 278, 238, 424, 129, 603]);
+    await page.waitForFunction(() => {
+      const a = document.querySelector('.vault .after');
+      return a && a.classList.contains('on');
+    }, null, { timeout: 15000 }).catch(() => {});
+    await page.waitForTimeout(250);
+    endStates[mode] = await page.evaluate(END);
+  }
+  await page.emulateMedia({ reducedMotion: null });
+  const differing = Object.keys(endStates['no-preference'])
+    .filter(k => JSON.stringify(endStates['no-preference'][k]) !== JSON.stringify(endStates.reduce[k]));
+  check(!endStates['no-preference'].none && differing.length === 0,
+    `the reveal's end state is identical with Reduce Motion `
+    + `(badge ${endStates['no-preference'].layers}, letters ${endStates['no-preference'].letters})`
+    + (differing.length ? ` \u2014 differs on: ${differing.join(', ')}` : ''));
+  await page.evaluate(() => { document.querySelectorAll('.vault').forEach(n => n.remove()); });
 
   check(errors.length === 0, 'no page errors: ' + JSON.stringify(errors));
   console.log('\nALL CHECKS PASSED');

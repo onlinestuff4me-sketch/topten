@@ -18,6 +18,14 @@
   --accent: #8A6D1F;
   --accent-bright: #C9A227;
   --accent-muted: #EFE6CC;
+  /* Accent text ON the muted fill. --accent over --accent-muted measures
+     3.93:1, under the 4.5 that AA wants for body sizes, and it is the
+     pairing used by service pills and by a filter chip once it is pressed.
+     Darkening the ink is the only move available: lightening the fill
+     enough would need it at 91% luminance, which is not a fill any more.
+     In dark mode --accent already clears 6.4:1 on --accent-muted, so this
+     resolves to the same value there. */
+  --accent-ink: #76591A;
   /* status.locked, design.md. It had no value here, so `background:
      var(--locked)` resolved to nothing and every locked badge rendered as an
      empty box — the gate's own object was invisible. */
@@ -52,6 +60,6 @@
     --bg-base: #121110; --bg-surface: #1C1A18; --bg-recessed: #0C0B0A;
     --border-subtle: #2E2B27; --text-primary: #F4F1EA; --text-secondary: #A79F92;
     --text-disabled: #6E675D; --accent: #D9B23A; --accent-bright: #D9B23A;
-    --accent-muted: #3A311A; --locked: #6E675D;
+    --accent-muted: #3A311A; --accent-ink: #D9B23A; --locked: #6E675D;
   }
 }

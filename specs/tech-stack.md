@@ -146,13 +146,38 @@ transform attribute. Only the landed state of the animation is wrong, which
 is the one frame a 1.4s-into-the-ceremony screenshot does not show. The walk
 harness now waits for the ceremony to finish before shooting.
 
-## WARNING - Trap: backticks inside a template literal
+## WARNING - Trap: nothing inside a template literal means what it looks like
 
-Same session, same file. A code comment written inside a JS template literal
-quoted a CSS selector in backticks, which closed the literal. `badge.js`
-stopped parsing, and because it is a shared classic script the symptom was
-again the whole app failing to boot. Comments inside template literals get no
-backticks - name the selector in plain words.
+Three bugs in one day, all the same shape. A browser check written as a
+template literal and handed to `page.evaluate` is a STRING first: JavaScript
+processes its escapes before the browser ever sees the text.
+
+**A backtick ends it.** A comment quoting a CSS selector in backticks closed
+the literal in `badge.js`, and because that is a classic script shared by
+four pages the symptom was the whole app failing to boot. It happened again
+an hour later in `drive.js`, quoting a variable name. Comments inside these
+strings get no backticks - name the thing in plain words.
+
+**A backslash is eaten.** `\\(` becomes `(` and `\\s` becomes the letter
+`s`. This silently destroyed the contrast check:
+
+    written   /rgba?\\\\(([^)]+)\\\\)/
+    evaluated /rgba?(([^)]+))/
+
+so parsing `rgb(201, 162, 39)` captured `(201, 162, 39`, `Number()` of that
+is `NaN`, every contrast ratio was `NaN`, and `NaN < need` is false. **The
+check examined every text element on every screen in both colour schemes and
+could not have reported a failure if one existed.** It passed a deliberately
+planted 2.1:1 element. Double every backslash in these strings.
+
+**So: prove an absence assertion before trusting it.** "Nothing fails" reads
+identically whether the page is clean or the check is dead, and both of this
+session's vacuous tests were that shape (the other measured the browse-screen
+budget at 852px, where it passed no matter what the header did). Each of the
+three sweeps in `drive.js` now plants an element that MUST fail - a 20x20
+button, a clipped line, a 2.1:1 paragraph - confirms it is caught, removes
+it, and only then runs for real. The canary is four lines and it is the only
+reason the contrast bug was found rather than shipped.
 
 ## WARNING - Trap: a layout assertion in one font measures one machine
 
