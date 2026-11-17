@@ -728,7 +728,25 @@ footer.notes .build { color: var(--text-disabled); margin-top: var(--s2); }
 .key-ten .key-plate { stroke: var(--accent-bright); stroke-width: 2.5; }
 .key-next .key-plate { fill: var(--bg-recessed); stroke: var(--text-secondary); stroke-dasharray: 3 2.5; }
 .key-check { fill: none; stroke: #17140B; stroke-width: 1.6; stroke-linecap: round; stroke-linejoin: round; }
+.map-stage { position: relative; flex: 1; min-height: 0; display: flex; }
 .map-scroll { flex: 1; overflow: auto; -webkit-overflow-scrolling: touch; padding: 0 var(--margin) calc(env(safe-area-inset-bottom) + var(--s6)); }
+/* ── The map continues past the edge of the phone ─────────────────────────
+   The graph is routinely wider than the screen - around 170px at iPhone
+   width for a path with two branches - and the view opens CENTRED on where
+   you are, so a whole branch can sit off the left edge with nothing to say
+   so. A fade on each side that has something beyond it.
+
+   It is a fade and not an arrow on purpose. This is a canvas you pan with a
+   thumb; an arrow glyph would read as a button, and a button here would
+   either do nothing or eat the tap area over the nodes nearest the edge. A
+   fade costs no tap target, carries no promise, and is the convention iOS
+   already uses on every scrolling row. pointer-events stay off. */
+.map-fade { position: absolute; top: 0; bottom: 0; width: 44px; z-index: 2;
+  pointer-events: none; opacity: 0; transition: opacity 160ms ease; }
+.map-fade.on { opacity: 1; }
+.map-fade.l { left: 0; background: linear-gradient(to right, var(--bg-base) 18%, transparent); }
+.map-fade.r { right: 0; background: linear-gradient(to left, var(--bg-base) 18%, transparent); }
+@media (prefers-reduced-motion: reduce) { .map-fade { transition: none; } }
 .map-node { cursor: pointer; }
 .map-node .plate { fill: var(--bg-surface); stroke: var(--border-subtle); stroke-width: 1; }
 .map-node.focus .plate { stroke: var(--accent); stroke-width: 2.5; }
@@ -2091,7 +2109,11 @@ function renderMap() {
     <div class="map-head"><h2>Map of your selections</h2><button class="done" data-act="closemap">Done</button></div>
     ${mapContext()}
     ${drawn ? mapKey(drawn.states) : ''}
-    <div class="map-scroll">${drawn ? drawn.svg : MAP_BLANK}</div>`;
+    <div class="map-stage">
+      <div class="map-scroll">${drawn ? drawn.svg : MAP_BLANK}</div>
+      <div class="map-fade l" aria-hidden="true"></div>
+      <div class="map-fade r" aria-hidden="true"></div>
+    </div>`;
   document.body.appendChild(v);
   setBackgroundInert(true);
 
@@ -2107,7 +2129,22 @@ function renderMap() {
     sc.scrollLeft += (a.left + a.width / 2) - (b.left + b.width / 2);
     sc.scrollTop += (a.top + a.height / 2) - (b.top + b.height / 2);
   };
-  requestAnimationFrame(() => { centre(); requestAnimationFrame(centre); });
+  /* Which sides have something beyond them. Run after every scroll and
+     whenever the scroller is resized - a ResizeObserver rather than a window
+     listener, because it dies with the element and the map view is thrown
+     away on close. A 2px slack absorbs sub-pixel scroll positions, which
+     otherwise leave a fade lit at a hard end. */
+  const edges = () => {
+    const sc = $('.map-scroll', v);
+    if (!sc) return;
+    const max = sc.scrollWidth - sc.clientWidth;
+    $('.map-fade.l', v).classList.toggle('on', sc.scrollLeft > 2);
+    $('.map-fade.r', v).classList.toggle('on', sc.scrollLeft < max - 2);
+  };
+  $('.map-scroll', v).addEventListener('scroll', edges, { passive: true });
+  new ResizeObserver(edges).observe($('.map-scroll', v));
+
+  requestAnimationFrame(() => { centre(); edges(); requestAnimationFrame(() => { centre(); edges(); }); });
 }
 /* The map has to say what it is filtered by, or it looks like it has lost
    your context (round 3: "doesn't have accurate breadcrumbs"). */

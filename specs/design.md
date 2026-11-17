@@ -597,6 +597,37 @@ rest of the app has just stopped saying. The gate still bites — a
 sentence-shaped label fails — and the test was re-run against a sentence to
 prove it.
 
+**The map says when it continues past the edge (added 2026-11-18, Claude —
+raised by Mischa reviewing the overnight build).** The graph is wider than an
+iPhone for all but the shallowest path — the fan of unexplored steps alone
+overruns a 393pt screen by about 170pt, and a path with two branches by about
+250pt — and the view opens **centred on where you are**, which is right, but it
+means a whole branch can sit off the left edge with nothing to say so. A
+**44pt fade** now sits on each side that has something beyond it: `--bg-base`
+held for the first 18% and ramping to transparent, `opacity` cross-faded over
+160ms, and off entirely when the graph fits.
+
+It is a fade and **not an arrow**. This is a canvas panned with a thumb; an
+arrow glyph reads as a button, and a button at the edge either does nothing or
+eats the tap area over the nodes nearest the edge — the ones it is pointing at.
+A fade costs no tap target, makes no promise, and is the convention iOS already
+uses on every scrolling row. `pointer-events` stay off and both fades are
+`aria-hidden`: a screen reader reaches the nodes through the graph, not by
+scrolling, so a spoken "there is more to the left" would be noise.
+
+The state is recomputed on scroll and from a `ResizeObserver` on the scroller
+rather than a window listener, so it dies with the view. The rule is exact — a
+side is faded **if and only if** there is scroll remaining that way, with 2px
+of slack for sub-pixel positions — and `drive.js` asserts it at the centred
+opening, at both ends, and on a screen wide enough to hold the whole graph.
+Falsified both ways before it was kept: pinned on, the left-end check names it;
+pinned off, the centred check names it.
+
+**Vertical is deliberately left alone.** The graph can also run past the bottom,
+but downward scrolling is the one thing every phone user does by reflex, and
+the header stays put above it. The axis that hides content is the unfamiliar
+one.
+
 **Every state carries a shape, not only a colour** — the accessibility gate,
 and not a theoretical one. In the vault theme `accent.laurel` and
 `accent.laurelBright` are **the same gold** (`#D9B23A`), so "where you are" and

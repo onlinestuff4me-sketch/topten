@@ -1441,6 +1441,62 @@ const DOMAIN_SPEECH = `(() => {
     `every key differs in shape, not only colour (${sigs.join(' / ')})`);
   await page.screenshot({ path: SHOTS + '/17-map-legend.png' });
 
+  /* ── The map says so when it continues past the edge (2026-11-18) ─────
+     The graph is wider than an iPhone for all but the shallowest path - the
+     fan of unexplored steps alone overruns it by about 170px - and the view
+     opens CENTRED on where you are, so a whole branch can sit off the left
+     edge with nothing to say so. A fade now marks each side that has
+     something beyond it.
+
+     The rule under test is the exact one, not a sample of it: a side is faded
+     if and only if there is scroll left in that direction. Asserting that at
+     three positions catches a fade stuck on as surely as one stuck off, and
+     does not depend on where the centring happens to land. The 2px slack
+     matches the implementation's, for sub-pixel scroll positions. */
+  const edgeState = () => page.evaluate(() => {
+    const sc = document.querySelector('.map-scroll');
+    const l = document.querySelector('.map-fade.l'), r = document.querySelector('.map-fade.r');
+    if (!sc || !l || !r) return null;
+    return { max: Math.round(sc.scrollWidth - sc.clientWidth), left: Math.round(sc.scrollLeft),
+      l: l.classList.contains('on'), r: r.classList.contains('on') };
+  });
+  const edgesAgree = f => f && f.l === (f.left > 2) && f.r === (f.left < f.max - 2);
+  const say = f => f ? `${f.left}/${f.max} scrolled, faded ${f.l ? 'left' : '—'} ${f.r ? 'right' : '—'}`
+                     : 'no map on screen';
+
+  const centred = await edgeState();
+  check(centred && centred.max > 0,
+    `the graph runs past the phone (${centred ? centred.max : '?'}px beyond the screen)`);
+  check(edgesAgree(centred), `opened centred, the fade marks the side with more on it (${say(centred)})`);
+
+  await page.evaluate(() => { document.querySelector('.map-scroll').scrollLeft = 0; });
+  await page.waitForTimeout(160);
+  const hardLeft = await edgeState();
+  check(edgesAgree(hardLeft), `at the left end nothing is faded leftwards (${say(hardLeft)})`);
+
+  await page.evaluate(() => { const sc = document.querySelector('.map-scroll'); sc.scrollLeft = sc.scrollWidth; });
+  await page.waitForTimeout(160);
+  const hardRight = await edgeState();
+  check(edgesAgree(hardRight), `at the right end nothing is faded rightwards (${say(hardRight)})`);
+
+  // And a graph with room to spare is not dimmed at all. The fade is a
+  // statement about content, so with nothing beyond the edge it must not show.
+  await page.setViewportSize({ width: 700, height: 900 });
+  await page.waitForTimeout(300);
+  const roomy = await edgeState();
+  check(roomy && roomy.max === 0 && !roomy.l && !roomy.r,
+    `a graph that fits its screen is not faded (${say(roomy)})`);
+  await page.setViewportSize(PHONE);
+  await page.waitForTimeout(200);
+  /* Re-open rather than scroll back. The checks further down measure the map
+     as it OPENS - that it lands centred on where you are - and a view this
+     block has dragged to both ends and resized twice is not a view that has
+     just opened. Closing and opening it is the only honest reset. */
+  await page.locator('.mapview [data-act="closemap"]').click();
+  await page.waitForTimeout(160);
+  await page.locator('[data-act="openmap"]').first().click();
+  await page.waitForTimeout(450);
+
   // ── A speculative step may never look like a selection ──────────────────
   const ghostArt = await page.evaluate(() =>
     [...document.querySelectorAll('.map-node.ghost')].some(g => g.querySelector('image')));
