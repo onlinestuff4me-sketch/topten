@@ -1591,9 +1591,14 @@ function renderBuild() {
 
 function renderDock() {
   const n = S.tray.length, over = n > 10;
+  // "Tap a poster to start" is true on the browse screen and false on a
+  // title page, where the thing to tap is the button under the artwork and
+  // there are no posters in reach. The dock is the same component on both,
+  // so the empty-state hint has to know which screen it is standing on.
+  const onTitle = S.scene === 'title';
   const hint = over ? `${n - 10} too many — make the cut`
     : n === 10 ? 'Arrange them, then you are done'
-    : n === 0 ? 'Tap a poster to start'
+    : n === 0 ? (onTitle ? 'Add this one to start' : 'Tap a poster to start')
     : `${10 - n} to go`;
   const slots = [];
   for (let i = 0; i < Math.max(10, n); i++) {
