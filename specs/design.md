@@ -765,6 +765,10 @@ A number that is nearly right, plus a clip that hides the remainder, is worse
 than either alone — and the test now measures poster height *against its row*
 rather than on its own.
 
+> *2026-11-18: `.marquee` is gone. The wall that replaced it does not pick a
+> poster height at all — four `flex: 1 1 0` rows make the height the leftover
+> divided by four, which cannot be nearly right. The finding is why.*
+
 **The last bullet is bold**, and the callout copy is Stack's: *"Select your
 streaming services to see what is already included in your subscriptions."*
 
@@ -1253,6 +1257,32 @@ slot ring, a focus edge. It fails as text on the light background even at
 28px. `--accent` is the text weight of the same gold, and in dark mode the
 two tokens are already identical.
 
+**Text over artwork is no longer exempt (2026-11-18).** The exemption above
+was honest while artwork appeared behind captions; the splash wall puts the
+headline, the tagline and the promise over forty posters, and "the backdrop is
+a photograph" would have exempted the first screen in the app. So that text is
+measured instead, by a method the ancestor-walk cannot manage:
+
+1. Every poster on the wall is forced to **pure white**, which bounds every
+   real poster there could ever be. Whether a bright one happens to sit under
+   the headline when the gate runs is luck, and a gate that depends on luck is
+   not a gate.
+2. The page is screenshotted, the PNG is handed back to the browser — which
+   has a decoder — and read off a canvas. What is measured is what a reader
+   sees: veil, poster, blur, border and all.
+3. The **brightest pixel** in each text block's box is taken as the
+   background, and the ratio is computed against the ink's own computed
+   colour.
+
+Measured on the wall: headline **8.4:1**, tagline **6.4:1**, promise
+**7.2:1**, list name **14.4:1**, list credit **6.3:1**. Falsified by thinning
+the veil, which drops the headline to 2.1:1 and names it.
+
+Modelling this instead was the first attempt and it was wrong twice — once
+about the plate, whose `backdrop-filter` turned out to have nothing behind it
+at all, and once about the SE, where a veil written in viewport percentages
+left the headline in the weak part of the gradient.
+
 **Reduce Motion.** design.md calls the identical-end-state rule non-optional
 and "tested per milestone". The reveal ceremony was rewritten the same day -
 the inscription moved onto the badge's ribbon and types letter by letter - so
@@ -1395,6 +1425,13 @@ scroll back to zero.
 
 ## The hero Ten, and the phone viewport we actually get (2026-11-17)
 
+> **The component is gone (2026-11-18)** — see the wall at the end of this
+> file. `.hero-ten` and `.mini-ten` were removed with the splash that used
+> them, and nothing else in the app drew either. **The viewport finding
+> below is not superseded and never will be**: Playwright's iPhone 15 Pro
+> profile is 393×659, not 393×852, and every layout gate in the suite is
+> measured at the smaller number.
+
 **The component.** `.hero-ten` presents a finished Top 10 as a physical
 object: a surface, an edge, a shadow, and inside it the byline, the list name,
 the badge and ten posters in a 5x2 grid with the rank on each. Five across and
@@ -1437,6 +1474,13 @@ target behind a media query.
 
 
 ## The splash's other categories: readable, and tappable (2026-11-18)
+
+> **Superseded the same day** by *"The splash is a wall, and the wall is
+> made of lists"* at the end of this file. `.mini-ten` and the tap-to-swap
+> interaction are gone with the hero they sat under. The RULE they were
+> written for survives and still has tests: a list name on the splash is
+> never cut off, and every list in the pool is measured, not only the ones
+> that happen to be on the first screen. The plate inherited both.
 
 **Mischa, reviewing the build:** *"the other categories below should never have
 text cut off, it should be clear those are tappable to expand them into the
@@ -1505,6 +1549,12 @@ edge it ran, which is the vacuous-gate shape this suite has been caught by
 twice before.
 
 ## The splash's leftover height is shared, not banked (2026-11-18)
+
+> **Superseded the same day** by the wall, which has no bands to share
+> height between: the rows divide the screen and the copy sits in flow at
+> the bottom of it. The finding keeps its value as a method — a band that
+> centres inside itself banks the slack where nobody can see it, and 125pt
+> of dead air on a 659pt screen is what that looks like when measured.
 
 *Mischa: "make the hero bigger, and/or fix the spacing."* Both, and the
 measurements say why neither alone was enough.
@@ -1615,3 +1665,148 @@ That is not a convenience. **WCAG 2.5.7 (Dragging Movements) requires a
 single-pointer alternative to any drag**, and a drag alone cannot be one. The
 vertical list is the alternative, which makes the labelled way into it a
 requirement rather than a nicety.
+
+## The splash is a wall, and the wall is made of lists (2026-11-18, Mischa)
+
+Mischa, on the built screen: *"This What's your top 10 page looks bad. Needs
+an overhaul."* Three directions were built side by side in a scratch file at a
+real phone viewport (393×659) with the real catalog — **A** the artifact as a
+stack (#1 large, the rest receding), **B** a full-bleed wall with the copy over
+it, **C** the ten read as a list — and his answer settled it: *"My pick is B,
+and the wall should auto-scroll. Can we have a version that scrolls through
+custom lists in a wall-like format with big posters?"*
+
+Building all three rather than describing them is the point. Each took about
+fifteen minutes because the catalog and the tokens were already there, and the
+comparison was between three rendered screens instead of three paragraphs.
+
+### Anatomy
+
+| Part | What it is |
+|---|---|
+| `.wallrows` | Four rows, `position: absolute; inset: 0`, flex column |
+| `.wallrow` | One list. `flex: 1 1 0`, so a row's height is the screen divided by four |
+| `.strip` | `[plate, ten posters] × 2`, drifting `0 → −50%` |
+| `.plate` | `TOP 10` / the list's name / `From N+ Top 10s`. `aspect-ratio: 5/4` |
+| `.poster` | `aspect-ratio: 2/3`, height 100% of its row, rank 1–10 on the artwork |
+| `.wallveil` | The gentle one: seats the wall, never past `.32` |
+| `.wallcopy::before` | The strong one: sized to the copy, not the viewport |
+| `.wallcopy` | Headline, tagline, CTA, promise — in flow at the bottom |
+
+### Six things that are decisions, not defaults
+
+**The row height is a division, not a clamp.** `flex: 1 1 0` across four rows
+makes a row exactly the leftover divided by four on every screen, and the
+poster's width follows from `aspect-ratio`. The marquee this replaces picked
+its poster height in `svh` — `clamp(96px, 20svh − 26px, 210px)` — and even
+after being corrected by 26px it was a number that had to be right for every
+viewport at once. Measured: posters are **128px** tall on an SE, **155px** on
+a 15 Pro, **240px** on a tablet. The hero they replace gave them **58px**.
+
+**The gap is `margin-right` on the cell, never `gap` on the strip.** With
+`gap`, a strip of 2N cells is 2N widths plus 2N−1 gaps, so half of it falls
+half a gap short of a whole copy and the loop jumps 4px every pass. As a
+margin each copy is exactly N × (width + gap), and −50% lands where the first
+copy began. The suite measures the seam off `getBoundingClientRect`, not
+`offsetLeft`/`scrollWidth`: a 5/4 plate on a 155px row is 193.75px wide, and
+integer rounding alone put the measurement half a pixel out on a layout that
+was exactly right.
+
+**One speed token, four derived numbers.** `--m-wall: 30s` is the time a row
+takes to travel its own list once. Reverse rows take `× 1.3`; each row's phase
+offset is `calc(var(--i) × var(--m-wall) / −7)`, so the four plates are
+scattered at first paint rather than stacked in a column down the left edge.
+Measured on a 15 Pro: **44px/s** forward, **34px/s** back — one poster every
+two and a half seconds, the screen's width in nine. The first value tried was
+52s; at 25px/s the wall read as still unless you watched it.
+
+**Both edges fade to a quarter, not to nothing.** A strip clipped square reads
+as broken — the first frame had a name plate sliced down the middle by the
+edge of the phone. A fade to transparent swallowed the first characters of the
+name on the row whose plate starts flush left, so the mask ends at `.25`: the
+cut is softened and the content is still legible.
+
+**Two veils, because they answer two questions.** The one on `.wallveil`
+seats the wall and never passes `.32`. The one that makes the copy legible is
+a pseudo-element on `.wallcopy` itself, reaching two frames above the block it
+belongs to. It has to be: a veil written in viewport percentages is a
+different veil on every phone — at 66% of a 15 Pro it sits exactly over the
+headline, and at 66% of an SE, where the copy is a bigger share of a shorter
+screen, it is 40px below it, leaving the headline in the weak part of the
+gradient over whatever poster happens to be bright. The SE caught that.
+
+**The splash is the only screen that is not a 560px column.** `.wrap.bare`
+drops the app's `max-width`. Capped at 560 on a wide window the wall became a
+column of posters with the page's own background either side, and the plate at
+the left edge was cut against white. A wall that stops has nothing behind it.
+The copy still reads as a column — `.wallcopy > *` caps at 520px — because a
+headline is still a line of text and a CTA is still a button.
+
+### The Vault is now a surface language, not one screen
+
+`--vault-bg` and `--vault-text` existed for the badge reveal. The splash is
+the second screen that takes the whole display and fills it with photographic
+artwork, and a Gallery-light surround fights four rows of film posters in
+exactly the way it fights the reveal. So the vault tokens are defined **once,
+outside the colour-scheme blocks**, and both ceremonies read the same in
+Gallery and in Vault.
+
+| Token | Value | Usage |
+|---|---|---|
+| `vault.rgb` | `18 17 16` | The vault as channels, so a scrim can take it at any alpha without a second copy of the hex. The splash veil needs six |
+| `vault.bg` | `rgb(var(--vault-rgb))` | |
+| `vault.text` | `#F4F1EA` | |
+| `vault.textDim` | `#A79F92` | Secondary ink on the vault — the dark theme's `text.secondary` |
+| `vault.surface` | `rgb(244 241 234 / .07)` | A surface on the vault. The relationship `bg.surface` has to `bg.base` in the lit themes |
+| `vault.line` | `rgb(244 241 234 / .16)` | The hairline that edges it |
+
+### The plate's type is in container units, and that is the exception
+
+Everything a reader has to read on this screen — headline, tagline, CTA,
+promise — is in `rem` and honours Dynamic Type in full. The **wall's own
+labels are not**, and the reasoning is worth keeping because it is the only
+place in the app where that is true:
+
+- The plate is artwork. It is inside `aria-hidden` wall furniture, it cannot
+  be tapped, and what it says is said again in words in the tagline under it.
+- Sized in `rem` it grew with the reader's text size inside a box sized off
+  the **screen**, so at accessibility sizes the label overflowed a plate it
+  could not push — and silent clipping is the one failure this project does
+  not allow. In `cqh` it is always the same fraction of its row.
+- It also fixes the opposite end. A fixed 17px name is right on a phone and
+  reads as a caption lost in a 240px panel on a tablet. In `cqh` it is 14px on
+  an SE, 17px on a 15 Pro, 26px on a tablet — it scales with the wall, like
+  the posters it sits among.
+
+`.wallrow` carries `container-type: size` for this, and the rank badges on the
+posters are sized the same way for the same reason. The Dynamic Type sweep
+found that one: at a 28px root, `.rank`'s numeral overflowed its own badge by
+6px, on every rank on the wall at once.
+
+### What it costs, measured
+
+Forty posters at `w342`, about **0.8–1.2MB**, roughly **1.0s** to networkidle
+on localhost, and **no API call** — the artwork is the catalog's own, as the
+splash rule has required since Stack. Forty is four rows of ten; the second
+copy of each strip reuses the same URLs and costs nothing. **The lever, if
+this ever needs to be cheaper, is the row count** — not the poster size, which
+is the thing that was asked for.
+
+### Auto-scroll and WCAG 2.2.2, honestly
+
+2.2.2 wants a mechanism to pause, stop or hide motion that starts on its own,
+lasts more than five seconds and sits beside other content. The wall honours
+`prefers-reduced-motion`, which on iOS is the system Reduce Motion switch —
+the platform's own mechanism, already in the reader's hands, and what an ADA
+jury would expect an iOS app to use. It does **not** put a pause control on
+the splash, because a second control on a screen whose entire job is one CTA
+is a worse screen.
+
+That is a position, not a conformance claim. If a review ever says the
+platform switch is not enough, the cheapest honest answer is to stop the drift
+after one full pass rather than to add a button.
+
+The still frame is not a fallback. With motion off every row sits at its
+start, which is its name plate flush left, so Reduce Motion gets four list
+names stacked and legible — the same composition the motion begins from, which
+is the standing rule for every ceremony in this app.

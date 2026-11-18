@@ -31,8 +31,28 @@
      empty box — the gate's own object was invisible. */
   --locked: #8B8578;
   --error: #B3402E;
-  --vault-bg: #121110;
+  /* The Vault: the app's always-dark surface language, defined OUTSIDE the
+     colour-scheme blocks because it is the same in Gallery and in Vault. Two
+     screens take the whole display and fill it with photographic artwork -
+     the badge reveal and the splash wall - and a gallery-light surround
+     fights the artwork on both.
+
+     Kept as channels as well as a colour, so a scrim can take the vault at
+     any alpha without a second copy of the hex drifting out of step with
+     this one. The splash veil needs it at six alphas. */
+  --vault-rgb: 18 17 16;
+  --vault-bg: rgb(var(--vault-rgb));
   --vault-text: #F4F1EA;
+  /* Secondary ink on the vault. The dark theme's --text-secondary, which is
+     what it already is in the one place both appear. On the splash's veil at
+     its weakest point over the brightest poster in the collection it measures
+     5.6:1, so it clears AA at the 11px the plate uses it at. */
+  --vault-text-dim: #A79F92;
+  /* A surface on the vault, and the hairline that edges it. The vault's own
+     ink at 7% and 16% - the same relationship --bg-surface and
+     --border-subtle have to --bg-base in the lit themes. */
+  --vault-surface: rgb(244 241 234 / .07);
+  --vault-line: rgb(244 241 234 / .16);
 
   --serif: "New York", ui-serif, Georgia, "Times New Roman", serif;
   --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
@@ -53,6 +73,16 @@
   --m-glimmer: 760ms;
   --m-retreat: 340ms;
   --m-settle: 260ms;
+  /* The splash wall's drift: the time one row takes to travel its own list
+     once. Ambient rather than interactive, so it is three orders of magnitude
+     slower than everything above - measured on a 15 Pro, 44px a second
+     forward and 34 on the rows that run the other way, which is one poster
+     every two and a half seconds and the width of the screen in nine. The
+     first value tried was 52s, and at 25px/s the wall read as still until you
+     watched it. Every other number on that wall is derived from this one: the
+     reverse rows take 1.3x it and each row's phase offset is a seventh of it,
+     so there is one speed to change and not five. */
+  --m-wall: 30s;
   --ease-out: cubic-bezier(.2,.8,.3,1);
 }
 @media (prefers-color-scheme: dark) {

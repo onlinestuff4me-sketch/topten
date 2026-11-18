@@ -143,7 +143,7 @@ const VO_SWEEP = `(() => {
   /* A rank numeral on its own is "1" to a screen reader. It needs either an
      aria-label that says what it ranks, or a container that carries the whole
      sentence. */
-  for (const el of document.querySelectorAll('.num, .rk, .slotmini .gh, .mini b, .strip b')) {
+  for (const el of document.querySelectorAll('.num, .rk, .rank, .slotmini .gh, .mini b, .strip b')) {
     const r = el.getBoundingClientRect();
     if (r.width < 1 || r.height < 1) continue;
     const txt = (el.textContent || '').trim();
@@ -468,138 +468,193 @@ const DOMAIN_SPEECH = `(() => {
   // ── Intro ───────────────────────────────────────────────────────────────
   check(await page.locator('.intro').count() === 1, 'a new user lands on the intro, not on a form');
 
-  /* ── The splash opens on somebody's actual Ten (Mischa, 2026-11-17) ──────
-     It used to open on the rules — three bullets explaining the limit, the
-     badge and the price — and those tests are gone with them. Nobody arrives
-     wanting to obey a limit; they arrive because they saw a list and thought
-     theirs would be better. So the assertions now are about the artifact:
-     that a real, complete, ranked Ten is the first thing on the screen. */
-  const hero = await page.evaluate(() => {
-    const f = document.querySelector('.hero-ten');
-    if (!f) return null;
-    const card = f.getBoundingClientRect();
-    const grid = f.querySelector('.hero-grid').getBoundingClientRect();
+  /* ── The splash is a wall of other people's lists, still moving ──────────
+     Mischa, 2026-11-18: "This What's your top 10 page looks bad. Needs an
+     overhaul"; then, having compared three directions: "my pick is B, and the
+     wall should auto-scroll. Can we have a version that scrolls through
+     custom lists in a wall-like format with big posters."
+
+     The hero's assertions are gone with the hero. What replaces them is not a
+     softer version of the same thing: a backdrop made of posters would pass
+     "there is artwork on the splash" while failing the only claim this screen
+     makes, which is that the app is full of other people's ranked tens. So
+     the checks are about LISTS - that each row is a named list, that its ten
+     are numbered one to ten, and that the loop which carries them past is
+     seamless rather than nearly seamless. */
+  /* Does the plate's ink fit inside the plate?
+
+     NOT `scrollHeight > clientHeight`. The plate is a column flex box with
+     `justify-content: flex-end`, so content that does not fit overflows
+     UPWARD, out of the block-start edge - and scrollable overflow is not
+     recorded in that direction, so `scrollHeight` reports a perfect fit
+     however far the name has escaped. Shrinking the plate to a third of its
+     width on purpose is what exposed it: the gate said ok. Measured as the
+     union of the children's boxes against the plate's own content box, which
+     catches it in all four directions. */
+  const PLATE_FITS = `(pl => {
+    const r = pl.getBoundingClientRect(), cs = getComputedStyle(pl);
+    const pad = s => parseFloat(cs['padding' + s]) + parseFloat(cs['border' + s + 'Width']);
+    const box = { t: r.top + pad('Top'), b: r.bottom - pad('Bottom'),
+      l: r.left + pad('Left'), rt: r.right - pad('Right') };
+    return [...pl.children].every(c => {
+      const k = c.getBoundingClientRect();
+      return k.top >= box.t - 1 && k.bottom <= box.b + 1 && k.left >= box.l - 1 && k.right <= box.rt + 1;
+    });
+  })`;
+
+  const wall = await page.evaluate(PLATE_FITS_SRC => {
+    const plateFits = eval(PLATE_FITS_SRC);
+    const rows = [...document.querySelectorAll('.wallrow')];
+    const rails = document.querySelector('.wallrows');
+    const vp = { w: window.innerWidth, h: window.innerHeight };
     return {
-      posters: f.querySelectorAll('.hero-cell img').length,
-      ranks: [...f.querySelectorAll('.hero-cell .rk')].map(r => r.textContent.trim()),
-      by: (f.querySelector('.by') || {}).innerText,
-      title: (f.querySelector('.what') || {}).innerText,
-      badge: !!f.querySelector('.hero-badge svg'),
-      badgeLocked: !!f.querySelector('.hero-badge .lockedbadge'),
-      badgeInside: (() => {
-        const b = f.querySelector('.hero-badge svg');
-        if (!b) return false;
-        const r = b.getBoundingClientRect();
-        // `.lockedbadge.big` is 128px and its two classes outrank
-        // `.hero-badge svg`, so the badge ignored its 62px slot entirely.
-        return r.right <= card.right + 1 && r.top >= card.top - 1 && r.width <= 80;
-      })(),
-      badgeBox: (() => {
-        const b = f.querySelector('.hero-badge svg');
-        return b ? Math.round(b.getBoundingClientRect().width) + 'px' : 'none';
-      })(),
-      // The card is an object, so its contents have to be inside it. A padding
-      // written with an undefined token voids the whole declaration and the
-      // posters escape the card silently — which is exactly what shipped.
-      inside: grid.right <= card.right + 1 && grid.bottom <= card.bottom + 1,
-      padded: parseFloat(getComputedStyle(f).paddingLeft) > 0,
-      // Measured as ink against the badge, not as scrollWidth. A grid item
-      // with the default `min-width: auto` grows past its parent's padding
-      // instead of overflowing it, so spill reads zero while the title sits
-      // underneath the badge at full size.
-      titleClearsBadge: (() => {
-        const w = f.querySelector('.what'), bg = f.querySelector('.hero-badge');
-        if (!w || !bg) return true;
-        const r = document.createRange(); r.selectNodeContents(w);
-        return r.getBoundingClientRect().right <= bg.getBoundingClientRect().left + 1;
-      })(),
+      rows: rows.length,
+      hidden: !!rails && rails.getAttribute('aria-hidden') === 'true',
+      // Full bleed is the direction. A wall that stops short of the edges is
+      // a panel, and the panel is what this replaced.
+      fills: !!rails && (() => { const r = rails.getBoundingClientRect();
+        return Math.abs(r.top) <= 1 && Math.abs(r.bottom - vp.h) <= 1
+          && Math.abs(r.left) <= 1 && Math.abs(r.right - vp.w) <= 1; })(),
+      poster: (() => { const p = document.querySelector('.wallrow .poster');
+        return p ? Math.round(p.getBoundingClientRect().height) : 0; })(),
+      list: rows.map(row => {
+        const strip = row.querySelector('.strip');
+        const cells = [...strip.children];
+        const half = cells.length / 2;
+        const plates = cells.filter(c => c.classList.contains('plate'));
+        const posters = cells.filter(c => c.classList.contains('poster'));
+        const ranks = posters.slice(0, 10).map(p => (p.querySelector('.rank') || {}).textContent);
+        return {
+          cells: cells.length, plates: plates.length, posters: posters.length,
+          kicker: (plates[0].querySelector('.k') || {}).textContent.trim(),
+          name: (plates[0].querySelector('.n') || {}).textContent.trim(),
+          voters: (plates[0].querySelector('.v') || {}).textContent.trim(),
+          ranks: ranks.join(','),
+          /* The duplicate copy is what makes -50% land where the first copy
+             began. If the two halves are not the same width the wall jumps
+             once a loop, which is the bug `gap` on the strip has and
+             `margin-right` on the cell does not.
+
+             Measured off `getBoundingClientRect`, NOT `offsetLeft` and
+             `scrollWidth`: those are integers, the cells are fractional (a
+             5/4 plate on a 155px row is 193.75px wide), and the rounding
+             alone put this half a pixel out on a viewport where the layout
+             was exactly right. The animation translates the real width, so
+             the real width is what has to be measured. */
+          seam: +(cells[half].getBoundingClientRect().left - cells[0].getBoundingClientRect().left
+            - strip.getBoundingClientRect().width / 2).toFixed(3),
+          samePair: cells[0].outerHTML === cells[half].outerHTML,
+          clipped: plates.some(p => !plateFits(p)),
+        };
+      }),
     };
-  });
-  check(!!hero, 'the first screen is somebody else\'s Top 10, not a pitch');
-  check(hero.posters === 10, `all ten of it, not a teaser (${hero.posters} posters)`);
-  check(hero.ranks.join(',') === '1,2,3,4,5,6,7,8,9,10',
-    `ranked one through ten — the order IS the product (${hero.ranks.join(',')})`);
-  /* NOT a byline. The first version showed a fictional person's Ten and
-     Mischa asked who Sam is, why he should care, and why that would make him
-     make his own — and there is no good answer. A stranger's taste is noise;
-     a crowd's verdict is a claim you can disagree with, and disagreement is
-     the thing that makes somebody open the app (2026-11-17). */
-  check(/^From [\d,+]+ Top 10s$/i.test((hero.by || '').trim()),
-    `attributed to the crowd, not to a stranger ("${hero.by}")`);
-  check(/^Top 10 /.test((hero.title || '').trim()), `and a real list name ("${hero.title}")`);
-  check(hero.badge, 'and its badge');
-  check(hero.badgeLocked,
-    'LOCKED — the artifact is a door, which is the mechanic the product already runs on (PRD Req 12)');
-  check(hero.badgeInside, `and sized to its slot rather than bleeding off the card (${hero.badgeBox})`);
-  check(hero.padded && hero.inside,
-    'the whole Ten sits inside the card, which needs its padding to survive');
-  check(hero.titleClearsBadge, 'and the list title stops before the badge rather than running under it');
+  }, PLATE_FITS);
+  check(wall.rows >= 3, `the first screen is a wall of other people's lists (${wall.rows} rows)`);
+  check(wall.fills, 'full bleed — it runs to all four edges rather than sitting in a panel');
+  check(wall.list.every(r => r.plates === 2 && r.posters === 20),
+    `each row is one list: a name plate and its ten, written twice for the loop `
+    + `(${wall.list.map(r => r.plates + '+' + r.posters).join(' ')})`);
+  check(wall.list.every(r => r.ranks === '1,2,3,4,5,6,7,8,9,10'),
+    `ranked one through ten — the order IS the product (${wall.list[0].ranks})`);
+  /* A wall of posters would say "this app has a lot of films in it". The
+     plate is what makes it say "this app is full of other people's Top 10s",
+     which is the thing being sold - so every row has to carry its name. */
+  check(wall.list.every(r => /^top 10$/i.test(r.kicker)),
+    `every row says Top 10 (${wall.list.map(r => r.kicker).join(', ')})`);
+  check(wall.list.every(r => r.name.length > 3 && !/^top 10/i.test(r.name)),
+    `and then what makes it different, not the words they share `
+    + `(${wall.list.map(r => r.name).join(' · ')})`);
+  /* NOT a byline. Mischa asked, of the first version, who Sam is, why he
+     should care, and why that would make him make his own - and there is no
+     good answer. A stranger's taste is noise; a crowd's verdict is a claim
+     you can disagree with, and disagreement is what makes somebody open the
+     app (2026-11-17). */
+  check(wall.list.every(r => /^From [\d,+]+ Top 10s$/i.test(r.voters)),
+    `attributed to the crowd, not to an invented person ("${wall.list[0].voters}")`);
+  check(wall.list.every(r => Math.abs(r.seam) < 0.05 && r.samePair),
+    `the loop is seamless to the pixel, not nearly `
+    + `(${wall.list.map(r => r.seam).join(', ')} off)`);
+  check(!wall.list.some(r => r.clipped), 'and no list name is cut off inside its plate');
+  /* Mischa asked for BIG posters, and the hero's were 58px tall on this
+     screen because the card around it needed the room. The number is the
+     point of the redesign, so it is asserted rather than described. */
+  check(wall.poster >= 120, `the posters are big — ${wall.poster}px tall, against the hero's 58`);
+  /* Forty posters and eighty rank numerals is not an opening for a screen
+     reader, and the wall's claim is made in words directly under it. */
+  check(wall.hidden, 'the wall is decoration and says so — the tagline carries its claim in words');
 
-  // The "browse other lists" half of the opening, before anyone is asked to
-  // join. Four posters each: the most identity readable in one glance.
-  /* Other TOPICS, not other people. A cold visitor is choosing an argument to
-     join, not a person to follow — the people matter later, when they mean
-     something. */
-  const strip = await page.evaluate(() => {
-    const minis = [...document.querySelectorAll('.mini-ten')];
-    return { n: minis.length,
-      posters: minis.map(m => m.querySelectorAll('img').length),
-      people: document.querySelectorAll('.mini-ten .who').length };
-  });
-  check(strip.n >= 3, `other lists are on screen too (${strip.n} of them)`);
-  /* Three, not four. The mosaic was a 2x2 grid of 2/3 posters, so it scaled
-     with the tile - and widening the tile to fit its own label took it from
-     37px tall to 153px and overflowed the splash. A row of three inside a
-     clamped band says "a list" just as well at a fixed cost. */
-  check(strip.posters.every(n => n === 3), `three posters each (${[...new Set(strip.posters)].join(',')})`);
-  check(strip.people === 0, 'and not one of them is attributed to an invented person');
-  /* Every list name begins "Top 10 ", which is identical on every card and
-     eats the half of an 84px line that says WHICH list this is. With the
-     prefix in, four of six read "Top 10…" and told you nothing. */
-  const titles = await page.evaluate(() =>
-    [...document.querySelectorAll('.mini-ten')].map(b => ({
-      kicker: (b.querySelector('.kicker') || {}).textContent || '',
-      lead: (b.querySelector('.lead') || {}).textContent || '',
-    })));
-  /* Both halves of the rule, which pull in opposite directions and are both
-     Mischa's. 2026-11-17: a caption set at full size in "Top 10 " tells you
-     nothing about WHICH list it is, and ate half the line. 2026-11-18: every
-     mini card should still say Top 10. So the shared words are a kicker and
-     the big line is what makes this one different - asserted separately, or
-     satisfying one would quietly undo the other. */
-  check(titles.length > 0 && titles.every(t => /^top 10$/i.test(t.kicker.trim())),
-    `every tile says Top 10 (${titles.map(t => t.kicker.trim()).join(', ')})`);
-  check(titles.every(t => !/^top 10/i.test(t.lead.trim())),
-    `and its big line is what makes it different, not the words they share `
-    + `(${titles.map(t => t.lead.trim()).join(' · ')})`);
-  check(titles.every(t => t.lead.trim().length > 3),
-    'and that line is not reduced to an ellipsis');
+  /* ── It actually scrolls, and it stops when asked ────────────────────────
+     "The wall should auto-scroll" is a behaviour, so it is measured as one:
+     the strips are somewhere else a moment later. Two directions, because a
+     single direction at a single speed reads as one sheet sliding behind a
+     window. */
+  const xOf = m => +(String(m).match(/matrix\(1, 0, 0, 1, (-?[\d.]+)/) || [0, 0])[1];
+  const strips = () => page.evaluate(() =>
+    [...document.querySelectorAll('.wallrow .strip')].map(s => getComputedStyle(s).transform));
+  const driftWas = await strips();
+  await page.waitForTimeout(900);
+  const driftNow = await strips();
+  const moved = driftWas.map((m, i) => xOf(driftNow[i]) - xOf(m));
+  check(moved.every(d => Math.abs(d) > 4), `the wall drifts on its own (${moved.map(d => d.toFixed(0)).join(', ')}px in 0.9s)`);
+  check(moved.some(d => d < 0) && moved.some(d => d > 0),
+    'and alternate rows run the other way, so it reads as a surface and not a conveyor');
+  /* Reduce Motion stops it where it stands. Every row starts with its own
+     name plate at the left edge, so the still frame is the composition the
+     motion begins from — the standing rule that a ceremony lands on the same
+     end state with motion off. */
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.waitForTimeout(120);
+  const still = await page.evaluate(() => ({
+    anim: [...document.querySelectorAll('.wallrow .strip')].map(s => getComputedStyle(s).animationName),
+    names: [...document.querySelectorAll('.wallrow')].map(r => {
+      const n = r.querySelector('.plate .n'), b = n.getBoundingClientRect();
+      return b.left >= -1 && b.right <= window.innerWidth + 1 ? n.textContent.trim() : null;
+    }),
+  }));
+  check(still.anim.every(a => a === 'none'), `Reduce Motion stops the wall (${[...new Set(still.anim)].join(',')})`);
+  check(still.names.every(Boolean),
+    `and the still frame is every list named, in full (${still.names.filter(Boolean).join(' · ')})`);
+  await page.emulateMedia({ reducedMotion: 'no-preference' });
 
+  /* ── The copy over it ───────────────────────────────────────────────────*/
   const introText = await page.locator('.intro').innerText();
   check(/free/i.test(introText), 'it answers what this costs before asking for anything');
   check(await page.locator('.intro [data-act="begin"]').count() === 1, 'one CTA');
   check((await page.locator('.intro h1').innerText()).trim() === "What's your Top 10?",
     'the headline is still "What\'s your Top 10?" — the locked product voice');
+  /* Mischa dictated this line with the direction (2026-11-18): "The tag line
+     should be '5000+ lists from other users. Share yours.'" The separator is
+     ours - every round figure in the app goes through `roughly()` and comes
+     out punctuated, and one bare number on the first screen would be the odd
+     one out. The number itself is a claim about a corpus that does not exist
+     yet; PRD Req 1 carries it as a launch blocker. */
+  check((await page.locator('.intro .pitch').innerText()).trim()
+    === '5,000+ lists from other users. Share yours.',
+    `the tagline is the one Mischa wrote ("${(await page.locator('.intro .pitch').innerText()).trim()}")`);
   check(/Free\. No ads\. No subscription\. Ever\./.test(introText),
     'and the promise survives the redesign, as fine print under the CTA');
   /* The sub-line "Yours will be different. See how." was asserted here from
      2026-08-15 until Mischa cut it on 2026-11-18: "it's not needed". The
-     screen makes that argument without a sentence about it - a stranger's
-     ranked ten, and four more lists you can swap into its place, over a
-     headline asking what YOURS is. The check goes with the line; keeping an
-     assertion for copy that has been deliberately removed is how a suite
-     starts arguing with the product. */
+     check goes with the line; keeping an assertion for copy that has been
+     deliberately removed is how a suite starts arguing with the product. */
 
-  /* The one-line rule still covers the headline and the list title. Mischa,
-     2026-08-15: the splash "breaks our one-line rule twice". The bullets it
-     was written for are gone; the rule is not. */
-  const headLines = () => page.evaluate(() => ['h1', '.pitch', '.hero-ten .what'].map(sel => {
+  /* The one-line rule, still (Mischa, 2026-08-15: the splash "breaks our
+     one-line rule twice"). It covers the two lines of copy that are a single
+     thought each. The list names on the plates are NOT in it: they are the
+     titles of other people's lists, they wrap inside their plate by design,
+     and the plate check above is what holds them. */
+  const headLines = () => page.evaluate(() => ['h1', '.pitch'].map(sel => {
     const el = document.querySelector('.intro ' + sel);
     if (!el) return null;
     const lh = parseFloat(getComputedStyle(el).lineHeight);
-    return { sel, text: el.innerText.trim(), lines: Math.round(el.getBoundingClientRect().height / lh),
+    // Ink against box, not scrollWidth: these blocks have auto height, so a
+    // `scrollHeight` comparison measures line-box rounding and fires on a
+    // headline that fits perfectly well.
+    const r = document.createRange(); r.selectNodeContents(el);
+    const ink = r.getBoundingClientRect(), box = el.getBoundingClientRect();
+    return { sel, text: el.innerText.trim(), lines: Math.round(box.height / lh),
       fs: Math.round(parseFloat(getComputedStyle(el).fontSize) * 10) / 10,
-      spill: Math.round(el.scrollWidth - el.clientWidth) };
+      spill: Math.round(Math.max(0, ink.right - box.right, box.left - ink.left)) };
   }).filter(Boolean));
   const headOneLineAt = async label => {
     for (const h of await headLines()) {
@@ -613,13 +668,96 @@ const DOMAIN_SPEECH = `(() => {
   await page.waitForTimeout(140);
   await headOneLineAt('the narrowest supported iPhone (375px)');
   const fitsSE = await page.evaluate(() => ({
-    over: document.querySelector('.intro').scrollHeight > window.innerHeight + 2,
+    over: document.documentElement.scrollHeight > window.innerHeight + 1,
+    wide: document.documentElement.scrollWidth > window.innerWidth + 1,
     ctaIn: document.querySelector('.intro [data-act="begin"]').getBoundingClientRect().bottom
            <= window.innerHeight + 1 }));
-  check(!fitsSE.over && fitsSE.ctaIn,
+  check(!fitsSE.over && !fitsSE.wide && fitsSE.ctaIn,
     'and the whole splash still fits the smallest supported iPhone without scrolling');
   await page.setViewportSize(PHONE);
   await page.waitForTimeout(140);
+
+  /* ── Legible over whatever is behind it, measured in pixels ─────────────
+     The copy is white on artwork, so its contrast is a property of the VEIL
+     and of whichever poster happens to be under it - which is luck, and a
+     contrast gate that depends on luck is not a gate. Every poster is forced
+     to pure white first, which bounds every real one, and then the rendered
+     page is screenshotted, handed back to the browser (which has a PNG
+     decoder) and read off a canvas. What is measured is what a reader sees:
+     veil, poster, border and all.
+
+     Modelling this instead was the first version, and it was wrong twice -
+     once about the plate, whose `backdrop-filter` turned out to have nothing
+     behind it at all, and once about the SE, where a veil written in
+     viewport percentages put the headline in the weak part of the gradient. */
+  const contrast = await (async () => {
+    const meta = await page.evaluate(() => {
+      document.querySelectorAll('.wallrow .strip').forEach(s => { s.style.animationPlayState = 'paused'; });
+      const lim = document.querySelector('.intro').getBoundingClientRect();
+      // Clamped to the wall and the viewport: a plate halfway off the edge
+      // has a box that reaches past both, and sampling that reads the page
+      // behind the app rather than the backdrop the text is set on.
+      const box = el => { const r = el.getBoundingClientRect();
+        const x0 = Math.max(0, lim.left, r.left), y0 = Math.max(0, lim.top, r.top);
+        const x1 = Math.min(window.innerWidth, lim.right, r.right);
+        const y1 = Math.min(window.innerHeight, lim.bottom, r.bottom);
+        return { x: Math.round(x0), y: Math.round(y0),
+          w: Math.max(0, Math.round(x1 - x0)), h: Math.max(0, Math.round(y1 - y0)) }; };
+      const items = [];
+      for (const [k, sel, ink] of [['headline', '.wallcopy h1', 'text'],
+        ['tagline', '.wallcopy .pitch', 'dim'], ['promise', '.wallcopy .promise', 'dim']]) {
+        const el = document.querySelector(sel); if (el) items.push({ k, ink, ...box(el) });
+      }
+      [...document.querySelectorAll('.wallrow .plate')].forEach((pl, i) => {
+        const r = pl.getBoundingClientRect();
+        if (r.left > -4 && r.right < window.innerWidth + 4 && r.width > 10) {
+          items.push({ k: 'list name', ink: 'text', ...box(pl.querySelector('.n')) });
+          items.push({ k: 'list credit', ink: 'dim', ...box(pl.querySelector('.v')) });
+        }
+      });
+      const ink = { text: getComputedStyle(document.querySelector('.wallcopy h1')).color,
+        dim: getComputedStyle(document.querySelector('.wallcopy .promise')).color };
+      document.querySelectorAll('.wallcopy h1, .wallcopy .pitch, .wallcopy .promise, .plate .k, .plate .n, .plate .v')
+        .forEach(e => { e.style.visibility = 'hidden'; });
+      document.querySelectorAll('.wallrow .poster').forEach(c => {
+        c.style.background = '#fff';
+        const i = c.querySelector('img'); if (i) i.style.visibility = 'hidden';
+      });
+      return { items, ink };
+    });
+    const b64 = (await page.screenshot()).toString('base64');
+    const out = await page.evaluate(async ({ b64, items, ink }) => {
+      const img = new Image();
+      await new Promise((res, rej) => { img.onload = res; img.onerror = rej; img.src = 'data:image/png;base64,' + b64; });
+      const c = document.createElement('canvas');
+      c.width = img.width; c.height = img.height;
+      const cx = c.getContext('2d'); cx.drawImage(img, 0, 0);
+      const dpr = img.width / window.innerWidth;
+      const lin = v => { v /= 255; return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4); };
+      const L = (r, g, b) => 0.2126 * lin(r) + 0.7152 * lin(g) + 0.0722 * lin(b);
+      const inkL = s => { const m = s.match(/\d+/g); return L(+m[0], +m[1], +m[2]); };
+      return items.map(it => {
+        const x = Math.round(it.x * dpr), y = Math.round(it.y * dpr);
+        const w = Math.min(c.width - x, Math.round(it.w * dpr)), h = Math.min(c.height - y, Math.round(it.h * dpr));
+        if (w <= 0 || h <= 0) return { k: it.k, ratio: 99, px: 'offscreen' };
+        const d = cx.getImageData(x, y, w, h).data;
+        let hi = -1, px = null;
+        for (let i = 0; i < d.length; i += 4) {
+          const l = L(d[i], d[i + 1], d[i + 2]);
+          if (l > hi) { hi = l; px = `rgb(${d[i]},${d[i + 1]},${d[i + 2]})`; }
+        }
+        const a = inkL(ink[it.ink]), lo = Math.min(a, hi), up = Math.max(a, hi);
+        return { k: it.k, ratio: +((up + 0.05) / (lo + 0.05)).toFixed(2), px };
+      });
+    }, { b64, items: meta.items, ink: meta.ink });
+    await page.reload({ waitUntil: 'networkidle' });
+    return out;
+  })();
+  const dim = contrast.filter(c => c.ratio < 4.5);
+  check(dim.length === 0,
+    'every word on the splash clears AA over the brightest artwork there could be — '
+    + contrast.map(c => `${c.k} ${c.ratio}:1`).join(', ')
+    + (dim.length ? ` *** ${dim.map(c => c.k).join(', ')}` : ''));
 
   await noBritishSpelling('the intro');
   await page.screenshot({ path: SHOTS + '/13-intro-copy.png' });
@@ -2658,96 +2796,72 @@ const DOMAIN_SPEECH = `(() => {
       + (faults.length ? ` \u2014 ${faults.length}: ${faults.slice(0, 3).join('; ')}` : ''));
   }
 
-  /* ── The splash's other categories read in full, and are tappable ───────
-     Mischa, 2026-11-18: "the other categories below should never have text
-     cut off, it should be clear those are tappable to expand them into the
-     space above."
+  /* ── Every list in the pool is one the wall can actually carry ──────────
+     The wall shows four of six, and which four rotates per visit, so four of
+     them are never on the first screen anybody sees. A rule that happens to
+     hold for the four that are is not a rule — the mini tiles were shipped
+     with exactly that bug on 2026-11-17, where a label that clipped was only
+     reachable after tapping twice.
 
-     The label used to be `-webkit-line-clamp: 2` in a 63px tile, which is
-     about eight characters a line, so "Animated Movies of the 2000s" came
-     out "Animated Movies o…" - on the one part of the splash whose job is to
-     say what else is in here.
-
-     Every topic is put in the hero in turn, so every label is measured in a
-     tile at least once; a rule that happens to fit five of six is not a rule.
-     Clipping is measured on the element, not inferred from the string: a
-     clamp, an ellipsis and a plain overflow all read the same to a reader
-     and only `scrollHeight` catches all three. */
-  console.log('\n── The splash says what else is in here ──────────────');
-  const stripAt = i => page.evaluate(n => {
+     So every list in the pool is put on the wall in turn and measured there:
+     its name fits its plate, it is a name the namer really produced, and the
+     ten behind it are ten. The topics are checked as an IDENTITY against
+     WALL_LISTS rather than by counting rows, because a count passes while
+     showing the same list four times. */
+  console.log('\n── Every list the wall can show ────────────────');
+  const wallAt = n => page.evaluate(i => {
     localStorage.clear();
-    window.setIntroAt(null);
-    S.scene = 'intro'; S.seen = false; S.introSeen = n; save(); render();
-  }, i);
-  const stripState = () => page.evaluate(() => {
-    const hero = document.querySelector('.hero-ten .what');
-    return {
-      hero: hero ? hero.textContent.trim() : null,
-      over: Math.round(document.documentElement.scrollHeight - window.innerHeight),
-      tiles: [...document.querySelectorAll('.mini-ten')].map(b => {
-        const w = b.querySelector('.what'), r = b.getBoundingClientRect();
-        /* The line is `nowrap`, so it cannot grow taller when it does not
-           fit - it clips sideways instead. Measuring only the HEIGHT would
-           therefore report every label as fine however far past its column
-           the text ran, which is the vacuous-gate shape this suite has been
-           caught by twice. Measure the width of the line too. */
-        const lead = b.querySelector('.lead');
-        const label = lead ? lead.textContent.trim() : '';
-        const cut = !!lead && lead.scrollWidth > lead.clientWidth + 1;
-        return { label, aria: b.getAttribute('aria-label') || '',
-          tag: b.tagName, at: b.dataset.intro,
-          clippedLabels: (!!w && w.scrollHeight > w.clientHeight + 1) || cut,
-          w: Math.round(r.width), h: Math.round(r.height) };
-      }),
-    };
-  });
-
-  let seenLabels = 0, clippedLabels = [], smallTiles = [], unnamedTiles = [];
-  const introN = await page.evaluate(() => INTRO_TOPICS.length);
-  for (let i = 0; i < introN; i++) {
-    await stripAt(i);
-    await page.waitForTimeout(220);
-    const st = await stripState();
-    for (const t of st.tiles) {
-      seenLabels++;
-      if (t.clippedLabels) clippedLabels.push(t.label);
-      if (t.w < 44 || t.h < 44) smallTiles.push(`${t.label} ${t.w}x${t.h}`);
-      // The tile is a button, and its accessible name is the FULL list name -
-      // the shortening is for the eye, and a reader loses nothing to it.
-      if (t.tag !== 'BUTTON' || !/^Show Top 10 /.test(t.aria)) unnamedTiles.push(t.label + ' / ' + t.aria);
+    S.scene = 'intro'; S.seen = false; S.introSeen = i; save(); render();
+  }, n);
+  const wallState = () => page.evaluate(PLATE_FITS_SRC => ({
+    rows: [...document.querySelectorAll('.wallrow')].map(r => {
+      const plateFits = eval(PLATE_FITS_SRC);
+      const plate = r.querySelector('.plate');
+      const n = plate.querySelector('.n'), b = plate.getBoundingClientRect();
+      return {
+        name: n.textContent.trim(),
+        // Measured on the element, not inferred from the string: a clamp, an
+        // ellipsis and a plain overflow all read the same to a reader and
+        // only the box catches all three.
+        clipped: !plateFits(plate),
+        tall: Math.round(b.height),
+        posters: r.querySelectorAll('.poster').length,
+      };
+    }),
+  }), PLATE_FITS);
+  const pool = await page.evaluate(() =>
+    WALL_LISTS.map(c => window.makeTopic(c).title.replace(/^Top 10 /, '')));
+  const poolSupply = await page.evaluate(() =>
+    WALL_LISTS.map(c => window.supply(window.makeTopic(c))));
+  check(poolSupply.every(n => n >= 10),
+    `every list in the pool is one the catalog can fill (${poolSupply.join(', ')})`);
+  const seenOnWall = new Set();
+  let clippedNames = [], shortPosters = [];
+  for (let i = 0; i < pool.length; i++) {
+    await wallAt(i);
+    await page.waitForTimeout(200);
+    for (const r of (await wallState()).rows) {
+      seenOnWall.add(r.name);
+      if (r.clipped) clippedNames.push(r.name);
+      if (r.posters !== 20) shortPosters.push(`${r.name} ${r.posters}`);
     }
   }
-  /* Every topic must be on screen at once - hero plus tiles - or a swap can
-     never reach the ones past the window. Checked as an identity, not a
-     count: the tiles plus the hero are exactly the set of intro topics. */
-  check(seenLabels === introN * (introN - 1),
-    `every intro topic was shown as a tile (${seenLabels} measured over ${introN} topics)`);
-  check(clippedLabels.length === 0,
-    'no category label is cut off' + (clippedLabels.length ? ` — ${clippedLabels.join(', ')}` : ''));
-  check(smallTiles.length === 0,
-    'every category tile is at least 44x44' + (smallTiles.length ? ` — ${smallTiles.join(', ')}` : ''));
-  check(unnamedTiles.length === 0,
-    'every tile is a button carrying the full list name'
-    + (unnamedTiles.length ? ` — ${unnamedTiles.slice(0, 2).join('; ')}` : ''));
-
-  // Tapping one swaps it into the hero and the old hero rejoins the strip,
-  // which is how the set cycles without moving on its own.
-  await stripAt(0);
-  await page.waitForTimeout(220);
-  const stripWas = await stripState();
-  const pickAria = stripWas.tiles[1].aria.replace(/^Show /, '');
-  await page.locator('.mini-ten').nth(1).click();
-  await page.waitForTimeout(300);
-  const stripNow = await stripState();
-  check(stripNow.hero === pickAria,
-    `tapping a category puts it in the hero above ("${stripNow.hero}" wanted "${pickAria}")`);
-  // A SWAP, not a rotation: the list that was in the hero lands in the slot
-  // just tapped. Rotating put it in fourth place, off the end of a strip
-  // three tiles wide, so tapping away from a topic made it vanish.
-  check(stripNow.tiles[1] && stripNow.tiles[1].aria === 'Show ' + stripWas.hero,
-    `and the list it replaced takes the slot just tapped (${stripNow.tiles.map(t => t.label).join(', ')})`);
-  check(stripNow.tiles.every(t => t.aria !== 'Show ' + stripNow.hero),
-    'the hero is never also offered as a tile below itself');
+  check(pool.every(n => seenOnWall.has(n)) && seenOnWall.size === pool.length,
+    `every list in the pool reaches the wall (${[...seenOnWall].join(' · ')})`);
+  check(clippedNames.length === 0,
+    'and none of their names is cut off' + (clippedNames.length ? ` — ${clippedNames.join(', ')}` : ''));
+  check(shortPosters.length === 0,
+    'and every row carries a full ten, twice'
+    + (shortPosters.length ? ` — ${shortPosters.join(', ')}` : ''));
+  /* The rotation is what makes the pool bigger than the wall worth anything:
+     a second visit has to be a different four, or six lists is just four
+     lists with two never shown. */
+  await wallAt(0); await page.waitForTimeout(160);
+  const firstVisit = (await wallState()).rows.map(r => r.name).join('|');
+  await wallAt(1); await page.waitForTimeout(160);
+  const secondVisit = (await wallState()).rows.map(r => r.name).join('|');
+  check(firstVisit !== secondVisit,
+    `a second visit is a different wall (${firstVisit} -> ${secondVisit})`);
 
   /* ── Hold a poster to reorder, tap to open the list ─────────────────────
      Mischa, 2026-11-18: "rearranging your order should be done by holding and
@@ -2825,6 +2939,93 @@ const DOMAIN_SPEECH = `(() => {
   check(await page.locator('#tenlist').count() === 1,
     'the Arrange button opens the same vertical list — the non-drag way to reorder');
   await page.evaluate(() => document.querySelectorAll('.sheet, .scrim').forEach(n => n.remove()));
+
+  /* ── What to make next: today, this week, rising ────────────────────────
+     Mischa asked for these on 2026-11-18, and the condition he put on them
+     when they were deferred was about CADENCE, so that is what is asserted:
+     today's changes with the day and this week's with the week, both are
+     stable while their period lasts, and the two never offer the same thing.
+
+     Every pick also has to be a list somebody could actually finish, which
+     is the oldest rule on this screen - a criteria name promises ten entries
+     and the collection has to have them. */
+  console.log('\n── What to make next ───────────────────────');
+  await page.evaluate(() => {
+    localStorage.clear();
+    document.querySelectorAll('.sheet, .scrim, .coach, .coachscrim, .vault').forEach(n => n.remove());
+    S.seen = true; S.tipDone = true;
+    const crime = CAT.filter(f => (f.g || []).includes('Crime') && f.y >= 1990 && f.y <= 1999)
+      .sort((a, b) => (b.vc || 0) - (a.vc || 0)).slice(0, 10);
+    const t = makeTopic({ genre: 'Crime', decade: 1990 });
+    S.done = [{ topicId: t.id, title: t.title, domain: 'movie',
+      ranked: crime.map(f => f.id), badge: compose(crime.map(f => f.id), t) }];
+    S.scene = 'discover'; save(); render();
+  });
+  await page.waitForTimeout(300);
+
+  const nextPicks = await page.evaluate(() => {
+    const t = todaysPick(), w = thisWeeksPick(), r = risingNow(6);
+    return {
+      today: t && { title: t.topic.title, id: t.topic.id, supply: supply(t.topic), why: t.why },
+      week: w && { title: w.topic.title, id: w.topic.id, supply: supply(w.topic),
+        person: !!(w.topic.director || w.topic.actor) },
+      rising: r.map(x => ({ title: x.title, id: x.id, supply: supply(x) })),
+      mine: (S.done || []).map(d => d.topicId),
+      pool: topicPool().length,
+    };
+  });
+  check(!!nextPicks.today && !!nextPicks.week && nextPicks.rising.length >= 4,
+    `a pick for today, one for the week, and ${nextPicks.rising.length} rising (from a pool of ${nextPicks.pool})`);
+  check(nextPicks.today.supply >= 10 && nextPicks.week.supply >= 10 && nextPicks.rising.every(r => r.supply >= 10),
+    `every one of them is a list the collection can actually fill `
+    + `(smallest ${Math.min(nextPicks.today.supply, nextPicks.week.supply, ...nextPicks.rising.map(r => r.supply))})`);
+  check(!nextPicks.mine.includes(nextPicks.today.id) && !nextPicks.mine.includes(nextPicks.week.id),
+    'and neither suggests a topic you have already made');
+  check(nextPicks.today.id !== nextPicks.week.id && !nextPicks.week.person,
+    `today and this week are different, and the weekly one is broad rather than a person `
+    + `("${nextPicks.today.title}" / "${nextPicks.week.title}")`);
+  check(new Set(nextPicks.rising.map(r => r.id)).size === nextPicks.rising.length,
+    'the rising row never offers the same topic twice');
+  // The daily reason is read off YOUR lists, so it has to name a real count.
+  check(/Because 10 of your picks were crime movies\./.test(nextPicks.today.why),
+    `the reason is drawn from your own ten ("${nextPicks.today.why}")`);
+
+  /* Cadence. A pick that moved between two renders of the same screen would
+     be a slot machine rather than a suggestion, and one that did not move
+     when the day did would not be a daily anything. Both directions. */
+  const pickAgain = await page.evaluate(() => {
+    render();
+    return { today: todaysPick().topic.id, week: thisWeeksPick().topic.id };
+  });
+  check(pickAgain.today === nextPicks.today.id && pickAgain.week === nextPicks.week.id,
+    'a re-render does not reshuffle either pick');
+  const pickMoved = await page.evaluate(() => {
+    const out = { days: new Set(), weeks: new Set() };
+    // Seven consecutive days and four consecutive weeks, through the same
+    // code path the screen uses.
+    for (let i = 0; i < 7; i++) {
+      const d = new Date(Date.UTC(2026, 10, 18 + i));
+      out.days.add(todaysPick(d).topic.id);
+    }
+    for (let i = 0; i < 4; i++) {
+      const d = new Date(Date.UTC(2026, 10, 18 + i * 7));
+      out.weeks.add(thisWeeksPick(d).topic.id);
+    }
+    return { days: out.days.size, weeks: out.weeks.size };
+  });
+  check(pickMoved.days >= 5, `seven days give ${pickMoved.days} different topics`);
+  check(pickMoved.weeks >= 3, `four weeks give ${pickMoved.weeks} different topics`);
+
+  // And the card starts the list it is offering.
+  const pickOffered = await page.locator('.whatsnext .pick .pickname').first().innerText();
+  await page.locator('.whatsnext .pick .btn').first().click();
+  await page.waitForTimeout(350);
+  check(await page.evaluate(() => window.S.scene) === 'build',
+    'tapping Make this one goes to the build screen');
+  check(await page.evaluate(() => window.S.topic.title) === pickOffered.trim(),
+    `and it is building the topic that was offered ("${pickOffered.trim()}")`);
+  await page.evaluate(() => { S.scene = 'discover'; save(); render(); });
+  await page.waitForTimeout(250);
 
   console.log('\n\u2500\u2500 A books shelf speaks like one \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500');
   const BOOK_SCREENS = [

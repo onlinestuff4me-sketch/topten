@@ -119,6 +119,12 @@ user subscribes to, purely to seed relevant suggestions in the Gather tray.
 - Acceptance: a new user can reach a completed first Ten in under 3 minutes
   without typing a search query (suggestion taps alone suffice); services
   question is skippable; no sign-in wall before the first badge reveal.
+- **Launch blocker (2026-11-18).** The splash tagline claims a corpus size —
+  "5,000+ lists from other users" — and that figure is a fixture held in one
+  constant, `CORPUS_CLAIM`. Before the app is in front of anybody outside this
+  project it is read from the published-Tens count, or the sentence loses its
+  number. Every other invented figure in the prototype is a fixture a reader
+  cannot act on; this one is a claim about how many people are already here.
 
 **Amendment 2026-08-15 (Mischa, round 5) — the shape of a session, and the
 domains beyond film.**
@@ -231,6 +237,50 @@ naming rule and the measurements, including why there are now three tiles
 rather than six. Acceptance: every intro topic, shown as a tile, renders its
 label in full on every phone viewport; tapping one promotes it and the one it
 replaced returns to the strip.
+
+**Amendment 2026-11-18 (Mischa) — what to make next: today, this week, and
+what is rising.** Held open since the overnight build with one condition on
+it: *"it needs a conversation about how often a person should be given
+something new, because that's a retention decision, not a layout one."* The
+cadence is therefore the decision, and it is three different ones:
+
+| | cadence | shape | why that cadence |
+|---|---|---|---|
+| **Today** | one topic, new each calendar day | sits **next to what you have already made** | the small, repeatable reason to open the app. A topic, not a film, because the unit of this product is a list |
+| **This week** | one topic, new each ISO week | deliberately **broader** — a genre or a decade, never a person | a week is long enough that a bigger list is not a chore, and the breadth keeps the two from reading as the same suggestion twice |
+| **Rising now** | continuous | a row of topics | not a suggestion at all — what the collection is busy with, so the screen has a pulse that is not about you |
+
+Both picks are **deterministic within their period**: the same day gives the
+same topic on every render and on every device. A suggestion that moved when
+the screen redrew would be a slot machine. Both are also drawn from the pool
+of topics that are **offerable** — the collection has ten of them — so a pick
+can never be a list of nine, and neither ever offers a topic you have already
+finished.
+
+**Today's reason is read off your own ten**, not asserted: *"Because 10 of
+your picks were crime movies."* With no history it falls back to a fact about
+the topic itself (*"240+ to choose from"*). On the device this is Apple's
+Foundation Models choosing from the same pool with your own lists as the
+prompt; the prototype computes the same shape so what is being judged is the
+mechanism rather than a mock-up.
+
+**Rising now is a stand-in, and the label says only what is true.** In the
+product it is other people's activity. There are no other people yet, and
+inventing counts is exactly what the seed-source decision of this same
+morning refused to do — so it is derived from the one signal that is real
+here: genres whose films are both recent and widely rated. It is labelled
+*"Rising now"* and never *"N people made this today"*. When there is a
+database behind it, the derivation is replaced and the label does not have to
+change.
+
+*Where it lives:* the top of **discovery**, not the build screen. The build
+screen already has a topic, and offering a different one on top of the one you
+are filling is an interruption rather than an invitation.
+
+- Acceptance: every pick is offerable and is not one you have finished; today
+  and this week never coincide; seven consecutive days give at least five
+  different topics and four consecutive weeks at least three; a re-render
+  changes neither; tapping a pick starts exactly the topic it named.
 
 **2. Gather.** Building a Ten is two phases; phase one is *gathering* — an
 unordered tray of up to 10 candidates. Sources: search (catalog-backed with
@@ -700,6 +750,102 @@ See `KICKOFF.md` for the milestone plan (M0–M6). P0 requirements 1–8 are the
 launchable core ("make, reveal, share"); 9–12 complete the social loop;
 13–14 are continuous gates, not phases.
 
+## The first screen is a wall of other people's lists, and it moves (2026-11-18, Mischa)
+
+**Supersedes the two sections below in FORM, not in argument.** What the
+splash claims is unchanged and was settled on 2026-11-17: the first screen
+shows other people's ranked tens rather than explaining a rule, and it is
+attributed to a crowd rather than to a stranger. What changed is that one
+list inside a card was the wrong way to show it.
+
+**Decision.** The splash is a full-bleed wall of four lists, drifting
+sideways on its own, with the question, a tagline, one CTA and the price
+promise over it. Each row is one list: a name plate — `TOP 10` over the rest
+of the list's real name, over "From N+ Top 10s" — followed by that list's ten
+posters in rank order, then the same again so the loop has no seam. Rows
+alternate direction. Six lists are in the pool and four are on screen; which
+four rotates per visit.
+
+**Reasoning.** Mischa, having looked at the built screen: *"This What's your
+top 10 page looks bad. Needs an overhaul."* Three directions were built side
+by side at a real phone viewport with the real catalog — the artifact as a
+stack, the artifact as a full-bleed wall, the artifact as a read list — and he
+picked the wall: *"My pick is B, and the wall should auto-scroll. Can we have
+a version that scrolls through custom lists in a wall-like format with big
+posters?"*
+
+The old screen's problem was not its argument but its packaging. One list
+presented as an object needs a card, and a card needs a border, a caption and
+a badge, and on a 393×659 phone all of that chrome left the posters at **58px
+tall** — the artwork, which is the only thing on the screen doing any
+persuading, reduced to thumbnails so its own frame could fit. The wall spends
+that budget the other way: the posters are **155px** on the same phone, 2.7×
+the area, and four lists are legible at once instead of one plus three
+thumbnails.
+
+**The name plate is the whole decision.** A wall of posters says "this app has
+a lot of films in it", which is not a claim worth making and not one we could
+honour. A wall of *named, numbered lists* says "this app is full of other
+people's Top 10s", which is the product. The plate leads each pass of the
+strip rather than being pinned to the row, so a name arrives, its ten drift
+past, and the next name arrives behind them.
+
+**The tagline is Mischa's, and its number is a placeholder with a condition
+on it.** *"The tag line should be '5000+ lists from other users. Share
+yours.'"* It renders as **"5,000+ lists from other users. Share yours."** —
+the separator is ours, because every other round figure in the app goes
+through `roughly()` and comes out punctuated, and one bare number on the first
+screen would be the odd one out.
+
+The figure itself is a claim about a corpus that does not exist. It is the
+single invented number on the screen and it is held in one named constant,
+`CORPUS_CLAIM`. **It is a launch blocker:** before the app is in front of
+anybody who is not us, that number is read from `select count(*) from tens
+where published`, or the sentence loses its number. Shipping "5,000+ lists"
+over an empty database is the one thing on this screen that would be a lie
+rather than a fixture, and the seed-source decision taken the same morning
+already refused to invent counts for the discover screen.
+
+**Mischa's two examples are not shapes the namer can make.** He wrote "top 10
+crime thrillers" and "top 10 disney animated". A topic narrows by exactly one
+genre, and a studio is not a facet at all — `{studio: 'Walt Disney Pictures'}`
+falls through to "Top 10 Movies of All Time". The two nearest real lists lead
+the pool instead ("Top 10 Crime Movies of the 90s", "Top 10 Animated Movies of
+the 2000s"), and the gap is recorded here rather than papered over with a
+hand-typed title nothing in the app could produce. **Two facets worth having
+next**, in this order: a second genre ("Crime Thrillers"), which the shelf
+filter already supports and only the namer lacks; and `studio`, which needs a
+field TMDB does supply and would open the whole "Disney animated / A24 / Studio
+Ghibli" family of lists people actually name out loud.
+
+**Acceptance:**
+- Four rows, each one list: a plate carrying `TOP 10`, the list's own name and
+  a crowd credit, then ten posters ranked 1–10, twice.
+- The strip's two copies are the same width to within a sub-pixel, so the
+  −50% loop has no visible seam.
+- The wall runs to all four edges at every supported size, and the whole
+  splash fits the smallest supported iPhone (375×553) with the CTA on screen
+  and nothing scrolling.
+- It drifts without being touched, alternate rows in opposite directions, and
+  **Reduce Motion stops it** on a still frame that is every row's name legible
+  in full.
+- Every word on the screen clears WCAG AA against the brightest artwork that
+  could be behind it, measured as rendered pixels with the posters forced to
+  white — not modelled.
+- Every list in the pool reaches the wall across successive visits, and none
+  of their names is cut off in its plate.
+- The splash makes no API call.
+
+**What this supersedes.** The hero card (`.hero-ten`), its 5×2 grid, its
+locked badge and the tap-to-swap strip of three mini tiles below it, all
+agreed 2026-11-17 and 2026-11-18. The *arguments* in the two sections below —
+crowd not stranger, topics not people, show don't explain, the price promise
+as fine print, the one-line rule, no Skip — all still hold and all still have
+tests. The locked badge on the splash is the one mechanic that goes with the
+card: it survives everywhere else it already lives (Req 12, the discover
+cards, the share pages), and the splash simply stopped being a place that
+shows a badge.
+
 ## The first screen shows the crowd's verdict, not a stranger's taste (2026-11-17, Mischa)
 
 **Amends the decision below, the same day.** The first build of this screen
@@ -739,8 +885,16 @@ from ("From 5,000+ Top 10s"), and the three questions answer themselves:
 runs on (Req 12): you cannot see what was earned on a topic until you have
 your own take on it. On the splash it turns the artifact into a door.
 
+  *Amended 2026-11-18 (Mischa): the hero is gone and the badge goes with it —*
+  *see "The first screen is a wall of other people's lists" above. The locked
+  badge is unchanged everywhere it still lives: the discover cards, the share
+  pages, Req 12. The splash simply stopped being a screen that shows one list
+  as an object, so there is no artifact on it for a badge to sit on.*
+
 **The strip underneath is other TOPICS, not other people.** A cold visitor is
-choosing an argument to join, not a person to follow. People belong on this
+choosing an argument to join, not a person to follow. *(2026-11-18: the strip
+is now the wall's other rows, and the rule is unchanged — every row is a
+topic, and the only name on the screen is the crowd's.)* People belong on this
 screen later, in one case specifically: a visitor arriving from a shared link
 should see *their friend's* Ten with the byline intact, because then the name
 is the whole point. That is the referred-visit splash and it is not built yet.

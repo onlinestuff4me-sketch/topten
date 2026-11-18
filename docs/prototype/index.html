@@ -462,6 +462,32 @@ section { margin-top: var(--s8); }
    and a person second. Nothing on it is free text. */
 .other-ten { position: relative; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--r-card); padding: var(--s4); margin-bottom: var(--s3); }
 .other-ten .topic { display: block; font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-disabled); }
+/* ── What to make next ──────────────────────────────────────────────────── */
+.whatsnext { display: grid; gap: var(--s3); margin: 0 0 var(--s6); }
+.whatsnext .eyebrow { margin: 0; font: 700 0.6875rem/1.2 var(--sans); letter-spacing: .14em;
+  text-transform: uppercase; color: var(--accent-ink); }
+.pick { display: block; width: 100%; text-align: left; background: var(--bg-surface);
+  border: 1px solid var(--border-subtle); border-radius: var(--r-card);
+  padding: var(--s4); margin: 0; color: inherit; }
+.pick .pickname { font-family: var(--serif); font-weight: 600; font-size: 1.25rem;
+  line-height: 1.18; letter-spacing: -0.012em; margin: var(--s1) 0 0; display: block; }
+.pick .why { margin: var(--s2) 0 0; font-size: 0.875rem; line-height: 1.35; color: var(--text-secondary); }
+.pick .btn { width: 100%; margin-top: var(--s3); }
+/* The weekly one is the same object a size down: it is a second suggestion,
+   and two cards of equal weight would make the screen a menu rather than a
+   recommendation. One tap, so the whole card is the button. */
+.pick.thin { display: flex; flex-direction: column; gap: 2px; min-height: 44px;
+  padding: var(--s3) var(--s4); cursor: pointer; }
+.pick.thin .pickname { font-size: 1rem; margin: 0; }
+.pick.thin:active { border-color: var(--accent); }
+.risingrow { display: grid; gap: var(--s2); }
+/* The row scrolls rather than wrapping: six genres wrapped to three lines and
+   pushed the lists it is introducing off the screen. */
+.risingrow .chips { display: flex; gap: var(--s2); overflow-x: auto; scrollbar-width: none;
+  margin: 0 calc(var(--margin) * -1); padding: 2px var(--margin) var(--s2); }
+.risingrow .chips::-webkit-scrollbar { display: none; }
+.pickchip { flex: 0 0 auto; }
+
 .other-ten .listname { font-family: var(--serif); font-weight: 600; font-size: 1.375rem; line-height: 1.18; letter-spacing: -0.012em; margin: var(--s1) 0 0; }
 .other-ten .claim { margin: var(--s2) 0 0; font-size: 0.875rem; line-height: 1.35; color: var(--text-secondary); }
 /* Attribution, under the claim. Two parts on one line: who, then what they
@@ -536,275 +562,240 @@ footer.notes .build { color: var(--text-disabled); margin-top: var(--s2); }
    answer "what will this cost me" before asking for anything, and no Skip —
    this screen only tells, so a Skip would be a second CTA competing with the
    real one. */
-/* The splash is three bands in fixed proportion (Mischa, 2026-08-15):
-   artwork 40%, the pitch 40%, the CTA the last 20%. `flex-basis: 0` is what
-   makes those ratios describe the WHOLE column rather than whatever is left
-   over after the content has taken what it wants — with `auto` the copy block
-   would quietly claim more than its share on a tall phone and less on a short
-   one, which is exactly the drift this replaces. Every type size below is a
-   clamp against the viewport so all three bands stay full at 375px and at
-   440px without a media query deciding it. */
-/* One inset, top and bottom (Mischa, 2026-08-15): the space above the first
-   row of posters is the same space that sits under the CTA, so the screen is
-   framed rather than stuck to its top edge.
+/* The splash is the one screen that is not a 560px column. Every other scene
+   is a phone-width page centred in the browser, which is right for a list and
+   wrong for a wall: capped at 560 on a wide window, the wall became a column
+   of posters with the page's own background either side of it, and the name
+   plate at the left edge was cut off against white. A wall that stops has
+   nothing behind it. `.wrap.bare` is used by this screen and no other. */
+.wrap.bare { padding: 0; max-width: none; }
 
-   `max()` and not `+`: adding the safe-area insets makes the frame lopsided on
-   a real handset, where the top inset is a notch and the bottom is a home
-   indicator — the two are never the same number, so adding them guarantees the
-   one thing this rule exists to prevent. Taking the larger of the frame and
-   the inset keeps both sides equal wherever the insets are smaller than the
-   frame, and stays clear of the hardware where they are not. */
-.wrap.bare { padding: 0; }
-/* The splash frame. 62 / 18 / 20 — the artifact gets the room the poster
-   marquee used to have, because a real Ten is the thing worth looking at and
-   a scrolling wall of posters was decoration (2026-11-17). */
-/* The leftover height is SHARED, not banked in one place (2026-11-18,
-   Mischa: "make the hero bigger, and/or fix the spacing"). The artwork band
-   used to take all of it and centre inside itself, which on a 393x659 phone
-   put 71px of nothing above the hero and 54px below the strip - 125px, a
-   fifth of the screen, doing no work. The hero cannot answer this by growing:
-   it is already the full width of the column, and its height follows from ten
-   2:3 posters in five columns.
+/* ── The splash: a wall of other people's lists, still moving ─────────────
+   Mischa, 2026-11-18, after three directions were built side by side at a
+   real phone viewport and compared: "my pick is B, and the wall should
+   auto-scroll. Can we have a version that scrolls through custom lists in a
+   wall-like format with big posters."
 
-   So the bands size to their content and the slack becomes the two gaps
-   between them, which is the same air spent where it separates things rather
-   than pooled at the top. */
-/* A narrower side margin than the rest of the app, because on this screen the
-   artwork IS the content and 6px a side is 12px of poster. The hero and the
-   tiles below it share the margin, so they still line up. */
-.intro { --frame: 16px; --margin: 14px; min-height: 100svh; display: flex; flex-direction: column;
-  justify-content: space-between; gap: var(--s3);
-  padding: max(env(safe-area-inset-top), var(--frame)) var(--margin) max(env(safe-area-inset-bottom), var(--frame)); }
-.intro > * { min-height: 0; }
-.intro .art { flex: 0 1 auto; display: flex; flex-direction: column; justify-content: flex-start; }
+   WHAT THIS REPLACES, and why the hero went. The previous splash was ONE
+   list presented as an object: a bordered card with a byline, ten posters in
+   a 5x2 grid, a locked badge, and three small tiles under it offering other
+   topics. It told the truth about the product and it looked like a form - a
+   single framed panel floating on a page, with the posters squeezed to 58px
+   to make room for the frame's own chrome and caption. Mischa, same morning:
+   "This What's your top 10 page looks bad. Needs an overhaul."
 
-/* Somebody's Ten, as the object we want screenshotted: byline, title, badge,
-   and all ten in rank order. Five across and two down, because the shape of
-   the grid is the promise — a complete thing, not a feed that keeps going. */
-/* Presented as a physical object, not a section of the page. Somebody is
-   meant to look at this and want one — so it gets a surface, an edge and a
-   shadow, the way the share page and the OG card present a finished Ten. */
-/* Capped against viewport HEIGHT as well as width.
+   The wall makes the same argument with the artwork at full size instead of
+   a caption about it. Four lists, each named and each ranked, drifting past
+   under the question. The posters are about 2.5x the size the hero gave them
+   (155px tall against 58px on a 393x659 phone), which is the whole of
+   "bigger" that was asked for, and there are four lists on screen at once
+   rather than one plus three thumbnails.
 
-   The grid is five columns of 2:3 cells, so its height is derived from its
-   WIDTH - about 0.6x it. On a viewport that is wide and short the hero
-   therefore grew taller exactly where there was least room, and a 430x610
-   browser overflowed the splash by 56px. Width alone cannot express "do not
-   get taller than the room you have", so the cap is in `svh`.
+   The hero's own parts are gone with it - `.hero-ten`, `.hero-grid`,
+   `.hero-cell`, `.hero-badge`, `.intro-strip`, `.mini-ten`, `.mini-grid`,
+   and the tap-to-swap interaction. Keeping dead rules for a deleted screen is
+   how a stylesheet starts describing a product that no longer exists.
 
-   54svh is the loosest value that fits every height from 540 to 820 across
-   375, 393, 430 and 480 wide - swept, not guessed. It binds only on short
-   screens, where a smaller artifact is the right answer anyway. */
-/* `margin: 0 auto`, not `margin-inline: auto`: this is a <figure>, and a
-   figure's default margin-block is 1em. Writing only the inline axis handed
-   it 16px back top and bottom, which is most of the overflow this cap was
-   added to remove. */
-/* 64svh, not 54 (2026-11-18, Mischa: "make the hero bigger"). The cap is
-   there to stop the hero becoming absurd on a tall screen, but at 54 it was
-   binding on PHONES - hardest on an iPhone SE, where it held the posters to
-   48px when the column had room for 58. Swept across six viewports: at 64 the
-   column is what limits the hero everywhere a phone is concerned, and the
-   cap only speaks again on a tablet. Posters grow 20% on an SE, 7% on a 15
-   Pro, and the CTA and promise stay on screen on all six. */
-.hero-ten { margin: 0 auto; max-width: min(100%, var(--hero-cap, 64svh));
-  position: relative; display: flex; flex-direction: column; gap: var(--s3);
-  background: var(--bg-surface); border: 1px solid var(--border-subtle);
-  border-radius: var(--r-sheet); padding: var(--s3);
-  box-shadow: 0 1px 2px rgba(28,26,23,.05), 0 18px 40px -18px rgba(28,26,23,.25); }
-@media (prefers-color-scheme: dark) {
-  .hero-ten { box-shadow: 0 1px 2px rgba(0,0,0,.5), 0 18px 40px -18px rgba(0,0,0,.7); }
-}
-/* `min-width: 0` on the children is load-bearing. A grid item defaults to
-   `min-width: auto`, so a nowrap title refuses to shrink below its own text
-   and GROWS past this padding rather than overflowing it — which means
-   scrollWidth equals clientWidth, fitOneLine concludes 24px fits, and the
-   title slides under the badge at full size. Nothing reports an error. */
-.hero-ten figcaption { display: grid; gap: 2px; padding-right: 70px; min-width: 0; }
-.hero-ten figcaption > * { min-width: 0; }
-.hero-ten .by { margin: 0; font-size: 0.75rem; font-weight: 700; letter-spacing: .05em;
-  text-transform: uppercase; color: var(--accent); }
-.hero-ten .what { margin: 0; font-family: var(--serif); font-weight: 600;
-  font-size: clamp(1.0625rem, 5vw, 1.5rem); line-height: 1.15; }
-.hero-grid { display: grid; grid-template-columns: repeat(5, 1fr); gap: var(--s2); }
-.hero-cell { position: relative; aspect-ratio: 2/3; border-radius: var(--r-art);
-  overflow: hidden; background: var(--bg-recessed); }
-.hero-cell img { width: 100%; height: 100%; object-fit: cover; display: block; }
-/* The rank is the product. It sits on the poster rather than beside it so ten
-   cells stay ten posters wide on a 393px screen. */
-.hero-cell::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 30%;
-  background: linear-gradient(to top, rgba(0,0,0,.62), transparent); pointer-events: none; }
-.hero-cell .rk { position: absolute; z-index: 1; left: 4px; bottom: 2px; font-family: var(--serif);
-  font-weight: 700; font-size: 0.8125rem; line-height: 1; color: #fff;
-  text-shadow: 0 1px 3px rgba(0,0,0,.9), 0 0 10px rgba(0,0,0,.6); }
-.hero-badge { position: absolute; right: var(--s4); top: var(--s4); width: 62px; height: 62px; }
-.hero-badge svg { width: 100%; height: 100%; display: block; }
-/* The locked state is a promise, not an error — it reads as something waiting
-   to be opened rather than something withheld, so it keeps the badge's own
-   gold rather than going grey. */
-.hero-badge .lockedbadge .plate { fill: var(--accent-muted); stroke: var(--accent); stroke-width: 1.5; }
-.hero-badge .lockedbadge .shackle { fill: none; stroke: var(--accent); stroke-width: 7; stroke-linecap: round; }
-.hero-badge .lockedbadge .ghost { fill: var(--accent); stroke: var(--accent); opacity: .26; }
-.hero-badge .lockedbadge .body { fill: var(--accent); }
+   ALWAYS DARK, in both colour schemes. This is the app's second always-dark
+   surface after the reveal's vault, and that is a decision rather than a
+   theme bug: at full bleed the content IS photographic, and a Gallery-light
+   surround fights four rows of film artwork for the same attention. The
+   `--vault-*` tokens are defined once, outside the colour-scheme blocks, so
+   the splash reads the same in Gallery and in Vault - and the two ceremonies
+   that take the whole screen now share one surface language. */
+.intro { --margin: 20px; position: relative; min-height: 100svh;
+  display: flex; flex-direction: column; justify-content: flex-end;
+  background: var(--vault-bg); color: var(--vault-text); }
 
-/* Four posters, a name and a list title — the smallest unit that still reads
-   as somebody's taste. Scrolls sideways, so the number of lists on screen is
-   a property of the screen rather than a number baked into the layout. */
-.intro-strip { display: flex; gap: var(--s2); overflow-x: auto; scrollbar-width: none;
-  margin: 0 calc(var(--margin) * -1); padding: var(--s3) var(--margin) 0; }
-.intro-strip::-webkit-scrollbar { display: none; }
-/* The strip's width is a clamp against viewport HEIGHT, not a constant.
+/* The wall fills the screen EXACTLY, by division rather than by a clamp.
 
-   The strip was a fixed 173px tall whatever the screen, and the splash is a
-   fixed single screen - so on a 375x629 browser (an iPhone 13 mini) the
-   three bands wanted 11px more than existed and the first screen scrolled.
-   Everything above and below that height fitted, which is exactly the kind
-   of narrow gap a hand-measurement misses and a sweep across real viewports
-   does not.
+   A poster height picked in `svh` has to be right for every viewport at once,
+   and the marquee this replaces got it wrong: `20svh` overshot its own band
+   by 26px and `overflow: hidden` ate the difference, so the posters were
+   quietly cropped top and bottom rather than sized to fit, and nothing
+   reported it. Four flex rows of `1fr` cannot have that bug - a row's height
+   IS the leftover divided by four, whatever the screen, and the poster's
+   width follows from its aspect ratio. */
+.wallrows { position: absolute; inset: 0; display: flex; flex-direction: column;
+  gap: var(--s2); padding: var(--s2) 0; }
+/* Both edges fade rather than cutting. A strip clipped square reads as broken
+   - the first frame had a name plate sliced down the middle by the edge of
+   the phone - where a strip that fades reads as continuing past the screen,
+   which is the truth about it. The ends stop at a quarter rather than at
+   nothing: a plate caught half off the edge is still legible at 25%, and a
+   fade to transparent hid the first characters of the name on the row whose
+   plate starts flush left. */
+.wallrow { flex: 1 1 0; min-height: 0; overflow: hidden; --i: 0; container-type: size;
+  -webkit-mask-image: linear-gradient(90deg, rgb(0 0 0 / .25) 0, #000 7%, #000 93%, rgb(0 0 0 / .25) 100%);
+  mask-image: linear-gradient(90deg, rgb(0 0 0 / .25) 0, #000 7%, #000 93%, rgb(0 0 0 / .25) 100%); }
 
-   Shrinking the strip is the right thing to give up: the hero IS the thesis
-   and the CTA is the point, and these are previews of other topics. A
-   breakpoint would have worked for one phone; a clamp against `svh` fits
-   every height between, which is what the rest of this screen already does
-   with its type. */
-/* The tile is a button, and has to look like one (Mischa, 2026-11-18). It
-   was a bare figure: four posters and a caption, with nothing to say it
-   could be touched. It carries a surface, a border and a press state now,
-   and its own width is already well past 44pt in both directions. */
-/* THREE tiles sharing the row, not six at a fixed width. Six tiles on a
-   393px phone are 63px wide, which leaves about 53px of text - eight
-   characters - so every label either clipped or broke mid-word ("Hitch-
-   cock"). Measured: at three the text column is ~102px and every label in
-   INTRO_TOPICS wraps to two lines on a word boundary.
+/* One row is one list: a name plate, then its ten in rank order, then the
+   same again. The second copy is what makes the loop seamless - the strip
+   travels exactly -50%, so at the instant the first copy has left the frame
+   the second is sitting where the first began, and there is no seam to see.
 
-   Three of five visible is not a loss, because tapping one swaps it with the
-   hero and the rest shuffle up: the set cycles by use. */
-.mini-ten { flex: 1 1 0; min-width: 0; margin: 0; display: grid; gap: 6px;
-  appearance: none; -webkit-appearance: none; text-align: left; color: inherit; cursor: pointer;
-  background: var(--bg-surface); border: 1px solid var(--border-subtle);
-  border-radius: var(--r-card); padding: 5px;
-  transition: transform var(--m-press) var(--ease-out), border-color var(--m-press) var(--ease-out); }
-.mini-ten:hover { border-color: var(--accent-muted); }
-.mini-ten:active { transform: scale(0.96); border-color: var(--accent); }
-.mini-ten:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-@media (prefers-reduced-motion: reduce) { .mini-ten { transition: none; } }
-/* The mosaic's height is a constant, not a consequence of the tile's width.
-   It was a 2x2 grid of 2/3 posters, so widening the tile from 63px to 112px
-   took it from 37px tall to 153px and the splash overflowed its own screen
-   by up to 40px - the one failure this screen is not allowed to have. Three
-   posters in a row inside a clamped band says "a list" just as well and
-   costs a fixed slice of the budget whatever the tile does. */
-.mini-grid { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 3px;
-  height: clamp(38px, 6.6svh, 58px);
-  border-radius: var(--r-art); overflow: hidden; background: var(--bg-recessed); }
-.mini-grid img { width: 100%; height: 100%; object-fit: cover; display: block; }
-/* No line-clamp. A category the reader cannot finish reading is the one
-   thing on this screen that is supposed to say what else is here, and
-   `introLabel` is what keeps it short enough to wrap rather than clip. */
-/* The label is accent ink, the same colour as every other thing on this app
-   that does something when you touch it (Map, Start over, the fact links on
-   a title page). A bordered panel alone was not saying "tappable" loudly
-   enough, and this is the signal the rest of the app already uses rather
-   than a new one invented for the splash. `--accent-ink` is the AA-contrast
-   member of the accent family, which plain `--accent` is not at 12px. */
-/* Two rows, always, so the text is as even as the tiles are. `grid` rather
-   than two blocks because the rows are then exactly two whatever is in them,
-   and an empty `sub` still holds its line. */
-.mini-ten .what { display: grid; min-width: 0; overflow-wrap: break-word; }
-/* "Top 10" on every tile (Mischa, 2026-11-18). It is the words all four
-   share, which is exactly why it is a KICKER and not part of the big line:
-   set at full size it would eat half the column and say nothing about which
-   list this is - the finding that stripped it from these captions in the
-   first place, on 2026-11-17. As a 10px kicker it costs 12px of height and
-   says the thing that matters, that each of these is a list. It rhymes with
-   the hero's own eyebrow directly above it. */
-.mini-ten .kicker { font-size: 0.625rem; line-height: 1.2; font-weight: 700;
-  letter-spacing: .06em; text-transform: uppercase; color: var(--text-secondary); }
-/* 11px, measured rather than chosen. The longest label the four topics make
-   is "Animated 2000s"; in the 100px column it is 98px at 12px - two pixels
-   of slack, which would break the moment a wider face loaded, and CI's
-   DejaVu is about 10% wider, which has broken this screen twice already. At
-   11px it is 90px, so the margin matches what the font difference costs.
-   `nowrap` makes a regression loud: anything longer clips visibly rather
-   than silently becoming two lines again. */
-.mini-ten .lead { font-size: 0.6875rem; line-height: 1.3; font-weight: 700;
-  color: var(--accent-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-
-.intro-copy { flex: 0 0 auto; display: flex; flex-direction: column; justify-content: center; gap: var(--s2); }
-/* No `nowrap`. The clamp's floor is 2rem, which is the right thing for
-   Dynamic Type - the headline grows with the reader's text size - but a
-   floor that grows and a refusal to wrap cannot both hold. At the root size
-   of 24px that is a 48px headline, "What's your Top 10?" ran 440px wide on a
-   393px screen, and the whole SPLASH scrolled sideways: the first screen
-   anybody sees, broken at the text size a lot of people actually use.
-
-   Wrapping costs nothing at the default size (the 10vw term resolves to
-   39px there and the line still fits) and is simply correct above it. */
-.intro h1 { font-family: var(--serif); font-weight: 600; font-size: clamp(2rem, 10vw, 2.75rem);
-  line-height: 1.05; margin: 0; text-wrap: balance; }
-.intro .pitch { font-size: clamp(1rem, 4.5vw, 1.25rem); line-height: 1.35;
-  color: var(--text-secondary); margin: 0; }
-.intro .cta { flex: 0 0 auto; display: flex; flex-direction: column; justify-content: flex-end; gap: var(--s3); }
-.intro .cta .btn { width: 100%; min-height: 58px; font-size: 1.125rem; }
-/* The promise survives the redesign, as fine print. It is a commitment, not
-   a selling point, and it reads better where commitments go. */
-.intro .promise { margin: 0; text-align: center; font-size: 0.8125rem;
-  color: var(--text-secondary); font-weight: 600; }
-
-/* Roomier only where there is room. Everything above is sized for a phone in
-   a browser — Playwright's own iPhone 15 Pro profile is 393x659, because
-   Safari's chrome takes about 190px off the 852 on the spec sheet. That is
-   the screen this prototype is read on, so it is the default, and the
-   generous version is the enhancement.
-
-   800, not 741: a Pro Max in a browser gives 745, and the roomier padding
-   tipped it 15px over its own viewport. The breakpoint has to sit above
-   every height a phone actually hands us, not just above the smallest. */
-/* Under 600px of viewport — an SE in a browser gives 553 — the strip goes.
-   The hero is the thesis and the CTA is the point; a row of other lists is
-   the thing that can be read after tapping. A splash whose button is below
-   the fold has failed at the only job it has. */
-/* 620, not 600. The strip needs its own band, and a sweep of every height
-   from 500 to 900 across five widths puts the boundary at about 620 - below
-   that the three bands do not fit however small the strip is made, and a
-   360x610 browser overflowed by 16px. The old 600 was close enough to be
-   wrong only in a 20px window, which is exactly the kind of gap a
-   hand-measurement misses. */
-@media (max-height: 620px) {
-  .intro-strip { display: none; }
-  .intro { --frame: 12px; }
-}
-
-
-@media (min-height: 800px) {
-  .intro { --frame: 28px; gap: var(--s4); }
-  .intro-strip { padding-top: var(--s4); padding-bottom: var(--s1); gap: var(--s3); }
-  .mini-ten { flex: 0 0 104px; }
-  .hero-ten { gap: var(--s4); padding: var(--s4); }
-}
-
-/* Tiles are sized off the band that holds them, and the sum has to be exact:
-   the artwork band is 40% of what is left after the frame (2 x 40px) and the
-   two gaps between bands (2 x 16px), and it holds two rows plus one 8px gap.
-
-     row = (0.4 x (100svh - 112px) - 8px) / 2  =  20svh - 26.4px
-
-   `20svh` alone overshot that by ~26px, and `.marquee`'s own `overflow:
-   hidden` swallowed the difference — the posters were being quietly cropped
-   top and bottom rather than sized to fit. A number that is nearly right and
-   a clip that hides the remainder is worse than either alone. */
-.marquee { --tile-h: clamp(96px, calc(20svh - 26px), 210px); overflow: hidden;
-  -webkit-mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent);
-  mask-image: linear-gradient(90deg, transparent, #000 8%, #000 92%, transparent); }
-.marquee .strip { display: flex; gap: var(--s2); width: max-content; animation: drift 46s linear infinite; }
-.marquee.back .strip { animation-direction: reverse; animation-duration: 58s; }
-.marquee .tile { position: relative; height: var(--tile-h); width: calc(var(--tile-h) / 1.5);
-  flex: 0 0 calc(var(--tile-h) / 1.5); border-radius: var(--r-art); overflow: hidden; background: var(--bg-recessed); }
-.marquee .tile img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.marquee .tile .rank { position: absolute; left: 0; bottom: 0; width: 26px; height: 26px; display: grid; place-items: center;
-
-  font-family: var(--serif); font-weight: 800; font-size: 0.9375rem; color: #17140B; background: var(--accent-bright); border-radius: 0 var(--r-art) 0 var(--r-art); }
+   The gap between cells is a `margin-right` on each cell and NOT `gap` on the
+   strip. With `gap`, a strip of 2N cells is 2N widths plus 2N-1 gaps, so half
+   of it falls half a gap short of a whole copy and the loop jumps by 4px
+   every pass. Gap-as-margin makes each copy exactly N x (width + gap), which
+   makes -50% exact. */
+.wallrow .strip { display: flex; width: max-content; height: 100%;
+  animation: drift var(--m-wall) linear infinite;
+  animation-delay: calc(var(--i) * var(--m-wall) / -7); }
+/* Alternate rows run the other way and slower. One direction at one speed
+   reads as a single sheet sliding behind a window; two reads as a surface. */
+.wallrow:nth-child(even) .strip { animation-direction: reverse;
+  animation-duration: calc(var(--m-wall) * 1.3); }
 @keyframes drift { from { transform: translate3d(0,0,0); } to { transform: translate3d(-50%,0,0); } }
-@media (prefers-reduced-motion: reduce) { .marquee .strip { animation: none; } }
+/* Reduce Motion stops the wall where it stands rather than substituting
+   something else for it. Every row begins with its own name plate at the left
+   edge, so the still frame is the same composition the motion starts from -
+   which is the standing rule for every ceremony in this app: the end state is
+   the same with motion off. */
+@media (prefers-reduced-motion: reduce) { .wallrow .strip { animation: none; } }
+
+.wallrow .cel { position: relative; height: 100%; flex: 0 0 auto;
+  margin-right: var(--s2); border-radius: var(--r-art); overflow: hidden; }
+.wallrow .poster { aspect-ratio: 2/3; background: var(--bg-recessed); }
+.wallrow .poster img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* The rank is the product, so it goes on the artwork rather than into a
+   caption beside it - the same decision the dock, the arrange sheet and the
+   share page already made.
+
+   Sized in container units like the plate, and for the same reason: the badge
+   is a fixed fraction of a poster whose height comes from the screen, so a
+   numeral set in `rem` grows out of it the moment the reader turns their text
+   size up. The Dynamic Type sweep caught exactly that at a 28px root - "1"
+   overflowing its own badge by 6px, on every rank on the wall at once. */
+.wallrow .rank { position: absolute; left: 0; bottom: 0; min-width: 15cqh; height: 15cqh;
+  padding: 0 3cqh; display: grid; place-items: center; font-family: var(--serif);
+  font-weight: 800; font-size: 9cqh; color: #17140B;
+  background: var(--accent-bright); border-radius: 0 var(--r-art) 0 var(--r-art); }
+
+/* The name plate is what makes this a wall of LISTS rather than a wall of
+   posters, and it is the difference between "this app has a lot of films in
+   it" and "this app is full of other people's Top 10s". Without it the screen
+   is attractive and says nothing; with it, every ten posters are introduced
+   by what they are a ten OF.
+
+   It leads each copy of the strip rather than being pinned to the row, so a
+   name arrives, its ten drift past, and the next name arrives behind them -
+   the wall reads as a sequence of lists, which is what it is. Pinning four
+   plates to the left edge instead would have stacked them into a column of
+   labels down one side of the screen.
+
+   A gap in the wall, not a pane over it. The plate is a flex SIBLING of the
+   posters, so nothing is ever behind it but the vault - the first version was
+   written as smoked glass with a `backdrop-filter`, and the contrast probe
+   showed its backdrop sampling as flat --vault-bg at every viewport, which is
+   what a blur of nothing looks like. It is a surface lifted off the
+   background by 7% of the vault's own ink instead, which is the same move the
+   rest of the app makes with --bg-surface.
+
+   ITS TYPE IS SIZED IN CONTAINER UNITS, which is a deliberate exception to
+   the Dynamic Type rule and the only one on this screen. The plate is
+   artwork: it is `aria-hidden`, it cannot be tapped, and what it says is said
+   again in words in the tagline directly below. Sized in `rem` it grew with
+   the reader's text size inside a box that is sized off the screen, so at
+   accessibility sizes the label overflowed a plate it could not push - and
+   silent clipping is the one failure this project does not allow. In `cqh` it
+   is always the same fraction of the row, so it cannot clip at any text size,
+   and it scales with the wall: 14px on an SE, 17px on a 15 Pro, 26px on a
+   tablet, where a fixed 17px read as a caption lost in a 240px panel. The
+   copy a reader actually has to read - headline, tagline, CTA, promise - is
+   all in `rem` and honours Dynamic Type in full. */
+.wallrow .plate { aspect-ratio: 5/4; display: flex; flex-direction: column;
+  justify-content: flex-end; gap: 1.5cqh; padding: 7.5cqh;
+  background: var(--vault-surface); border: 1px solid var(--vault-line); }
+.wallrow .plate .k { font-size: 6.5cqh; font-weight: 700; letter-spacing: .1em;
+  text-transform: uppercase; color: var(--accent-bright); }
+.wallrow .plate .n { font-family: var(--serif); font-weight: 600; font-size: 11cqh;
+  line-height: 1.12; color: var(--vault-text); }
+.wallrow .plate .v { font-size: 7cqh; font-weight: 600; color: var(--vault-text-dim); }
+
+/* The veil is what lets the copy be read without taking the wall away. It is
+   nothing at the top, where the posters are the point, and effectively opaque
+   by the time the headline starts. The stops are placed against the copy
+   block's own top edge rather than chosen by eye, and the contrast that comes
+   out of them is measured in the suite over the brightest artwork in the
+   collection rather than computed from these numbers. */
+/* TWO veils, because they are answering two different questions.
+
+   This one seats the wall: a gentle darkening down the screen so the rows
+   recede rather than all shouting at once. It never passes .32, so the third
+   row still reads.
+
+   The one that makes the copy legible is on `.wallcopy` itself, below. It has
+   to be, because a veil written in viewport percentages is a different veil
+   on every phone: at 66% of a 15 Pro it is exactly over the headline, and at
+   66% of an SE - where the copy block is a much bigger share of a much
+   shorter screen - it is 40px below it, with the headline sitting in the
+   weak part of the gradient over whatever poster happens to be bright. That
+   was the first version, and the SE caught it. */
+.wallveil { position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(180deg,
+    rgb(var(--vault-rgb) / 0) 0%, rgb(var(--vault-rgb) / .06) 40%,
+    rgb(var(--vault-rgb) / .20) 72%, rgb(var(--vault-rgb) / .32) 100%); }
+
+/* The copy sits in normal flow at the bottom of the column, not absolutely
+   over it. Absolute placement was the first version and it clips the
+   HEADLINE at accessibility text sizes: the block grows upward out of a box
+   whose top edge is fixed, and the first thing to leave is the question the
+   whole screen is asking. In flow, a copy block that outgrows the screen
+   makes the splash scroll, which is the failure the Dynamic Type gate
+   permits - truncation and overlap are the ones it does not. */
+.wallcopy { position: relative; z-index: 1; display: flex; flex-direction: column;
+  align-items: center; gap: var(--s2);
+  padding: var(--s8) var(--margin) max(env(safe-area-inset-bottom), var(--s4)); }
+/* The copy's own backdrop, sized to the copy and not to the viewport, so the
+   headline sits at the same point in the same gradient on every screen. It
+   starts two frames above the block it belongs to, which is run-up rather
+   than layout: the fade needs about 100px to get from nothing to opaque
+   without showing a band edge, and the block's own 32px of top padding is not
+   enough. Reaching above costs no height because the pseudo-element is out of
+   flow. */
+.wallcopy::before { content: ""; position: absolute; z-index: -1; pointer-events: none;
+  left: 0; right: 0; bottom: 0; top: calc(var(--s8) * -2);
+  background: linear-gradient(180deg,
+    rgb(var(--vault-rgb) / 0) 0%, rgb(var(--vault-rgb) / .22) 18%,
+    rgb(var(--vault-rgb) / .70) 32%, rgb(var(--vault-rgb) / .90) 44%,
+    rgb(var(--vault-rgb) / .985) 58%, rgb(var(--vault-rgb) / 1) 72%); }
+/* No `nowrap`. The clamp's floor is 2rem, which is the right thing for
+   Dynamic Type - the headline grows with the reader's text size - but a floor
+   that grows and a refusal to wrap cannot both hold. At a 24px root that is a
+   48px headline, "What's your Top 10?" ran 440px wide on a 393px screen, and
+   the whole splash scrolled sideways: the first screen anybody sees, broken
+   at a text size plenty of people use. */
+.wallcopy h1 { margin: 0; font-family: var(--serif); font-weight: 600;
+  font-size: clamp(2rem, 10vw, 2.75rem); line-height: 1.05; text-wrap: balance;
+  color: var(--vault-text); }
+/* The tagline is Mischa's, dictated with the direction (2026-11-18): "The tag
+   line should be '5000+ lists from other users. Share yours.'" Rendered with
+   the thousands separator, because every other round figure in the app goes
+   through `roughly()` and comes out punctuated - "From 2,400+ Top 10s" on the
+   old hero, "1,200+ to choose from" on a topic card - and one unpunctuated
+   number on the first screen would be the odd one out.
+
+   It is TWO SENTENCES and 42 characters, so it is two lines on a phone at any
+   size that can be read; see the note on the one-line rule in prd.md. */
+.wallcopy .pitch { margin: 0; font-size: clamp(0.9375rem, 4vw, 1.125rem);
+  line-height: 1.35; font-weight: 600; color: var(--vault-text-dim); }
+/* The bright accent, not `--accent`. On an always-dark surface the light
+   theme's accent is a dark gold that measures 3.9:1 against the veil - over
+   1.4.11's 3:1 for a control, but only just, and it reads as recessed on the
+   one control the screen exists to offer. `--accent-bright` is 9.6:1 there
+   and is already what the dark theme uses. */
+.wallcopy .btn { width: 100%; min-height: 58px; margin-top: var(--s3);
+  font-size: 1.125rem; background: var(--accent-bright); color: #17140B; }
+/* The promise survives every redesign, as fine print. It is a commitment,
+   not a selling point, and it reads better where commitments go. */
+.wallcopy .promise { margin: 0; text-align: center; font-size: 0.8125rem;
+  font-weight: 600; color: var(--vault-text-dim); }
+/* The wall goes as wide as the window; the copy does not. A headline is still
+   a line of text and a CTA is still a button, and neither wants to be 1400px
+   across. The veil behind it is NOT capped - it is the full-width pseudo on
+   `.wallcopy` - so the darkening still reaches both edges. */
+.wallcopy > * { width: 100%; max-width: 520px; }
 
 /* ── The map — the whole path you have explored, all at once ─────────────
    Round 2's headline: moving back in a branch used to erase everything ahead
@@ -882,7 +873,12 @@ footer.notes .build { color: var(--text-disabled); margin-top: var(--s2); }
 .map-empty li .m { font-weight: 700; color: var(--accent); white-space: nowrap; }
 .map-empty .hint { font-style: italic; margin: 0; }
 
-.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+/* `top`/`left`, not just `position: absolute`. With no offsets it stays in its
+   STATIC position - the end of the body - which on a full-height screen is one
+   pixel past the bottom, so every scene in the app scrolled by 1px and grew a
+   scrollbar for it. It is clipped to nothing either way; this is only about
+   where the nothing sits. */
+.sr { position: absolute; top: 0; left: 0; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 </style>
 </head>
 <body>
@@ -1935,9 +1931,6 @@ addEventListener('resize', measureDock);
    375px and stays spilled. The dock already re-measured here; the fitted
    lines did not. */
 addEventListener('resize', () => {
-  // The headline is not here: its clamp sizes it, and fitOneLine's ceiling
-  // would shrink it instead.
-  fitOneLine($('.hero-ten .what'), 24, 13);
   fitOneLine($('.fitline'));
 });
 
@@ -2482,140 +2475,99 @@ function consensusTen(topic) {
 
 /* The topics worth opening on: ones the catalog can actually fill, named the
    way every list in the product is named. */
-/* FOUR, so that the hero plus the three tiles below it is all of them.
+/* SIX lists in the pool, FOUR on the wall, and which four rotates per visit.
 
-   It was six, and that was a bug the moment a tap became a SWAP rather than
-   a rotation: a swap only ever exchanges the hero with one of the three
-   visible tiles, so whatever sat in fifth and sixth place could never reach
-   the strip and nobody would ever see it. Six topics, four reachable. The
-   honest fix is to show every topic there is, not to hide two of them behind
-   an interaction that cannot reveal them.
+   The pool is bigger than the wall on purpose. A returning visitor gets a
+   different four, which costs nothing and is the difference between a
+   backdrop and a wall that is actually full of lists - and it gives the suite
+   something to sweep, because the plate has to hold EVERY name in the pool
+   without clipping, not just the four that happen to be on screen first.
 
-   These four between them demonstrate what the topic engine can narrow by -
-   a genre and a decade, a style, a person, and a medium that is not film -
-   and their labels give four different second lines rather than four
-   "Movies". */
-const INTRO_TOPICS = [
+   The order is chosen so that no two adjacent rows narrow by the same thing
+   and so that any window of four shows at least three different kinds. Taken
+   together the six demonstrate the whole topic engine: a genre with a decade,
+   a bare genre, a director, a genre that is already its own plural noun, and
+   a medium that is not film.
+
+   Mischa's two examples (2026-11-18) were "top 10 crime thrillers" and "top
+   10 disney animated". Neither is a shape the namer can make: a topic narrows
+   by ONE genre, and a studio is not a facet at all - `{studio: 'Walt Disney
+   Pictures'}` falls straight through to "Top 10 Movies of All Time". The two
+   nearest real lists lead the pool instead, and the gap is written up in
+   prd.md as the next facet worth having rather than faked with a hand-typed
+   title that nothing in the app could produce. */
+const WALL_LISTS = [
   { genre: 'Crime', decade: 1990 },
   { genre: 'Animation', decade: 2000 },
   { director: 'Alfred Hitchcock' },
   { domain: 'tv', genre: 'Drama' },
+  { genre: 'Science Fiction' },
+  { genre: 'Western' },
 ];
+const WALL_ROWS = 4;
 
-/* The order the intro topics are in: [0] is the hero, the rest are the strip
-   left to right. Null until the splash first renders, when it takes the
-   per-visit rotation.
+/* The number on the tagline, and the only invented figure on this screen.
+   Mischa dictated the line with the direction; it goes through `roughly()`
+   like every other round figure in the app so that the first screen is not
+   the one place a count appears unpunctuated. PRD Req 1 carries the condition
+   attached to it: this is a claim about a corpus that does not exist yet, and
+   it is a launch blocker until it is read from the database. */
+const CORPUS_CLAIM = 5000;
 
-   A tap SWAPS - the tapped tile and the hero exchange places - rather than
-   rotating the list. Rotating was the first version and it loses the list
-   you just left: with three tiles visible of five, the old hero landed in
-   fourth place and off the end of the strip, so tapping away from a topic
-   made it disappear. A swap means the thing you replaced is exactly where
-   you just tapped, which is also the only model of this that can be guessed
-   without being told.
-
-   Deliberately NOT in `S`: which list you were last looking at on the splash
-   is not worth persisting, and writing it to storage on every tap would turn
-   a browse gesture into a save. */
-let introOrder = null;
-
-/* A tile is about a third the width of a phone - 100px of text column - so
-   the label is the kicker and ONE line under it (Mischa, 2026-11-18):
-
-     Top 10 Crime Movies of the 90s       ->  TOP 10 / Crime 90s
-     Top 10 Animated Movies of the 2000s  ->  TOP 10 / Animated 2000s
-     Top 10 Hitchcock Movies              ->  TOP 10 / Hitchcock
-     Top 10 Drama Shows                   ->  TOP 10 / Drama Shows
-
-   Three things come out. "Top 10 " is the kicker's job. "of the" goes
-   because a tile is a label, not a sentence. And "Movies" goes because it
-   is the UNMARKED case - a shelf here is films unless it says otherwise, so
-   dropping it costs nothing, while "Shows" and "Books" are precisely the
-   cases that must keep their noun or a tile would claim to be about films.
-   That asymmetry is the rule, not an oversight.
-
-   The measurement that sets the type size is on `.mini-ten .lead` below. */
-const introLabel = name => name
-  .replace(/^Top 10 /, '')
-  .replace(/ Movies/g, '')
-  .replace(/ of the /g, ' ');
-
-function introTens() {
-  const all = INTRO_TOPICS.map(c => consensusTen(makeTopic(c))).filter(Boolean);
-  if (!all.length) return { hero: null, rest: [], all: [], at: 0 };
-  // Rotates on each visit rather than randomly per render — a splash that
-  // reshuffles under a re-render is a splash that flickers.
-  if (!introOrder || introOrder.length !== all.length) {
-    const n = (S.introSeen || 0) % all.length;
-    introOrder = [n, ...all.map((_, i) => i).filter(i => i !== n)];
-  }
-  // `rest` carries each tile's index in `all`, so a tap knows what it means
-  // without matching on the name.
-  const rest = introOrder.slice(1).map(i => ({ ten: all[i], at: i }));
-  return { hero: all[introOrder[0]], rest, all, at: introOrder[0] };
+/* The wall's rows: one consensus Ten per list, in pool order from this
+   visit's offset. `consensusTen` returns null for a list the catalog cannot
+   fill, so a row can never be a list of nine. */
+function wallRows() {
+  const all = WALL_LISTS.map(c => consensusTen(makeTopic(c))).filter(Boolean);
+  if (!all.length) return [];
+  const start = (S.introSeen || 0) % all.length;
+  return Array.from({ length: Math.min(WALL_ROWS, all.length) },
+    (_, k) => all[(start + k) % all.length]);
 }
 
 function renderIntro() {
-  // The splash owns the whole screen. `.wrap`'s page padding would otherwise
-  // add 16px at the top and a dock-sized gap at the bottom, which is exactly
-  // the asymmetry that made the frame below impossible to reason about.
+  // The splash owns the whole screen: `.wrap`'s page padding would add a top
+  // inset and a dock-sized gap at the bottom, and the wall is full bleed.
   app.className = 'wrap bare';
-  const { hero: t, rest } = introTens();
+  const rows = wallRows();
 
-  const artifact = !t ? '' : `
-    <figure class="hero-ten">
-      <figcaption>
-        <p class="by">From ${roughly(t.voters)} Top 10s</p>
-        <p class="what">${esc(listName(t.ranked, t.topic))}</p>
-      </figcaption>
-      <!-- The hero is ONE artifact - the crowd's ranking of this topic - so
-           it is announced as one, in order. Ten separate cells meant a
-           screen reader met "1 2 3 4 5 6 7 8 9 10" with nothing attached, on
-           the first screen of the app. -->
-      <div class="hero-grid" role="img" aria-label="${esc(listName(t.ranked, t.topic))}, from ${roughly(t.voters)} Top 10s: ${
-        t.ranked.map((f, i) => `${i + 1}, ${f.t}`).join('; ')}">
-        ${t.ranked.map((f, i) => `<div class="hero-cell" aria-hidden="true">
-          <img src="${art(f, 'w185')}" alt="" loading="eager" decoding="async">
-          <span class="rk">${i + 1}</span>
-        </div>`).join('')}
-      </div>
-      <div class="hero-badge" aria-hidden="true">${lockedBadge(false, badgeHash(t.topic.title))}</div>
-    </figure>`;
+  /* Each row is [plate, ten posters] written TWICE. The duplicate is what
+     makes `drift`'s -50% land exactly where the first copy began, so the loop
+     has no seam - and because both copies use the same poster URLs, the
+     second costs no network.
 
-  /* Each tile is a BUTTON that swaps itself into the hero above (Mischa,
-     2026-11-18: "it should be clear those are tappable to expand them into
-     the space above"). It was a `figure`, which is why it did not look like
-     one - and `figure` is not phrasing content, so it cannot live inside a
-     button at all; the tile is spans now.
-
-     The label is no longer clamped to two lines. "Animated Movies of the
-     2000s" came out as "Animated Movies o…", on the one part of the splash
-     whose whole job is to say what else is in here. */
-  const strip = !rest.length ? '' : `
-    <div class="intro-strip" role="group" aria-label="Other lists you could argue with">
-      ${rest.slice(0, 3).map(o => {
-        const name = listName(o.ten.ranked, o.ten.topic);
-        return `<button type="button" class="mini-ten" data-intro="${o.at}"
-          aria-label="Show ${esc(name)}">
-          <span class="mini-grid" aria-hidden="true">${o.ten.ranked.slice(0, 3).map(f =>
-            `<img src="${art(f, 'w185')}" alt="" loading="lazy" decoding="async">`).join('')}</span>
-          <span class="what"><span class="kicker">Top 10</span><span
-            class="lead">${esc(introLabel(name))}</span></span>
-        </button>`;
+     The whole wall is `aria-hidden`. A screen reader meeting forty poster
+     images and eighty rank numerals on the first screen of the app is the
+     failure this already has a rule about, and the information the wall
+     carries is in the tagline directly under it in words: 5,000+ lists from
+     other users. The wall is how that sentence looks; the sentence is how the
+     wall reads. */
+  const wall = !rows.length ? '' : `
+    <div class="wallrows" aria-hidden="true">
+      ${rows.map((r, i) => {
+        const name = listName(r.ranked, r.topic);
+        const copy = `<div class="cel plate">
+            <span class="k">Top 10</span>
+            <span class="n">${esc(name.replace(/^Top 10 /, ''))}</span>
+            <span class="v">From ${esc(roughly(r.voters))} Top 10s</span>
+          </div>${r.ranked.map((f, n) => `<div class="cel poster">
+            <img src="${art(f, 'w342')}" alt="" decoding="async" draggable="false">
+            <span class="rank">${n + 1}</span>
+          </div>`).join('')}`;
+        return `<div class="wallrow" style="--i:${i}"><div class="strip">${copy}${copy}</div></div>`;
       }).join('')}
     </div>`;
 
   app.innerHTML = `<div class="intro">
-    <div class="art">${artifact}${strip}</div>
-    <div class="intro-copy">
+    ${wall}
+    <div class="wallveil" aria-hidden="true"></div>
+    <div class="wallcopy">
       <h1>What's your Top 10?</h1>
-    </div>
-    <div class="cta">
+      <p class="pitch">${roughly(CORPUS_CLAIM)} lists from other users. Share yours.</p>
       <button class="btn" data-act="begin">Make your first list</button>
       <p class="promise">Free. No ads. No subscription. Ever.</p>
     </div>
   </div>`;
-  fitOneLine($('.hero-ten .what'), 24, 13);
   dockEl.innerHTML = '';
 }
 
@@ -2985,11 +2937,181 @@ function claimFor(t) {
   }
 }
 
+/* ── What to make next: today, this week, and what is rising ───────────────
+   Mischa, 2026-11-18. Held open since the overnight build with one condition
+   on it - "it needs a conversation about how often a person should be given
+   something new, because that's a retention decision" - so the cadence is the
+   first thing this file settles:
+
+     TODAY   one topic, new each calendar day, chosen to sit NEXT TO what you
+             have already made. It is the small, repeatable reason to open the
+             app, and it is a topic rather than a film because the unit of
+             this product is a list.
+     THIS WEEK  one topic, new each ISO week, deliberately BROADER - a bare
+             genre or a decade, never a person - so the two never read as the
+             same suggestion twice. A week is long enough that a big list is
+             not a chore.
+     RISING  not a suggestion at all: what the collection itself is busy with.
+
+   On the device this is Apple's Foundation Models choosing from the same
+   pool, with your own lists as the prompt. Everything here is the shape of
+   that, computed rather than invented, so what is being judged is the
+   mechanism and not a mock-up.
+
+   RISING IS A STAND-IN AND SAYS SO. In the product it is other people's
+   activity. There are no other people yet, and inventing counts is the thing
+   the seed-source decision of this same morning refused to do, so it is
+   derived from the one thing that IS real here: titles that are both recent
+   and widely rated. The label says "Rising now" and never "N people made
+   this today". See prd.md for what replaces it when there is a database. */
+
+const WEEK_MS = 6048e5;
+const dayNumber = (d = new Date()) => Math.floor(
+  Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / 864e5);
+const weekNumber = (d = new Date()) => Math.floor(
+  Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()) / WEEK_MS);
+
+/* Every topic the namer can produce AND the shelf can fill, built once. The
+   `offerable` gate is the same one the rest of the app uses, so a pick can
+   never be a list of nine. */
+let POOL = null;
+function topicPool() {
+  if (POOL) return POOL;
+  const counts = { genre: new Map(), director: new Map(), actor: new Map() };
+  const decades = new Map();
+  for (const f of CAT) {
+    if ((f.dm || 'movie') !== 'movie') continue;
+    for (const g of f.g || []) counts.genre.set(g, (counts.genre.get(g) || 0) + 1);
+    if (f.d) counts.director.set(f.d, (counts.director.get(f.d) || 0) + 1);
+    for (const a of (f.ca || []).slice(0, 2)) counts.actor.set(a, (counts.actor.get(a) || 0) + 1);
+    const dec = Math.floor(f.y / 10) * 10;
+    if (f.y) decades.set(dec, (decades.get(dec) || 0) + 1);
+  }
+  const out = [];
+  const take = (kind, n) => [...counts[kind].entries()].filter(([, c]) => c >= n).map(([v]) => v);
+  for (const g of take('genre', TEN)) {
+    out.push({ genre: g });
+    for (const [dec, n] of decades) if (n >= TEN) out.push({ genre: g, decade: dec });
+  }
+  for (const d of take('director', TEN)) out.push({ director: d });
+  for (const a of take('actor', TEN)) out.push({ actor: a });
+  // The per-facet counts above are necessary, not sufficient: "Crime films of
+  // the 1910s" passes both and holds four. Only `offerable` knows.
+  POOL = out.map(makeTopic).filter(offerable);
+  return POOL;
+}
+
+/* A deterministic choice out of a list: the same seed gives the same topic on
+   every render, on every device, for as long as the seed holds. A pick that
+   moved when the screen re-drew would be a slot machine. */
+const seedPick = (seed, list) => list.length ? list[hash(String(seed)) % list.length] : null;
+
+/* The facets your own finished lists are made of, commonest first. This is
+   what makes a daily pick feel aimed rather than random, and it is read off
+   what you actually did rather than off anything you were asked. */
+function myLeanings() {
+  const tally = new Map();
+  for (const d of S.done || []) {
+    for (const id of d.ranked || []) {
+      const f = byId.get(id);
+      if (!f) continue;
+      for (const g of f.g || []) tally.set('genre:' + g, (tally.get('genre:' + g) || 0) + 1);
+      if (f.d) tally.set('director:' + f.d, (tally.get('director:' + f.d) || 0) + 1);
+    }
+  }
+  return [...tally.entries()].sort((a, b) => b[1] - a[1])
+    .map(([k, n]) => ({ kind: k.split(':')[0], value: k.slice(k.indexOf(':') + 1), n }));
+}
+
+/* Today's topic. Next to what you have made, never one you have already made,
+   and stable for the whole calendar day. */
+/* `when` is a parameter and not a call to `new Date()` inside, so the cadence
+   is testable: a daily pick that cannot be asked what it would say tomorrow
+   is a daily pick nobody can check. */
+function todaysPick(when = new Date()) {
+  const mine = new Set((S.done || []).map(d => d.topicId));
+  const pool = topicPool().filter(t => !mine.has(t.id));
+  if (!pool.length) return null;
+  const lean = myLeanings()[0];
+  const near = lean ? pool.filter(t => t[lean.kind] === lean.value) : [];
+  const topic = seedPick(dayNumber(when), near.length >= 2 ? near : pool);
+  if (!topic) return null;
+  const why = lean && near.length >= 2
+    ? (lean.kind === 'genre'
+        ? `Because ${lean.n} of your picks were ${lean.value.toLowerCase()} ${nounFor(topic)}.`
+        : `Because ${lean.n} of your picks were ${lean.value}.`)
+    : `${roughly(supply(topic))} to choose from.`;
+  return { topic, why };
+}
+
+/* This week's is broader on purpose: a genre or a decade, never a person, so
+   the two picks never read as the same suggestion twice in a row. */
+function thisWeeksPick(when = new Date()) {
+  const mine = new Set((S.done || []).map(d => d.topicId));
+  const today = todaysPick(when);
+  const pool = topicPool().filter(t =>
+    !mine.has(t.id) && !t.director && !t.actor && (!today || t.id !== today.topic.id));
+  const topic = seedPick('w' + weekNumber(when), pool);
+  return topic ? { topic } : null;
+}
+
+/* What the collection is busy with: topics whose films are both RECENT and
+   widely rated. Derived from `y` and `vc`, which are the only two things here
+   that are not a guess. */
+const RISING_YEARS = 4;
+function risingNow(n = 6) {
+  const now = new Date().getFullYear();
+  const fresh = CAT.filter(f => (f.dm || 'movie') === 'movie' && f.y >= now - RISING_YEARS);
+  const score = new Map();
+  for (const f of fresh) {
+    for (const g of f.g || []) score.set(g, (score.get(g) || 0) + (f.vc || 0));
+  }
+  /* The GENRE is what is rising, and the chip says the genre. The first
+     version pinned each one to the current decade, which is more precise and
+     reads as a fault: six chips in a row all ending "of the 2020s" look like
+     a template that has not been filled in. The recency is in how these were
+     chosen and in the heading above them, which is where a fact that is true
+     of every item in a row belongs. */
+  return [...score.entries()].sort((a, b) => b[1] - a[1])
+    .map(([g]) => makeTopic({ genre: g }))
+    .filter(offerable)
+    .slice(0, n);
+}
+
+/* The block above the other people's lists: one topic for today, one for the
+   week, and what the collection is busy with. It sits HERE rather than on the
+   build screen because this is the screen you come back to - the build screen
+   already has a topic, and offering a different one on top of the one you are
+   filling is an interruption rather than an invitation. */
+function whatsNext() {
+  const today = todaysPick(), week = thisWeeksPick(), rising = risingNow(6);
+  if (!today && !week && !rising.length) return '';
+  const chip = t => `<button class="chip pickchip" data-topic='${esc(JSON.stringify(t))}'
+    >${esc(t.title.replace(/^Top 10 /, ''))}</button>`;
+  return `<section class="whatsnext" aria-label="What to make next">
+    ${today ? `<article class="pick">
+      <p class="eyebrow">Today</p>
+      <h2 class="pickname">${esc(today.topic.title)}</h2>
+      <p class="why">${esc(today.why)}</p>
+      <button class="btn" data-topic='${esc(JSON.stringify(today.topic))}'>Make this one</button>
+    </article>` : ''}
+    ${week ? `<button class="pick thin" data-topic='${esc(JSON.stringify(week.topic))}'>
+      <span class="eyebrow">This week</span>
+      <span class="pickname">${esc(week.topic.title)}</span>
+    </button>` : ''}
+    ${rising.length ? `<div class="risingrow">
+      <p class="eyebrow">Rising now</p>
+      <div class="chips">${rising.map(chip).join('')}</div>
+    </div>` : ''}
+  </section>`;
+}
+
 function renderDiscover() {
   const unlocked = unlockedTopics();
   const tens = SOURCES.map(theirTen).filter(t => t.ranked.length === 10);
   app.innerHTML = `
     <div class="topbar"><h1 class="display-lg">Other Top 10 Lists</h1><button class="link" data-act="backhome">Done</button></div>
+    ${whatsNext()}
     ${tens.map((t, i) => {
       const open = unlocked.has(t.src.topic.id);
       const who = esc(t.src.label), topic = esc(t.src.topic.title);
@@ -3545,7 +3667,7 @@ function render() {
 }
 
 document.addEventListener('click', e => {
-  const t = e.target.closest('[data-title],[data-add],[data-deeper],[data-remove],[data-move],[data-toggle],[data-toggle-service],[data-facet],[data-facetjump],[data-higher],[data-sheet],[data-clear],[data-act],[data-topic],[data-focusnode],[data-dropfocus],[data-mapnode],[data-other],[data-intro]');
+  const t = e.target.closest('[data-title],[data-add],[data-deeper],[data-remove],[data-move],[data-toggle],[data-toggle-service],[data-facet],[data-facetjump],[data-higher],[data-sheet],[data-clear],[data-act],[data-topic],[data-focusnode],[data-dropfocus],[data-mapnode],[data-other]');
   if (!t) return;
 
   if (t.dataset.clear) { e.stopPropagation(); const k = t.dataset.clear; S.filters[k] = k === 'services' ? [] : null; save(); renderBuild(); return; }
@@ -3553,17 +3675,6 @@ document.addEventListener('click', e => {
     S.title = +t.dataset.title; S.back = S.scene; S.scene = 'title'; save(); render(); return;
   }
   if (t.dataset.add) { addFilm(+t.dataset.add, t); return; }
-  if (t.dataset.intro) {
-    // Swap this list with the hero: the old hero lands in the slot just
-    // tapped. The set cycles by tapping rather than by moving on its own -
-    // see the note on introOrder for why it does not auto-advance.
-    const k = (introOrder || []).indexOf(+t.dataset.intro);
-    if (k > 0) { const h = introOrder[0]; introOrder[0] = introOrder[k]; introOrder[k] = h; }
-    renderIntro();
-    const h = $('.hero-ten .what');
-    if (h) announce(h.textContent.trim());
-    return;
-  }
   if (t.dataset.deeper) {
     const id = +t.dataset.deeper;
     follow(id); S.q = ''; renderBuild();
@@ -3710,11 +3821,10 @@ document.addEventListener('click', e => {
 // assert against a state the app has already left.
 Object.defineProperty(window, 'S', { get: () => S });
 window.byId = byId; window.SOURCES = SOURCES;
-/* `introOrder` is a top-level `let`, so it is a lexical binding and never a
-   property of `window` - the trap already written up in tech-stack.md. The
-   harness needs to put the splash back to a known hero, so it gets a setter
-   rather than being told to assign a bare identifier and hope. */
-window.setIntroAt = v => { introOrder = v; };
+window.WALL_LISTS = WALL_LISTS; window.WALL_ROWS = WALL_ROWS;
+window.CORPUS_CLAIM = CORPUS_CLAIM; window.wallRows = wallRows;
+window.todaysPick = todaysPick; window.thisWeeksPick = thisWeeksPick;
+window.risingNow = risingNow; window.topicPool = topicPool;
 window.dockStep = dockStep;
 window.theirTen = theirTen; window.listName = listName;
 window.topicTitle = topicTitle; window.topicPrompt = topicPrompt; window.makeTopic = makeTopic;

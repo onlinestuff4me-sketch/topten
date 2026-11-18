@@ -521,3 +521,61 @@ log was read.
 whenever a block has been inserted into a suite, especially one that declares
 its own locals: a 2,500-line file has no shortage of names like `before`,
 `after` and `box` already taken.
+
+## A column flex box overflows upward, where `scrollHeight` cannot see it (2026-11-18, Claude)
+
+The splash's name plate is `display: flex; flex-direction: column;
+justify-content: flex-end`. Its overflow gate was the usual one:
+
+```js
+clipped: plate.scrollHeight > plate.clientHeight + 1
+```
+
+It is vacuous. Content that does not fit a flex column justified to the end
+overflows out of the **block-start** edge, and scrollable overflow is not
+recorded in that direction — there is nothing to scroll *up* to. Measured: a
+plate squeezed to a third of its width put its first child at `top: −43px`
+while `scrollHeight` and `clientHeight` both read **153**. The gate said ok.
+
+It was found by trying to break it, not by it firing. Shrinking the plate on
+purpose to confirm the gate worked is what exposed that it did not.
+
+**Measure the children against the parent's content box instead**, in all four
+directions:
+
+```js
+const r = el.getBoundingClientRect(), cs = getComputedStyle(el);
+const pad = s => parseFloat(cs['padding' + s]) + parseFloat(cs['border' + s + 'Width']);
+const box = { t: r.top + pad('Top'), b: r.bottom - pad('Bottom'),
+              l: r.left + pad('Left'), r: r.right - pad('Right') };
+[...el.children].every(c => { const k = c.getBoundingClientRect();
+  return k.top >= box.t - 1 && k.bottom <= box.b + 1
+      && k.left >= box.l - 1 && k.right <= box.r + 1; });
+```
+
+Two related traps in the same family, both hit the same day:
+
+- **`scrollHeight > clientHeight` on an auto-height block is line-box
+  rounding, not overflow.** A headline that fits perfectly reads `sh: 136,
+  ch: 134`. For a block that can grow, overflow is only ever horizontal —
+  measure a `Range` over its text nodes against its box.
+- **`offsetLeft` and `scrollWidth` are integers.** A 5/4 plate on a 155px row
+  is 193.75px wide, so an exact layout measured with integers can read half a
+  pixel out. Anything compared against an animation's `%` has to be measured
+  with `getBoundingClientRect`, which is not rounded.
+
+## A `mask-image` or `filter` on an ancestor empties `backdrop-filter` (2026-11-18, Claude)
+
+Written down because the symptom is *nothing visibly wrong*. A glass panel
+with `backdrop-filter: blur()` under an ancestor that creates a backdrop root
+— a `mask-image`, a `filter`, `opacity < 1` — has an empty backdrop to filter,
+so it renders as its own flat background colour and looks exactly like a panel
+somebody styled that way on purpose.
+
+In this case the panel was not over anything anyway: it is a flex **sibling**
+of the posters, not a layer over them, so the blur had never had a job. The
+contrast probe is what said so — it sampled the plate's backdrop as flat
+`--vault-bg` at every viewport, which is what a blur of nothing looks like.
+The rule it leaves behind: **if a `backdrop-filter` is not visibly doing
+something, it is not doing anything** — check what is actually painted behind
+the element before paying for the blur.
