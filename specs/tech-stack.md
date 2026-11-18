@@ -851,3 +851,103 @@ poster mirror: EMPTY — every poster is broken, which is how CI runs
 It costs nothing and makes the two runs distinguishable in a log, which they
 were not — the whole reason this took a red `main` to find is that both runs
 printed the identical 488 lines of `ok`.
+
+## One way to get a picture: `shots.js` (2026-11-18, Claude)
+
+**The duplication in this project was never the test suite — it was that a
+screenshot tool got rewritten for every request.** On 2026-11-18 the session
+scratchpad held **65 throwaway scripts, 28 of which captured stills or
+video**, and they did not agree with each other:
+
+| script | routed the poster mirror |
+|---|---|
+| `mapshot.js`, `shot2.js` | yes |
+| `wallgif.js`, `caseshot.js`, `picksshot.js` | **no** |
+
+So some review images were of an app with artwork and some were not, and
+nothing recorded which. One of those throwaways, with an unset `SHOTS`, is
+what committed 3.8MB to a directory called `undefined`.
+
+`docs/prototype/shots.js` is committed, and it is the only way this project
+takes a picture. It knows how to reach each screen, always runs with the
+mirror, and **refuses to start without one** — an artless review image is
+worse than none, because it reads as a design decision.
+
+### The split that made the suite fast
+
+| | proves it works | shows what it looks like |
+|---|---|---|
+| | `drive.js` | `shots.js` |
+| artwork | **none** — as CI runs | **all of it**, coverage reported |
+| cost | 118s, 488 checks | ~30s for 15 images |
+| asserts | everything | nothing |
+
+They used to be one thing, which is why the suite was slow *and* why the
+review images were inconsistent. The pre-push protocol went from two full
+runs (248s) to one (118s) by making `drive.js`'s default the stricter world
+rather than the more comfortable one.
+
+**What that leaves uncovered, stated plainly:** a layout fault that appears
+only when images *do* load. `shots.js` reports poster coverage and horizontal
+spill on every capture, which is where it now gets caught — one number each,
+on every image, every time.
+
+### Lazy images and full-page screenshots do not mix
+
+The browse rows carry `loading="lazy"`. `fullPage: true` photographs the
+whole document including rows whose posters never started loading — they come
+out as the empty `.no-art` plate, which looks deliberate. **Measured: 118 of
+220 posters missing**, every one of them `notStarted`, none errored, with the
+mirror serving 123 of 123 requests.
+
+**Scrolling to fix it does not work and is the wrong shape anyway.** The first
+attempt walked `window.scrollTo` down the document and changed nothing,
+because this app scrolls an inner element — so the viewport never passed over
+the rows. Chasing the right scroll container would couple the capture tool to
+the app's layout, which is the coupling that keeps breaking these scripts.
+
+```js
+[...document.images].forEach(i => { i.loading = 'eager'; });
+```
+
+Assigning `eager` to an image that has not started begins its fetch
+immediately, wherever it sits. 220/220, and **faster** than the scroll
+attempt: 1.7s against 5.5s.
+
+### 404, not 204 — and the narrow filter that costs
+
+The no-mirror fallback used to answer `204`. A 204 is a missing image wearing
+a success code: it reads as "fine, empty" in a log, and it is not fine. It now
+answers `404`.
+
+That broke the "no page errors" gate on the first run, 372 checks in, with 48
+identical resource-load errors — the suite's own stubs. The fix is a **narrow,
+permanent filter**, not the wide temporary one it replaced:
+
+```js
+const FAKED = /image\.tmdb\.org/;
+page.on('console', m => {
+  if (m.type() !== 'error') return;
+  if (FAKED.test(m.location()?.url || '')) return;   // our own stub
+  errors.push('console: ' + m.text());
+});
+```
+
+It replaced a `mutedConsole` flag that blanked *all* console errors for one
+section — which would have hidden a real error raised in that window.
+Falsified: a planted `console.error` and a 404 from any other host both still
+fail the gate.
+
+### GIF size is driven by how much of the frame moves
+
+Not by length. Measured on the splash wall, the worst case, where every pixel
+is moving artwork:
+
+| | size |
+|---|---|
+| 340px, 12fps, 9s, 256 colours | **11,783KB** — unusable |
+| 260px, 10fps, 6s, 128 colours | **3,367KB** |
+
+Fewer colours and a coarser dither help twice: a smaller palette, and fewer
+speckles for the LZW to encode. An artifact page is capped at 16MB in total,
+so one GIF has to stay in single-digit MB however good it looks.

@@ -153,11 +153,35 @@ change and leave it running on spec edits, which is exactly backwards.
 Markdown is the only thing here that cannot break a build.
 
 **A branch with no CI run of its own raises the bar on local verification.**
-Run all three suites before pushing, and run the browser one the way CI does:
+Run all three suites before pushing. `drive.js` now runs the way CI runs by
+default — no poster mirror, every image broken — so one run is the whole
+check:
 
 ```sh
-POSTER_MIRROR=$(mktemp -d) node drive.js    # CI has no poster mirror
+node drive.js && node drive_share.js && node drive_db.js
 ```
+
+*Superseded 2026-11-18 (same day): this said to run `drive.js` twice, once
+with `POSTER_MIRROR=$(mktemp -d)`, because the default was the mirror and the
+two worlds disagreed. Making the default the stricter of the two removes the
+second run and the disagreement together. `POSTER_MIRROR` still works if you
+want artwork; almost nothing needs it.*
+
+**Screenshots and GIFs come from `shots.js`, not from the test suite.**
+
+```sh
+node docs/prototype/shots.js            # what it can photograph
+node docs/prototype/shots.js case       # one still, real artwork
+node docs/prototype/shots.js wall       # an animated GIF
+node docs/prototype/shots.js review     # the whole set, ~30s
+```
+
+It always runs with the poster mirror, refuses to run without one, and
+reports poster coverage and sideways spill on every capture — so a review
+image is never quietly artless. **`drive.js` proves it works; `shots.js`
+shows what it looks like.** Keeping them separate is why the suite is one run
+instead of two and why review images stopped depending on whichever
+throwaway script was written that day.
 
 **Pushed is not shipped.** For the web pages, confirm a Vercel deploy actually
 ran before telling anyone a change is live — and remember the committer-email

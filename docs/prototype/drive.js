@@ -17,32 +17,42 @@ const CHROME = process.env.CHROMIUM
 
 const BASE = process.argv[2] || 'http://127.0.0.1:8788';
 const SHOTS = process.env.SHOTS || './shots';
-const MIRROR = process.env.POSTER_MIRROR || './posters';
+/* NO POSTER MIRROR BY DEFAULT, which is deliberate and is the whole point.
 
-/* SAY WHICH WORLD THIS RUN IS IN, because the two differ and the difference
-   has already sent a green local run into a red CI one.
+   `posters/` is gitignored, so CI has no mirror: every poster 404s and every
+   image on every screen is broken. A developer machine that has run
+   build_catalog.py has all 7,018 files. When the DEFAULT was the mirror, the
+   local run and the CI run were two different products wearing the same 488
+   green ticks - and on 2026-11-18 that sent a green local run into a red main,
+   because the add animation clones the card's poster and there was no longer
+   a poster to clone.
 
-   `posters/` is gitignored, so CI HAS NO MIRROR AT ALL: every poster answers
-   204 and every image on every screen is broken. A developer machine that has
-   run build_catalog.py has all of them. That is not a small difference - a
-   change that depends on an image existing passes here and fails there, which
-   is exactly what happened on 2026-11-18 to the add animation.
+   The fix is to make the default the STRICTER world rather than the more
+   comfortable one. This suite now runs the way CI runs, always, so a green
+   run here means a green run there. It also halves the pre-push cost: the
+   protocol was two full runs, one per mirror mode, at 130s and 118s.
 
-   Printing the count costs nothing and makes the two runs distinguishable in
-   a log. To reproduce CI before pushing:
+   Set POSTER_MIRROR to run with artwork. Almost nothing needs to - the
+   splash contrast probe forces every poster to #fff before measuring, so it
+   does not care, and REVIEW IMAGES ARE NOT THIS FILE'S JOB any more:
 
-     POSTER_MIRROR=$(mktemp -d) node drive.js
-*/
+     node shots.js review      stills and GIFs, with artwork, coverage checked
+
+   What that leaves uncovered here is a layout fault that only appears when
+   images DO load. `shots.js` reports poster coverage and horizontal overflow
+   on every capture, which is where that now gets caught. */
+const MIRROR = process.env.POSTER_MIRROR || null;
 const mirrorFiles = (() => {
+  if (!MIRROR) return 0;
   let n = 0;
   const walk = (d) => { for (const e of fs.readdirSync(d, { withFileTypes: true }))
     e.isDirectory() ? walk(`${d}/${e.name}`) : n++; };
-  try { walk(MIRROR); } catch { /* no mirror at all, which is CI */ }
+  try { walk(MIRROR); } catch { /* asked for, but not there */ }
   return n;
 })();
 console.log(mirrorFiles
-  ? `poster mirror: ${mirrorFiles} files — artwork will render`
-  : 'poster mirror: EMPTY — every poster is broken, which is how CI runs');
+  ? `poster mirror: ${mirrorFiles} files — artwork will render (NOT how CI runs)`
+  : 'poster mirror: none — every poster 404s, which is how CI runs');
 
 
 /* The inscription, read off the badge itself.
@@ -450,22 +460,34 @@ const DOMAIN_SPEECH = `(() => {
   const page = await ctx.newPage();
 
   await page.route('**://image.tmdb.org/t/p/**', route => {
-    const m = route.request().url().match(/\/t\/p\/(w\d+)(\/.+)$/);
+    const m = MIRROR && route.request().url().match(/\/t\/p\/(w\d+)(\/.+)$/);
     const file = m && `${MIRROR}/${m[1]}${m[2]}`;
     if (file && fs.existsSync(file)) return route.fulfill({ path: file, contentType: 'image/jpeg' });
-    return route.fulfill({ status: 204, body: '' });
+    // 404, not 204. Both are a missing image, but 204 is one wearing a success
+    // code - it reads as "fine, empty" in a log and it is not fine.
+    return route.fulfill({ status: 404, body: '' });
   });
 
   const errors = [];
-  /* One section of this suite breaks artwork ON PURPOSE to prove the fallback
-     (Req 6), and a 404 on an <img> is a console error. `mutedConsole` covers
-     exactly that window: a deliberate failure is not a defect, and leaving the
-     gate strict everywhere else is the whole point of having it. `pageerror`
-     is never muted - a thrown exception is a defect wherever it happens. */
-  let mutedConsole = false;
+  /* A MISSING POSTER IS NOT A PAGE ERROR, and with no mirror every poster is
+     missing, so without this the "no page errors" gate fails on the suite's
+     own stubs. It caught exactly that when the default flipped: 372 checks in,
+     48 identical 404s.
+
+     The filter is deliberately narrow - a resource-load failure whose URL is
+     image.tmdb.org, which is the one thing this harness fakes. Every other
+     console error still fails the gate, and `pageerror` is never filtered at
+     all, because a thrown exception is a defect wherever it comes from.
+
+     This replaces a `mutedConsole` flag that blanked ALL console errors for
+     one section. A narrow, permanent filter beats a wide, temporary one: the
+     flag would have hidden a real error raised in that window. */
+  const FAKED = /image\.tmdb\.org/;
   page.on('pageerror', e => errors.push('pageerror: ' + e.message));
   page.on('console', m => {
-    if (m.type() === 'error' && !mutedConsole) errors.push('console: ' + m.text());
+    if (m.type() !== 'error') return;
+    if (FAKED.test(m.location()?.url || '')) return;
+    errors.push('console: ' + m.text());
   });
   const check = (cond, msg) => { if (!cond) throw new Error('FAILED: ' + msg); console.log('  ok — ' + msg); };
 
@@ -731,7 +753,6 @@ const DOMAIN_SPEECH = `(() => {
      poster it does not hold, which is a broken image wearing a success code.
      Measured 2026-11-18: before the listener in share.js, every one of them
      drew Chromium's torn-photo glyph. */
-  mutedConsole = true;
   await page.unroute('**://image.tmdb.org/t/p/**');
   await page.route('**://image.tmdb.org/t/p/**', r => r.fulfill({ status: 404, body: '' }));
   await page.reload({ waitUntil: 'load' });
@@ -783,14 +804,15 @@ const DOMAIN_SPEECH = `(() => {
   // Back to the mirror for everything after this.
   await page.unroute('**://image.tmdb.org/t/p/**');
   await page.route('**://image.tmdb.org/t/p/**', route => {
-    const m = route.request().url().match(/\/t\/p\/(w\d+)(\/.+)$/);
+    const m = MIRROR && route.request().url().match(/\/t\/p\/(w\d+)(\/.+)$/);
     const file = m && `${MIRROR}/${m[1]}${m[2]}`;
     if (file && fs.existsSync(file)) return route.fulfill({ path: file, contentType: 'image/jpeg' });
-    return route.fulfill({ status: 204, body: '' });
+    // 404, not 204. Both are a missing image, but 204 is one wearing a success
+    // code - it reads as "fine, empty" in a log and it is not fine.
+    return route.fulfill({ status: 404, body: '' });
   });
   await page.reload({ waitUntil: 'load' });
   await page.waitForTimeout(400);
-  mutedConsole = false;
 
   /* ── The copy over it ───────────────────────────────────────────────────*/
   const introText = await page.locator('.intro').innerText();
