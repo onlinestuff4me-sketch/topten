@@ -645,3 +645,41 @@ times: **a gate whose scope is narrower than its name.** The others were a
 `scrollHeight` check that could not see upward overflow, an `offsetLeft`
 measurement rounding a correct layout wrong, and a comparison test whose
 expected value was whatever the code produced.
+
+## `git add -A` is a sweep too, and it committed 3.8MB to `undefined/` (2026-11-18, Claude)
+
+The glass-alpha sweep that settled the name card's 82% was a throwaway
+script. It wrote its four comparison screenshots to
+`` `${process.env.SHOTS}/shots/glass-82.png` `` — and it was run from
+`docs/prototype` with `SHOTS` unset, so the template interpolated the string
+**"undefined"** and Node happily created `docs/prototype/undefined/shots/`.
+The commit that followed used `git add -A`, and **3.8MB of PNGs of our own
+prototype landed in a public repository** under a directory named after a
+JavaScript value.
+
+Nothing failed. `mkdir -p` succeeds for any name, the screenshots were
+written and read back correctly, the measurement they produced was right,
+and the commit was clean. The only symptom was a directory listing nobody
+had reason to run.
+
+Three rules out of it, in order of how much they would have helped:
+
+1. **A throwaway harness script writes to the scratchpad, never into the
+   working tree.** An absolute path under the session scratchpad cannot be
+   swept up by a commit no matter what a variable interpolates to.
+2. **`drive.js` is right and the one-off was wrong**: `const SHOTS =
+   process.env.SHOTS || './shots'` has a default, so it cannot produce this.
+   A one-off that skips the default inherits none of that care.
+3. **`.gitignore` now carries `docs/prototype/undefined/`** — not because
+   that path is meaningful, but because it is the one spelling this specific
+   mistake produces, and a named ignore is cheaper than remembering.
+
+The blobs remain in `1aba29d`'s tree; they are screenshots of our own
+prototype, so they are an embarrassment rather than a leak, and rewriting
+published history to remove 3.8MB of PNG is the more expensive mistake.
+`HEAD` is clean from `569ba09`'s successor onward.
+
+**The class, again:** a *default* that one caller skips. It is the same shape
+as `--text-disabled` being used for text — a thing that is safe everywhere it
+was designed for, and silently wrong in the one place that reached past the
+design.

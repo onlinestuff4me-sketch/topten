@@ -33,6 +33,12 @@ __pycache__/
 docs/prototype/shots/
 docs/prototype/posters/
 
+# A throwaway sweep script with SHOTS unset writes to the literal path
+# "undefined/shots/", and `git add -A` committed 3.8MB of it on 2026-11-18.
+# One-off harness scripts belong in the scratchpad; this catches the one
+# mistake that puts them here anyway. See specs/tech-stack.md.
+docs/prototype/undefined/
+
 # Agent worktrees — transient checkouts created by parallel subagents and
 # removed when they finish. Never part of the project's history.
 .claude/worktrees/
