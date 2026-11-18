@@ -3,8 +3,9 @@
 *Session-handoff file, rewritten at the end of each session (Stack
 convention). Read this first, then `AGENTS.md`, then `specs/`.*
 
-**Last written:** 2026-08-15 · cloud session (Linux, no Xcode) · **M0, M1 and
-M5's web half done; M1.5 prototype through eight rounds, three domains live**
+**Last written:** 2026-11-18 · cloud session (Linux, no Xcode) · **M0, M1 and
+M5's web half done; M1.5 prototype through fourteen rounds, three domains
+live, 90 commits on `main`**
 
 ---
 
@@ -12,18 +13,41 @@ M5's web half done; M1.5 prototype through eight rounds, three domains live**
 
 - **M0 — repo bootstrap: done.** `TopTenKit` builds and tests on CI, the CI
   gate is proven able to fail, `docs/resuming.md` exists.
-- **M1.5 — flow prototype: round 1 of feedback applied.** Live at
-  **https://topten-three.vercel.app**. Building a Ten is now ONE screen —
-  search with live results, refinements (services, genre, director, actor),
-  branching suggestions backed by a persistent graph with a map view, and the
-  ten slots pinned in the dock, reorderable in place. Then the cut (only on overflow), the badge
-  reveal, and the post-completion rabbit hole. 620-film catalog baked from
-  TMDB with per-film streaming availability, cast, and recommendation edges.
-  **Round 6 is pending Mischa's next pass.**
 - **M1 — the brain: done.** `TopTenKit` holds the models, the criteria namer,
   guided placement, Borda consensus, palette derivation, the badge pre-pass
   and its inscription post-check, the suggestion engine and the catalog
-  boundary. 85 tests, green on Linux CI. See the M1 section below.
+  boundary. Green on Linux CI. See the M1 section below.
+- **M1.5 — flow prototype: fourteen rounds in, still the live surface.** At
+  **https://topten-three.vercel.app**. One build screen (search, refinements,
+  branching suggestions over a persistent graph with a map view, ten slots in
+  the dock that reorder by hold-and-drag), the cut, the badge reveal, the
+  rabbit hole, discovery, the topic page, and the badge case.
+- **M5 — the web half: done** (schema, RLS, the three public pages).
+  Not applied to a real Supabase project; that needs Mischa.
+- **M2/M3/M4 — the native app: not started.** No app target exists, and
+  nothing in this repo has ever been verified on a Mac or a device.
+
+## What the prototype carries now (2026-11-18)
+
+The screens, in the order a first-time user meets them:
+
+| Screen | What it is |
+|---|---|
+| **The splash** | A full-bleed wall of other people's lists, drifting. 4.5 rows, each a list: a glass name card taking a whole poster slot, then its ten posters in rank order. The question, the tagline, one CTA, the price promise |
+| **Build** | One screen. Search, refinement chips, branching suggestions, the map, the dock. Hold a poster to reorder; **Arrange** is the non-drag path (WCAG 2.5.7) |
+| **The cut** | Only on overflow |
+| **The reveal** | The vault, the badge struck layer by layer, the inscription typed on to its ribbon |
+| **Finished** | The rabbit hole, the other domains, share, and the way into your badge case |
+| **Discover** | *"Other Top 10 Lists."* Today's pick, this week's, what is rising; then seven seed lists, each saying what it is |
+| **A topic page** | The crowd's ten as its own artifact, how far you sit from it, the takes on it, and the ever-present action |
+| **Your Top 10s** | The badge case. Your badges, your drafts, and the way back into each list |
+| **Three public pages** | `ten.html`, `topic.html`, `card.html`, built from `share.js`, data travelling in the link |
+
+**Where the last sessions went** (18 November, in order): the discover cards
+rebuilt to lead with a claim; every seed list made to say what it is rather
+than be somebody; reordering by hold-and-drag; the daily/weekly/rising picks;
+the splash rebuilt as the wall, then fixed four times by measurement; the
+badge case; the topic page. Each one is a dated amendment in `specs/`.
 
 ## Sequencing change (2026-08-14, Mischa's call, executed by Claude)
 
@@ -36,12 +60,20 @@ before a line of Swift was written against it.
 
 ## What is verified, and where
 
-- **CI (Linux, `kit-linux`):** `swift build` + `swift test` on TopTenKit —
-  4 tests, green. Falsified once on a throwaway branch to prove the gate can
-  go red.
+- **CI (Linux, `kit-linux`):** `swift build` + `swift test` on TopTenKit.
+  Falsified once on a throwaway branch to prove the gate can go red.
 - **Browser (Chromium, iPhone 15 Pro viewport, `docs/prototype/drive.js`):**
-  the prototype driven end to end — 313 assertions in `drive.js`, plus 45 in
-  `drive_share.js` for the public pages, zero page errors. Both now run in CI.
+  the prototype driven end to end — **450+ assertions** in `drive.js`, plus 45
+  in `drive_share.js` and 23 in `drive_db.js`, zero page errors. All three run
+  in CI.
+
+  Four of those gates are worth knowing about before changing the splash,
+  because each was added after the thing it measures had already shipped
+  broken: **a list name must be readable at every moment of the first eight
+  seconds** (sampled, not screenshotted); **every word must clear AA over a
+  forced-white poster** (rendered pixels read off a canvas, not modelled);
+  **the drift loop's two halves must match to a sub-pixel**; and **the whole
+  splash must fit eight phones with the tagline on two lines**.
 - **Postgres (`supabase/tests/run.sh`):** the schema and every RLS policy,
   executed as an anonymous visitor, the author, and a different signed-in user
   — 30 checks. Runs in CI on the plain runner, which ships PostgreSQL 16.

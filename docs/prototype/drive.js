@@ -336,7 +336,13 @@ const CONTRAST = `(() => {
   let seen = 0;
   for (const el of document.querySelectorAll('h1,h2,h3,p,span,button,a,label,div,li')) {
     const r = el.getBoundingClientRect();
-    if (r.width < 2 || r.height < 2 || r.bottom < 0 || r.top > innerHeight) continue;
+    /* NOT limited to the viewport. It used to skip anything below the fold,
+       which meant a long screen was only ever contrast-checked down to its
+       first screenful — and the prototype's own build stamp sat at 2.41:1
+       for three months inside a footer that is below the fold everywhere
+       except the two shortest screens in the app. A sweep that samples what
+       happens to be on screen is a sweep of the top of the page. */
+    if (r.width < 2 || r.height < 2) continue;
     if (![...el.childNodes].some(n => n.nodeType === 3 && n.textContent.trim())) continue;
     const cs = getComputedStyle(el);
     if (cs.visibility === 'hidden' || +cs.opacity === 0) continue;
@@ -2758,6 +2764,25 @@ const DOMAIN_SPEECH = `(() => {
     ['the browse screen', () => { S.scene = 'build'; S.seen = true; S.tipDone = true; S.tray = []; save(); render(); }],
     ['a title page', () => { S.title = 680; S.back = 'build'; S.scene = 'title'; save(); render(); }],
     ['discovery', () => { S.done = []; S.scene = 'discover'; save(); render(); }],
+    /* The two screens built overnight, added to the sweeps rather than
+       trusted: AGENTS.md's gates say "VoiceOver pass on every new screen"
+       and a Dynamic Type pass from XS to accessibility sizes, and a screen
+       that is not in the list is a screen that has had neither. */
+    ['your badge case', () => {
+      const made = crit => { const t = makeTopic(crit);
+        const ten = CAT.filter(f => inTopic(f, t)).sort((a, b) => (b.vc || 0) - (a.vc || 0))
+          .slice(0, 10).map(f => f.id);
+        return { topicId: t.id, title: t.title, domain: t.domain, ranked: ten, badge: compose(ten, t) }; };
+      S.done = [made({ genre: 'Crime', decade: 1990 }), made({ domain: 'tv', genre: 'Drama' })];
+      S.tray = []; S.scene = 'you'; S.youBack = 'done'; save(); render();
+    }],
+    ['one of your own', () => {
+      S.mine = (S.done || [])[0] && S.done[0].topicId; S.scene = 'mine'; save(); render();
+    }],
+    ['a topic page', () => {
+      S.topicPage = { genre: 'Crime', decade: 1990 }; S.topicBack = 'discover';
+      S.scene = 'topic'; save(); render();
+    }],
   ];
   for (const [where, fn] of TAP_SCREENS) {
     await page.evaluate(fn);
@@ -2805,6 +2830,25 @@ const DOMAIN_SPEECH = `(() => {
     ['discovery', () => { S.done = []; S.scene = 'discover'; save(); render(); }],
     ['a finished Ten', () => { S.ranked = [680, 155, 13, 550, 27205, 278, 238, 424, 129, 603];
                                S.scene = 'done'; save(); render(); }],
+    /* The two screens built overnight, added to the sweeps rather than
+       trusted: AGENTS.md's gates say "VoiceOver pass on every new screen"
+       and a Dynamic Type pass from XS to accessibility sizes, and a screen
+       that is not in the list is a screen that has had neither. */
+    ['your badge case', () => {
+      const made = crit => { const t = makeTopic(crit);
+        const ten = CAT.filter(f => inTopic(f, t)).sort((a, b) => (b.vc || 0) - (a.vc || 0))
+          .slice(0, 10).map(f => f.id);
+        return { topicId: t.id, title: t.title, domain: t.domain, ranked: ten, badge: compose(ten, t) }; };
+      S.done = [made({ genre: 'Crime', decade: 1990 }), made({ domain: 'tv', genre: 'Drama' })];
+      S.tray = []; S.scene = 'you'; S.youBack = 'done'; save(); render();
+    }],
+    ['one of your own', () => {
+      S.mine = (S.done || [])[0] && S.done[0].topicId; S.scene = 'mine'; save(); render();
+    }],
+    ['a topic page', () => {
+      S.topicPage = { genre: 'Crime', decade: 1990 }; S.topicBack = 'discover';
+      S.scene = 'topic'; save(); render();
+    }],
   ];
   /* In more than one font.
 
@@ -2993,6 +3037,287 @@ const DOMAIN_SPEECH = `(() => {
       `${where}: every control named and every rank spoken`
       + (faults.length ? ` \u2014 ${faults.length}: ${faults.slice(0, 3).join('; ')}` : ''));
   }
+
+
+
+  /* ── A topic, before you commit to it (PRD Req 9) ──────────────────────
+     Every route into a topic used to go straight to the build screen, so the
+     only way to find out what "Top 10 Westerns" is was to start making one
+     and read the shelf. A browse gesture was being answered with a
+     commitment.
+
+     It is also where Req 10's other half lives. In-app you could compare
+     yourself with a PERSON; `shared_with_consensus` - how far you sit from
+     the crowd - had nowhere to appear, which made the splash's whole
+     argument unfinishable. */
+  console.log('\n── A topic page, and the crowd to argue with ────');
+  await page.evaluate(() => {
+    localStorage.clear();
+    document.querySelectorAll('.sheet, .scrim, .coach, .coachscrim, .vault').forEach(x => x.remove());
+    S.seen = true; S.tipDone = true; S.done = []; S.scene = 'discover'; save(); render();
+  });
+  await page.waitForTimeout(300);
+  const chipName = await page.locator('.risingrow .pickchip').first().innerText();
+  await page.locator('.risingrow .pickchip').first().click();
+  await page.waitForTimeout(300);
+  const tp = await page.evaluate(() => ({
+    scene: window.S.scene,
+    heading: (document.querySelector('.topbar h1') || {}).textContent.trim(),
+    supply: (document.querySelector('.prompt') || {}).textContent.replace(/\s+/g, ' ').trim(),
+    crowd: document.querySelectorAll('.tenrow').length,
+    ranks: [...document.querySelectorAll('.tenrow .num')].map(n => n.textContent.trim()).join(','),
+    crowdHead: [...document.querySelectorAll('.section-h')].map(h => h.textContent.trim()),
+    cta: (document.querySelector('.endbar .btn') || {}).textContent.trim(),
+    dock: document.querySelectorAll('.dock').length,
+  }));
+  check(tp.scene === 'topic' && tp.dock === 0,
+    `a rising chip opens the topic rather than starting it (${tp.scene})`);
+  check(tp.heading.startsWith('Top 10 ') && tp.heading.includes(chipName),
+    `named in full ("${tp.heading}" from the chip "${chipName}")`);
+  check(/\d+ .+ in the collection\./.test(tp.supply),
+    `and it says how much there is to choose from ("${tp.supply.slice(0, 60)}…")`);
+  check(tp.crowd === 10 && tp.ranks === '1,2,3,4,5,6,7,8,9,10',
+    `the crowd's ten, ranked (${tp.crowd} rows)`);
+  check(tp.crowdHead.includes('What everyone picked'),
+    `presented as its own artifact, not as a preview (${tp.crowdHead.join(' · ')})`);
+  check(tp.cta === 'Make yours', `and the ever-present action says what it does ("${tp.cta}")`);
+
+  // Back goes where you came from, and the action still commits.
+  await page.locator('[data-act="topicback"]').click();
+  await page.waitForTimeout(250);
+  check(await page.locator('.other-ten').count() > 0, 'Back returns to where the topic was opened from');
+  await page.locator('.risingrow .pickchip').first().click();
+  await page.waitForTimeout(250);
+  await page.locator('.endbar .btn').click();
+  await page.waitForTimeout(350);
+  const started = await page.evaluate(() => ({ scene: window.S.scene, title: window.S.topic.title }));
+  check(started.scene === 'build' && started.title.includes(chipName),
+    `"Make yours" starts that exact topic ("${started.title}")`);
+
+  /* With a take of your own on the topic, the page stops being an invitation
+     and becomes a comparison - which is the payoff the object model has
+     carried since the first draft and the app has never shown. */
+  await page.evaluate(() => {
+    localStorage.clear();
+    S.seen = true; S.tipDone = true;
+    const t = window.makeTopic({ genre: 'Crime', decade: 1990 });
+    /* A take built to overlap by EXACTLY FIVE: the crowd's top five, then
+       five things the crowd does not have. The first version used the ten
+       least-rated films that fit, which overlapped by zero - so the check
+       compared 0 with 0 and would have passed against a screen that printed
+       the number nought no matter what. A constructed overlap is the only
+       version of this that can fail. */
+    const crowd = window.consensusTen(t).ranked.map(f => f.id);
+    const outside = CAT.filter(f => window.inTopic(f, t) && !crowd.includes(f.id)).map(f => f.id);
+    const ten = [...crowd.slice(0, 5), ...outside.slice(0, 5)];
+    S.done = [{ topicId: t.id, title: t.title, domain: t.domain, ranked: ten, badge: compose(ten, t) }];
+    S.topicPage = { genre: 'Crime', decade: 1990 }; S.topicBack = 'discover';
+    S.scene = 'topic'; save(); render();
+  });
+  await page.waitForTimeout(350);
+  const cmp = await page.evaluate(() => {
+    const line = [...document.querySelectorAll('.prompt')].map(p => p.textContent.replace(/\s+/g, ' ').trim())
+      .find(t => /You share/.test(t)) || '';
+    const m = line.match(/You share (\d+) of 10/);
+    const rows = [...document.querySelectorAll('.tenrow')];
+    return { line, said: m ? +m[1] : -1,
+      marked: rows.filter(r => r.classList.contains('shared')).length,
+      yours: rows.filter(r => /your #\d+/.test(r.textContent)).length,
+      cta: (document.querySelector('.endbar .btn') || {}).textContent.trim(),
+      ctaName: (document.querySelector('.endbar .btn') || {}).getAttribute('aria-label') || '',
+      real: (() => { const t = window.makeTopic({ genre: 'Crime', decade: 1990 });
+        const crowd = new Set(window.consensusTen(t).ranked.map(f => f.id));
+        return (window.S.done[0].ranked || []).filter(id => crowd.has(id)).length; })() };
+  });
+  check(cmp.said === 5 && cmp.said === cmp.real,
+    `it says how far you sit from the crowd, and the number is the real one `
+    + `(says ${cmp.said}, actual ${cmp.real}, built to be 5)`);
+  check(cmp.marked === cmp.said && cmp.yours === cmp.said,
+    `every shared pick is marked in the list and carries your own rank `
+    + `(${cmp.marked} marked, ${cmp.yours} numbered, ${cmp.said} claimed)`);
+  /* "Open yours", parallel with "Make yours", and the full list name in the
+     accessible name rather than on the button: the button is read in the
+     context of a page titled with the topic, and the long version wrapped to
+     two lines at large text sizes for no gain. */
+  check(cmp.cta === 'Open yours' && /^Open your Top 10 /.test(cmp.ctaName),
+    `and the action becomes the way back to what you made `
+    + `("${cmp.cta}", announced as "${cmp.ctaName}")`);
+
+  /* Zero overlap is the most interesting outcome on the page, so it gets the
+     better sentence rather than an empty state (Req 10). */
+  await page.evaluate(() => {
+    const t = window.makeTopic({ genre: 'Crime', decade: 1990 });
+    const crowd = new Set(window.consensusTen(t).ranked.map(f => f.id));
+    const ten = CAT.filter(f => window.inTopic(f, t) && !crowd.has(f.id)).slice(0, 10).map(f => f.id);
+    S.done = [{ topicId: t.id, title: t.title, domain: t.domain, ranked: ten, badge: compose(ten, t) }];
+    save(); render();
+  });
+  await page.waitForTimeout(300);
+  const noOverlap = await page.evaluate(() => [...document.querySelectorAll('.prompt')]
+    .map(p => p.textContent.replace(/\s+/g, ' ').trim()).find(t => /You share/.test(t)) || '');
+  check(/You share 0 of 10/.test(noOverlap) && /Incredible/.test(noOverlap),
+    `nought out of ten is a designed line, not an empty state ("${noOverlap.slice(-70)}")`);
+
+  /* ── Your Top 10s — the Badge Case (PRD Req 11) ────────────────────────
+     The hole this closes: a finished Ten used to be unreachable the moment
+     you left the screen that announced it. `S.done` existed to gate other
+     people's badges and to aim the daily pick, and for nothing else — so an
+     app about being seen for your favourites had nowhere to see them.
+
+     Checked as a round trip rather than as a render: the case is only worth
+     anything if you can get to it, open one, and get back. */
+  console.log('\n── Your Top 10s, the badge case ─────────────────');
+  const seedDone = n => page.evaluate(k => {
+    localStorage.clear();
+    document.querySelectorAll('.sheet, .scrim, .coach, .coachscrim, .vault').forEach(x => x.remove());
+    S.seen = true; S.tipDone = true;
+    const make = crit => {
+      const t = window.makeTopic(crit);
+      const ten = CAT.filter(f => window.inTopic(f, t))
+        .sort((a, b) => (b.vc || 0) - (a.vc || 0)).slice(0, 10);
+      return { topicId: t.id, title: t.title, domain: t.domain,
+        ranked: ten.map(f => f.id), badge: compose(ten.map(f => f.id), t) };
+    };
+    S.done = [{ genre: 'Crime', decade: 1990 }, { genre: 'Animation', decade: 2000 },
+      { domain: 'tv', genre: 'Drama' }].slice(0, k).map(make);
+    S.scene = 'done'; save(); render();
+  }, n);
+
+  // Reachable from the screen that just gave you a badge.
+  await seedDone(3);
+  await page.waitForTimeout(250);
+  check(await page.locator('[data-act="opencase"]').count() >= 1,
+    'the screen that hands you a badge says where the badges live');
+  await page.locator('[data-act="opencase"]').first().click();
+  await page.waitForTimeout(250);
+
+  const kase = await page.evaluate(() => {
+    const items = [...document.querySelectorAll('.case-item')];
+    return {
+      heading: (document.querySelector('.topbar h1') || {}).textContent.trim(),
+      n: items.length,
+      names: items.map(i => (i.querySelector('.case-name') || {}).textContent.trim()),
+      labels: items.map(i => i.getAttribute('aria-label') || ''),
+      // Every badge in your own case is REVEALED. The lock in Req 12 is
+      // about other people's; gating a reader from their own badge would be
+      // the mechanic pointed the wrong way.
+      locked: items.filter(i => i.querySelector('.lockedbadge')).length,
+      drawn: items.filter(i => i.querySelector('svg .layer.on')).length,
+      // The badge is the item, per Req 11 — "the badge case is the profile's
+      // hero". A 20px glyph beside a title would be a list with decoration.
+      badgeW: items.map(i => Math.round(i.querySelector('.case-badge').getBoundingClientRect().width)),
+      over: Math.round(document.documentElement.scrollWidth - document.documentElement.clientWidth),
+    };
+  });
+  check(kase.heading === 'Your Top 10s', `the case is called Your Top 10s ("${kase.heading}")`);
+  check(kase.n === 3, `one badge for each finished Top 10 (${kase.n} of 3)`);
+  check(kase.drawn === 3 && kase.locked === 0,
+    `and every one of them is revealed — your own badge is never gated `
+    + `(${kase.drawn} drawn, ${kase.locked} locked)`);
+  check(kase.names.every(n => /^Top 10 /.test(n)),
+    `each says which list it is, in full (${kase.names.join(' · ')})`);
+  check(kase.labels.every(l => /^Open your Top 10 /.test(l)),
+    `and each is a named control, not a bare image (${kase.labels[0]})`);
+  check(kase.badgeW.every(w => w >= 100), `the badge is the item, not a glyph beside one (${kase.badgeW.join(', ')}px)`);
+  check(kase.over <= 1, 'the shelf fits its column');
+
+  // Newest first. A case that grows downward buries the thing you just made.
+  check(kase.names[0] === 'Top 10 Drama Shows',
+    `newest first — the one you just finished is at the top ("${kase.names[0]}")`);
+
+  // Open one of your own.
+  await page.locator('.case-item').first().click();
+  await page.waitForTimeout(250);
+  const mine = await page.evaluate(() => ({
+    heading: (document.querySelector('.topbar h1') || {}).textContent.trim(),
+    rows: document.querySelectorAll('.tenrow').length,
+    ranks: [...document.querySelectorAll('.tenrow .num')].map(n => n.textContent.trim()).join(','),
+    insc: (document.querySelector('.insc') || {}).textContent.trim(),
+    badgeDrawn: !!document.querySelector('.badge-inline svg .layer.on'),
+    share: document.querySelectorAll('[data-sharemine]').length,
+    others: document.querySelectorAll('[data-other]').length,
+  }));
+  check(mine.heading === 'Top 10 Drama Shows', `tapping a badge opens that list ("${mine.heading}")`);
+  check(mine.rows === 10 && mine.ranks === '1,2,3,4,5,6,7,8,9,10',
+    `all ten of it, in order (${mine.rows} rows)`);
+  check(mine.badgeDrawn && mine.insc.length > 3,
+    `with the badge drawn and its inscription readable ("${mine.insc}")`);
+  check(mine.share === 1, 'and one way to send it to somebody');
+  /* The case is a hub, not a trophy shelf. A list of your own that does not
+     lead back to the argument it is part of is the product with its engine
+     removed. */
+  check(mine.others >= 1,
+    `and it leads to the other takes on the same topic (${mine.others})`);
+
+  // Back out, both steps.
+  await page.locator('.topbar .link').click();
+  await page.waitForTimeout(250);
+  check((await page.evaluate(() => (document.querySelector('.topbar h1') || {}).textContent.trim()))
+    === 'Your Top 10s', 'Back from one of your own returns to the case');
+  await page.locator('.topbar .link').click();
+  await page.waitForTimeout(250);
+  check(await page.locator('.finished-head').count() === 1,
+    'and Done returns to where you opened it from');
+
+  /* Reachable from discovery too, which is the other place you are between
+     lists. */
+  await page.evaluate(() => { S.scene = 'discover'; save(); render(); });
+  await page.waitForTimeout(250);
+  check(await page.locator('.other-ten').count() > 0 && await page.locator('[data-act="opencase"]').count() === 1,
+    'discovery ends with the way to your own');
+  await page.locator('[data-act="opencase"]').click();
+  await page.waitForTimeout(250);
+  check(await page.locator('.case-item').count() === 3, 'which opens the same case');
+  await page.locator('.topbar .link').click();
+  await page.waitForTimeout(250);
+  check(await page.locator('.other-ten').count() > 0,
+    'and Done goes back to discovery, not to wherever it went last time');
+
+  /* The empty state is a screen somebody will actually see — it is what the
+     case looks like before the first list, and "no items" is not a design. */
+  await page.evaluate(() => {
+    localStorage.clear(); S.done = []; S.tray = []; S.seen = true; S.tipDone = true;
+    S.scene = 'you'; save(); render();
+  });
+  await page.waitForTimeout(250);
+  const empty = await page.evaluate(() => ({
+    items: document.querySelectorAll('.case-item').length,
+    locked: !!document.querySelector('.case-empty .lockedbadge'),
+    cta: (document.querySelector('.case-empty .btn') || {}).textContent.trim(),
+    // Whitespace-normalised: the copy wraps in the source, so `textContent`
+    // carries the indentation and a phrase match on it fails for a reason
+    // that has nothing to do with the words.
+    says: ((document.querySelector('.case-empty .prompt') || {}).textContent || '')
+      .replace(/\s+/g, ' ').trim(),
+  }));
+  check(empty.items === 0 && empty.locked,
+    'before the first list the case shows a locked badge rather than nothing');
+  check(/opens every other Top 10 on that topic/i.test(empty.says),
+    `and says what a badge is for ("${empty.says.slice(0, 60)}…")`);
+  check(empty.cta === 'Make your first list', `with one way out ("${empty.cta}")`);
+
+  /* Drafts, per Req 11: "Own profile shows drafts." The only thing on this
+     screen without a badge, which is the honest way to say unfinished. */
+  await page.evaluate(() => {
+    localStorage.clear(); S.done = []; S.seen = true; S.tipDone = true;
+    S.topic = window.makeTopic({ genre: 'Crime', decade: 1990 });
+    S.tray = CAT.filter(f => window.inTopic(f, S.topic)).slice(0, 4).map(f => f.id);
+    S.scene = 'you'; save(); render();
+  });
+  await page.waitForTimeout(250);
+  const drafted = await page.evaluate(() => {
+    const b = document.querySelector('[data-act="resume"]');
+    return { shown: !!b, text: b ? b.innerText.replace(/\n/g, ' / ') : '',
+      badges: document.querySelectorAll('.case-item').length };
+  });
+  check(drafted.shown && drafted.badges === 0,
+    `an unfinished list shows as a draft and carries no badge ("${drafted.text}")`);
+  // Case-insensitive: the level line is uppercased in CSS, so `innerText`
+  // reports it as the reader sees it, not as the template wrote it.
+  check(/4 of 10/i.test(drafted.text), `and says how far in you are ("${drafted.text}")`);
+  await page.locator('[data-act="resume"]').click();
+  await page.waitForTimeout(300);
+  check(await page.locator('.dock').count() === 1, 'and picking it up returns to the build screen');
 
   /* ── Every list in the pool is one the wall can actually carry ──────────
      The wall shows four of six, and which four rotates per visit, so four of

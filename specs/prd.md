@@ -126,6 +126,15 @@ user subscribes to, purely to seed relevant suggestions in the Gather tray.
   number. Every other invented figure in the prototype is a fixture a reader
   cannot act on; this one is a claim about how many people are already here.
 
+  *The server side of it is already built:* `public.product_stats.published_tens`
+  (migration `0002`) is that count, `security_invoker`, granted to `anon`. The
+  remaining work is a read — **and it may not happen on the splash**. "The
+  first screen never waits on an API" is a standing rule with a test behind
+  it, so the count is baked at build time or fetched in the background and
+  cached, with `CORPUS_CLAIM` as the floor it falls back to. A tagline that
+  flickers from a fixture to a real number on a cold start would be worse
+  than either.
+
 **Amendment 2026-08-15 (Mischa, round 5) — the shape of a session, and the
 domains beyond film.**
 
@@ -516,6 +525,34 @@ the ever-present "Make yours" action.
   page; consensus recomputes on publish (eventual, ≤1 min lag acceptable);
   empty topics (n=1) suppress consensus and show the lone take.
 
+**Built 2026-11-18 (Claude, overnight) — the topic page, and the middle step
+that was missing.** Every route into a topic went straight to the build
+screen: the rising chips, the weekly pick, the suggestion cards. So the only
+way to find out what *"Top 10 Westerns"* is was to start making one and read
+the shelf — **a browse gesture answered with a commitment**.
+
+The topic page is what a chip opens now. It carries, in this order: the
+topic's name, how much there is to choose from, **the crowd's ten as its own
+artifact** under *"What everyone picked"*, the takes on it with their badge
+state, and the ever-present action.
+
+**Only a CTA commits.** *"Make this one"* on today's pick and *"Make yours"*
+on the topic page start a build; a chip and the weekly card open the topic.
+That division is the rule the screen exists to establish.
+
+**It is also where Req 10's other half finally appears.** In-app you could
+compare yourself with a *person*; `shared_with_consensus` — how far you sit
+from the crowd — had nowhere to show. On a topic you have made, the page says
+**"You share 6 of 10 with them"**, marks those rows in the crowd's list and
+prints your own rank beside each. Nought out of ten keeps the designed line
+rather than an empty state (*"Not one movie in common. Incredible."*). Without
+this the splash's whole argument was unfinishable: *yours will be different*
+is only interesting if the app can say by how much.
+
+**The action changes rather than disappearing.** On a topic you have already
+made, *"Make yours"* becomes *"Open your Top 10 Crime Movies of the 90s"* —
+the page stops being an invitation and becomes the way back.
+
 **10. Comparison.** Viewing someone else's Ten on a topic you've completed
 overlays agreement: shared picks marked, rank deltas shown ("their #1 is
 your #7"), a headline stat ("You share 6 of 10"). This is the payoff for
@@ -529,6 +566,45 @@ completed Tens shown as badges (the Badge Case), plus their takes. Own
 profile shows drafts. Public profile shows published Tens only.
 - Acceptance: badge case is the profile's hero; tapping a badge opens the
   Ten; drafts never visible to others.
+
+**Built 2026-11-18 (Claude, overnight) — and the hole it closed was bigger
+than the requirement.** Until this screen existed, a finished Ten was
+**unreachable the moment you left the screen that announced it**. `S.done`
+was read twice in the whole prototype — to gate other people's badges and to
+aim the daily pick — and never rendered. An app whose stated job is *"define
+yourself through your favourites, and be seen doing it"* had nowhere to see
+what you had made.
+
+Decisions taken in building it:
+
+- **The badges are the page.** Req 11 says the case is the profile's hero, so
+  the grid is made of badges at 112pt with the list name underneath. A row
+  layout with a thumbnail would have made the badge a caption on something
+  else.
+- **Every badge in your own case is revealed.** The lock in Req 12 is about
+  *other people's*; gating a reader from their own badge is the mechanic
+  pointed the wrong way.
+- **The inscription is not repeated under the badge.** It is already struck on
+  the badge's ribbon. Printing it twice was the first build and it read as a
+  duplicate, not as a caption.
+- **Newest first.** A case that grows downward buries the thing you just made.
+- **No handle, no account.** The prototype is local-first (Req 7) and
+  publishing is what introduces identity. Inventing a name for a device would
+  be the same fiction the seed-source decision threw out the same morning.
+  The handle appears when accounts do — `TopTenKit/Handle.swift` already
+  generates them.
+- **The case is a hub, not a trophy shelf.** Opening one of your own leads to
+  the other takes on that topic — *"Your badge opened all 2 the moment you
+  finished"* — because a list of your own that does not lead back to the
+  argument it is part of is the product with its engine removed.
+- **Two entry points, neither in the topbar.** From the screen that just gave
+  you a badge, and from the foot of discovery: other people's, then yours.
+  The build screen's topbar is deliberately left alone — a 44pt control beside
+  a criteria name takes a quarter of the column, which is why "Start over"
+  was moved off it in the first place.
+- **It counts something real.** *"Between them they have opened 4 of other
+  people's"* is computed from the gate, and it is the one place Req 12's
+  retroactive half is countable rather than merely asserted.
 
 **12. The reveal gate.** On someone else's published Ten, their badge appears
 **locked** (present, desirable, obscured). It unlocks — for you — when you

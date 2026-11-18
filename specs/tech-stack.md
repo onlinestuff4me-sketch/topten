@@ -611,3 +611,37 @@ copy block, so what it sampled was the CTA's gold. Occluded text is not
 low-contrast text, it is not text — the gate now skips any plate text whose
 box is below the copy's top edge, the same line the "is a name readable"
 gate uses.
+
+## A sweep limited to the viewport is a sweep of the top of the page (2026-11-18, Claude)
+
+The contrast gate skipped anything below the fold:
+
+```js
+if (r.width < 2 || r.height < 2 || r.bottom < 0 || r.top > innerHeight) continue;
+```
+
+It looks like a sensible optimisation — why measure what nobody can see — and
+it quietly reduced a whole-screen check to a first-screenful check. The
+prototype's own build stamp sat at **2.41:1 in light mode for three months**
+inside a footer that is below the fold on every screen in the app *except* the
+two shortest. The gate had run on screens carrying that footer dozens of
+times and never looked at it.
+
+It was found by **adding a short screen to the sweep's list**, not by the
+gate getting better: the badge case fits its footer above the fold, so the
+same check on the same markup suddenly had an opinion.
+
+Two things follow:
+
+1. **Drop the viewport filter.** The cost is one `evaluate` over a few more
+   elements; the benefit is that the check means what its name says.
+2. **A new screen goes into every sweep list.** AGENTS.md's gates say
+   "VoiceOver pass on every new screen" and a Dynamic Type pass XS to
+   accessibility sizes — a screen that is not in `DT_SCREENS` and
+   `TAP_SCREENS` has had neither, and nothing anywhere reports that.
+
+The general shape is the same one that has now caught this project four
+times: **a gate whose scope is narrower than its name.** The others were a
+`scrollHeight` check that could not see upward overflow, an `offsetLeft`
+measurement rounding a correct layout wrong, and a comparison test whose
+expected value was whatever the code produced.

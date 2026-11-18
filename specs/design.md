@@ -1252,6 +1252,16 @@ ink was the only move available - lightening the fill enough to carry
 dark mode `--accent` already clears 6.4:1 on `--accent-muted`, so the token
 resolves to the same value there.
 
+**`--text-disabled` is not a text colour either (2026-11-18).** It measures
+**2.41:1 in Gallery and 3.3:1 in Vault** — it fails AA for text in *both*
+schemes. That is correct for what it is named after: WCAG 1.4.3 exempts
+inactive controls, and a greyed-out button should read as switched off. It is
+wrong for anything a reader is meant to read. Two uses had drifted into it —
+the level labels on suggestion cards (*"Very specific"*, *"Broad"*, *"Coming
+next"*) and the prototype's build stamp — and both are `--text-secondary` now.
+The rule: **if it is a word somebody reads, it is `--text-primary` or
+`--text-secondary`.**
+
 **`--accent-bright` is a FILL colour**, not a text colour: badge metal, a
 slot ring, a focus edge. It fails as text on the light background even at
 28px. `--accent` is the text weight of the same gold, and in dark mode the
@@ -1998,3 +2008,101 @@ The still frame is not a fallback. With motion off every row sits at its
 start, which is its name plate flush left, so Reduce Motion gets four list
 names stacked and legible — the same composition the motion begins from, which
 is the standing rule for every ceremony in this app.
+
+## The Badge Case — your Top 10s, with the badges as the page (2026-11-18)
+
+The profile Req 11 has always asked for, built the night after the splash. It
+is the first screen in the prototype whose subject is **you** rather than a
+list, and the anatomy follows from one line of the requirement: *the badge
+case is the profile's hero*.
+
+### Anatomy
+
+| Part | What it is |
+|---|---|
+| `.case` | `grid-template-columns: repeat(auto-fill, minmax(132px, 1fr))` — two badges across on every phone, three on a Pro Max in landscape, four on a tablet, with no breakpoint deciding it |
+| `.case-item` | A button. The badge at 112pt, the list's full name under it. Nothing else |
+| `.case-empty` | A locked badge, what a badge is for, and one way out |
+| `[data-act="resume"]` | The draft, shown as the one thing on the screen without a badge |
+
+**112pt is a floor, not a preference.** It is the smallest size at which the
+plate's inscription ring reads as type rather than as texture; below it the
+badge reads as a coin, which is the one thing it must not.
+
+**The inscription is not repeated under the badge.** It is already struck on
+the ribbon. The first build printed it twice and it read as a duplicate rather
+than a caption — the caption's job is the one thing the badge does not say,
+which is which list it is.
+
+**The full list name, not a shortened one.** The splash shortens because its
+plates are one poster wide; here the column is 132pt and the name is the
+item's identity, so it reads the way it does on a discover card and on the
+share page. One object, one name, everywhere.
+
+### What it is reachable from, and what it is not
+
+Two entry points, **neither in the topbar**: the screen that just handed you a
+badge, and the foot of discovery — other people's, then yours. The build
+screen's topbar is deliberately left alone. A 44pt control beside a criteria
+name takes a quarter of the column, which is exactly why *"Start over"* was
+moved off that line in round 8.
+
+`Done` returns to wherever the case was opened from, which is why the scene
+records it. A back button that means two different things on two different
+routes is a back button nobody trusts.
+
+### The rule the case made explicit
+
+**Your own badge is never locked.** Req 12's gate is about *other people's*
+badges; a reader gated from their own would be the mechanic pointed the wrong
+way. The suite asserts it directly — every item in the case is drawn, none is
+a `lockedbadge` — because it is the kind of thing a later refactor of the
+badge renderer could break without anything looking wrong.
+
+## The topic page — the crowd, before you argue with it (2026-11-18)
+
+Req 9's screen, built the same night as the badge case, and the two are a
+pair: one is what you have made, the other is what you could make next and who
+has already made it.
+
+**It exists because every route into a topic was a commitment.** The rising
+chips, the weekly pick and the suggestion cards all went straight to the build
+screen, so the only way to find out what *"Top 10 Westerns"* is was to start
+making one and read the shelf. The rule the screen establishes, and the one to
+keep: **only a CTA commits.** *"Make this one"* and *"Make yours"* start a
+build; a chip and the weekly card open the topic.
+
+### What is on it, in order
+
+1. The name, and how much there is to choose from — `600 movies in the
+   collection.`
+2. **The crowd's ten, as its own artifact**, under *"What everyone picked"*.
+   Not a preview strip: the same `.tenrow` anatomy the finished screen and the
+   share page use, so one object looks like itself everywhere.
+3. The takes on it, each saying whether its badge is open to you.
+4. The ever-present action.
+
+### The comparison that had nowhere to live
+
+In-app you could compare yourself with a **person**. The object model's
+`shared_with_consensus` — how far you sit from the **crowd** — existed in the
+SQL, in `TopTenKit`, and on no screen. It is here now: on a topic you have
+made, the page says **"You share 6 of 10 with them"**, marks those rows in the
+crowd's list and prints your own rank beside each.
+
+Without it the splash's argument was unfinishable. *Yours will be different*
+is only worth saying if the app can then say **by how much**.
+
+Nought out of ten keeps the designed line it has on the share page — *"Not one
+movie in common. Incredible."* — rather than an empty state. It is the most
+interesting outcome on the screen and the one most likely to be screenshotted.
+
+### The gate this one needed, and the one it caught
+
+The comparison is asserted against a take **constructed to overlap by exactly
+five**: the crowd's top five plus five films the crowd does not have. The
+first version used the ten least-rated films on the shelf, which overlapped by
+**zero** — so the check compared 0 with 0 and would have passed against a
+screen that printed *nought* whatever you had picked. Third time this project
+has caught a gate of its own shaped that way, and the tell is the same every
+time: a test whose expected value is whatever the code happens to produce.

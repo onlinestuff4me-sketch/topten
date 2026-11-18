@@ -450,18 +450,51 @@ section { margin-top: var(--s8); }
    fit side by side should stack, which is what a phone does everywhere
    else. */
 .endbar { display: flex; flex-wrap: wrap; gap: var(--s2); }
+
+/* ── The Badge Case (PRD Req 11) ──────────────────────────────────────────
+   A shelf, not a list. Req 11 makes the badges the profile's hero, so they
+   are what the grid is made of and the list name hangs underneath; a row
+   layout with a thumbnail would have made them captions on something else.
+
+   `auto-fill` with a 132px floor rather than a fixed column count: two
+   badges across on every phone, three on a Pro Max in landscape and four on
+   a tablet, without a breakpoint deciding it. The floor is the width at
+   which a two-line list name stops wrapping to four. */
+.case { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
+  gap: var(--s4) var(--s3); }
+.case-item { display: grid; gap: var(--s2); justify-items: center; text-align: center;
+  background: none; border: 0; padding: var(--s2) 0; min-width: 0; cursor: pointer;
+  transition: transform var(--m-press) var(--ease-out); }
+.case-item:active { transform: scale(0.96); }
+.case-item:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: var(--r-card); }
+@media (prefers-reduced-motion: reduce) { .case-item { transition: none; } }
+/* The badge is the item. 112px is the smallest size at which the plate's
+   inscription ring is still legible as type rather than as texture — below
+   it the badge reads as a coin, which is the one thing it must not. */
+.case-badge { width: 112px; max-width: 100%; }
+.case-badge svg { width: 100%; height: auto; display: block; }
+.case-name { font-family: var(--serif); font-weight: 600; font-size: 0.9375rem;
+  line-height: 1.2; color: var(--text-primary); overflow-wrap: break-word; min-width: 0; }
+.case-empty { text-align: center; }
+.case-empty .btn { margin-top: var(--s3); }
 .endbar .btn { flex: 1 1 14rem; }
 .finished-head { text-align: center; }
 .finished-head .insc { font-family: var(--serif); font-weight: 600; font-size: 1.0625rem; margin-top: var(--s2); }
 .sug-topic { display: block; width: 100%; text-align: left; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--r-card); padding: var(--s3) var(--s4); margin-bottom: var(--s2); }
 .sug-topic .t { font-family: var(--serif); font-weight: 600; font-size: 1.0625rem; }
-.sug-topic .lvl { font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 700; color: var(--text-disabled); margin-bottom: var(--s1); }
+/* `--text-secondary`, not `--text-disabled`. The disabled token measures
+   2.41:1 in Gallery and 3.3:1 in Vault — it fails AA for text in BOTH
+   schemes, which is correct for a switched-off control (1.4.3 exempts those)
+   and wrong for a label. These read "Very specific", "Broad", "Coming next":
+   live text on a live card. Found 2026-11-18 when the contrast sweep stopped
+   skipping everything below the fold. */
+.sug-topic .lvl { font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 700; color: var(--text-secondary); margin-bottom: var(--s1); }
 /* The card leads with the LIST NAME (Mischa, 2026-08-15). The name is the
    only display-size type on the card; the topic sits above it as a label and
    the creator below it as a byline, both far smaller — a card is a list first
    and a person second. Nothing on it is free text. */
 .other-ten { position: relative; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--r-card); padding: var(--s4); margin-bottom: var(--s3); }
-.other-ten .topic { display: block; font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-disabled); }
+.other-ten .topic { display: block; font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-secondary); }
 /* ── What to make next ──────────────────────────────────────────────────── */
 .whatsnext { display: grid; gap: var(--s3); margin: 0 0 var(--s6); }
 .whatsnext .eyebrow { margin: 0; font: 700 0.6875rem/1.2 var(--sans); letter-spacing: .14em;
@@ -555,7 +588,13 @@ section { margin-top: var(--s8); }
 .cut-cell:not([data-keep="1"]) .kn { display: none; }
 
 footer.notes { margin-top: var(--s8); padding-top: var(--s4); border-top: 1px solid var(--border-subtle); color: var(--text-secondary); font-size: 0.8125rem; }
-footer.notes .build { color: var(--text-disabled); margin-top: var(--s2); }
+/* `--text-secondary`, not `--text-disabled`. The disabled token is #A8A196,
+   which on Gallery's #FAF8F4 measures 2.41:1 — a real AA failure on a real
+   line of text, found on 2026-11-18 when the contrast sweep first visited a
+   screen short enough for this footer to be above the fold. It is 4.9:1 now
+   in light and 7.2:1 in dark. `--text-disabled` is for controls that are
+   switched off, which WCAG 1.4.3 exempts; a build stamp is neither. */
+footer.notes .build { color: var(--text-secondary); margin-top: var(--s2); }
 /* ── Intro ────────────────────────────────────────────────────────────────
    Stack's splash rules, inherited wholesale: show the product rather than
    describe it, bake the artwork in so the first screen never waits on an API,
@@ -2036,7 +2075,7 @@ function notes() {
   return `<footer class="notes">
     <p>Structure prototype. Glass, haptics, and final motion are judged on
     device, not here. Judge the flow, the anatomy, and the words.</p>
-    <p class="build">build 0014 · M5 · public Ten page, topic page, share card</p>
+    <p class="build">build 0021 · the wall, what to make next, your badge case</p>
   </footer>`;
 }
 
@@ -2609,7 +2648,17 @@ const WALL_ROWS = 5;
    like every other round figure in the app so that the first screen is not
    the one place a count appears unpunctuated. PRD Req 1 carries the condition
    attached to it: this is a claim about a corpus that does not exist yet, and
-   it is a launch blocker until it is read from the database. */
+   it is a launch blocker until it is read from the database.
+
+   THE NUMBER ALREADY EXISTS SERVER-SIDE. `public.product_stats.published_tens`
+   in `supabase/migrations/0002_aggregate_stats.sql` is exactly this count, is
+   `security_invoker` and is granted to `anon` — so the wiring is a read, not
+   a schema change.
+
+   It must NOT be fetched on this screen. "The first screen never waits on an
+   API" is a rule inherited from Stack and an asserted one here ("the intro
+   makes no API calls"), so the count is baked at build time or read in the
+   background and cached, with this constant as the floor it falls back to. */
 const CORPUS_CLAIM = 5000;
 
 /* Where in its own cycle each row starts, so the NAMES are spread through
@@ -3204,7 +3253,9 @@ function risingNow(n = 6) {
 function whatsNext() {
   const today = todaysPick(), week = thisWeeksPick(), rising = risingNow(6);
   if (!today && !week && !rising.length) return '';
-  const chip = t => `<button class="chip pickchip" data-topic='${esc(JSON.stringify(t))}'
+  /* A chip is a browse gesture, so it opens the topic rather than starting
+     it. Only "Make this one" and "Make yours" commit. */
+  const chip = t => `<button class="chip pickchip" data-topicpage='${esc(JSON.stringify(t))}'
     >${esc(t.title.replace(/^Top 10 /, ''))}</button>`;
   return `<section class="whatsnext" aria-label="What to make next">
     ${today ? `<article class="pick">
@@ -3213,7 +3264,7 @@ function whatsNext() {
       <p class="why">${esc(today.why)}</p>
       <button class="btn" data-topic='${esc(JSON.stringify(today.topic))}'>Make this one</button>
     </article>` : ''}
-    ${week ? `<button class="pick thin" data-topic='${esc(JSON.stringify(week.topic))}'>
+    ${week ? `<button class="pick thin" data-topicpage='${esc(JSON.stringify(week.topic))}'>
       <span class="eyebrow">This week</span>
       <span class="pickname">${esc(week.topic.title)}</span>
     </button>` : ''}
@@ -3265,6 +3316,12 @@ function renderDiscover() {
           ? `Read ${who}&rsquo;s Top 10` : 'Read this Top 10'}</button>
       </article>`;
     }).join('')}
+    <!-- Your own, at the foot of other people's. The adjacency is the
+         argument: these are theirs, and that button is yours. It costs the
+         topbar nothing, which a second link up there would not. -->
+    <section class="endbar">
+      <button class="btn ghost" data-act="opencase">Your own Top 10s</button>
+    </section>
     ${notes()}`;
   dockEl.innerHTML = '';
 }
@@ -3295,6 +3352,185 @@ function renderOther(id) {
       ${open ? '' : `<button class="btn gate-cta" data-topic='${esc(JSON.stringify(p.topic))}'>Make your ${esc(p.topic.title)}</button>`}
     </section>
     ${notes()}`;
+  dockEl.innerHTML = '';
+}
+
+
+
+/* ── A topic, before you commit to it (PRD Req 9) ───────────────────────────
+   Req 9: "Entering any topic shows the consensus, notable takes, and the
+   ever-present 'Make yours' action."
+
+   What was missing was the middle step. Every route into a topic - the
+   rising chips, the weekly pick - went straight to the build screen, so the
+   only way to find out what "Top 10 Westerns" is was to start making one and
+   look at the shelf. A browse gesture was being answered with a commitment.
+
+   The screen is also where Req 10's comparison finally gets its other half.
+   In-app you could compare yourself with a PERSON; the object model's
+   `shared_with_consensus` - how far you sit from the crowd - had nowhere to
+   appear. It is the whole reason the splash argues with you: "Yours will be
+   different" is only interesting if the app can say by how much. */
+function renderTopicPage(crit) {
+  const topic = makeTopic(crit);
+  const crowd = consensusTen(topic);
+  const mine = (S.done || []).find(d => d.topicId === topic.id);
+  const mineIds = new Set((mine || {}).ranked || []);
+  const theirs = SOURCES.filter(s => s.topic.id === topic.id);
+  const shared = crowd ? crowd.ranked.filter(f => mineIds.has(f.id)).length : 0;
+  const n = supply(topic);
+
+  app.innerHTML = `
+    <div class="topbar"><h1 class="display-lg fitline">${esc(topic.title)}</h1>
+      <button class="link" data-act="topicback">Back</button></div>
+    <p class="prompt">${countNoun(n, topic)} in the collection.${
+      mine ? '' : ` ${esc(topicPrompt(topic))}`}</p>
+
+    ${crowd ? `<section>
+      <div class="section-head"><h2 class="section-h">What everyone picked</h2></div>
+      <p class="prompt" style="margin:0 0 var(--s3)">From ${roughly(crowd.voters)} Top 10s.${
+        mine ? ` <b>You share ${shared} of 10 with them.</b>${shared === 0
+          ? ` Not one ${domainMeta(topic).one} in common. Incredible.` : ''}` : ''}</p>
+      <ol>${crowd.ranked.map((f, i) => {
+        const yours = mine ? (mine.ranked || []).indexOf(f.id) : -1;
+        return `<li><div class="tenrow ${i === 0 ? 'one' : ''} ${yours >= 0 ? 'shared' : ''}">
+          <span class="num">${i + 1}</span><span class="thumb"><img src="${art(f)}" alt="" loading="lazy"></span>
+          <span class="meta"><span class="t">${esc(f.t)}</span><span class="s">${f.y}${
+            yours >= 0 ? ` · your #${yours + 1}` : ''}</span></span>
+        </div></li>`; }).join('')}</ol>
+    </section>` : ''}
+
+    ${theirs.length ? `<section>
+      <div class="section-head"><h2 class="section-h">Takes on it</h2></div>
+      ${theirs.map(s => `<button class="sug-topic" data-other="${esc(s.id)}">
+        <div class="lvl">${esc(s.role)}</div><div class="t">${esc(s.label)}</div>
+        <div class="why">${unlockedTopics().has(s.topic.id)
+          ? 'Badge open, because you made your own.' : 'Badge locked until you make yours.'}</div>
+      </button>`).join('')}
+    </section>` : ''}
+
+    <!-- "Ever-present", per Req 9 - so it is here whether or not the crowd
+         has a ten to show and whether or not anybody else has taken it on.
+         If you have already made this one it stops being a call to action
+         and becomes the way back to what you made. -->
+    <section class="endbar">
+      ${mine
+        ? `<button class="btn" data-mine="${esc(topic.id)}"
+            aria-label="Open your ${esc(topic.title)}">Open yours</button>`
+        : `<button class="btn" data-topic='${esc(JSON.stringify(topic))}'>Make yours</button>`}
+    </section>
+    ${notes()}`;
+  fitOneLine($('.fitline'));
+  dockEl.innerHTML = '';
+}
+
+/* ── Your Top 10s — the Badge Case (PRD Req 11) ─────────────────────────────
+   The hole this fills: until now a finished Ten was unreachable the moment
+   you left the screen that announced it. `S.done` existed only to gate other
+   people's badges and to aim the daily pick. An app whose thesis is "define
+   yourself through your favourites, and be seen doing it" had nowhere to see
+   what you had made.
+
+   Req 11 calls the profile a BADGE CASE and says the case is its hero, so
+   the badges are the page and the lists hang off them rather than the other
+   way round. Each one is revealed, because a badge you earned is not gated
+   from you - the lock in Req 12 is about other people's.
+
+   No handle and no account here. The prototype is local-first (Req 7) and
+   publishing is what introduces identity; inventing a name for a device
+   would be the same fiction the seed-source decision threw out on
+   2026-11-18. The handle appears when accounts do. */
+function renderYou() {
+  const done = (S.done || []).slice().reverse();      // newest first
+  const open = unlockedTopics();
+  // Theirs that yours has opened. A real number off the fixtures rather than
+  // a claim: it is the one place the gate's retroactive half is countable.
+  const opened = SOURCES.filter(s => open.has(s.topic.id)).length;
+  // A draft is a tray with something in it on a topic you have not finished.
+  const draft = (S.tray || []).length && !open.has(S.topic.id) ? S.tray.length : 0;
+
+  const line = !done.length
+    ? `Nothing here yet. The first one takes about two minutes.`
+    : `${done.length} finished, ${done.length} badge${done.length === 1 ? '' : 's'}.`
+      + (opened ? ` ${done.length === 1 ? 'It has' : 'Between them they have'} opened `
+         + `${opened} of other people&rsquo;s.` : '');
+
+  app.innerHTML = `
+    <div class="topbar"><h1 class="display-lg">Your Top 10s</h1>
+      <button class="link" data-act="youback">Done</button></div>
+    <p class="prompt">${line}</p>
+
+    ${done.length ? `<section>
+      <div class="case">${done.map(d => `
+        <button class="case-item" data-mine="${esc(d.topicId)}"
+          aria-label="Open your ${esc(d.title)}">
+          <span class="case-badge" aria-hidden="true">${
+            badgeSVG(d.badge, 200).replace(/class="layer"/g, 'class="layer on"')}</span>
+          <span class="case-name">${esc(d.title)}</span>
+        </button>`).join('')}</div>
+    </section>` : `<section class="case-empty">
+      <div class="badge-inline" aria-hidden="true">${lockedBadge(true, badgeHash('empty'))}</div>
+      <p class="prompt">A badge is what finishing gives you — and it opens every
+        other Top 10 on that topic at once.</p>
+      <button class="btn" data-act="begin">Make your first list</button>
+    </section>`}
+
+    ${draft ? `<section>
+      <div class="section-head"><h2 class="section-h">Still going</h2></div>
+      <!-- Req 11: "Own profile shows drafts." It is the only thing on this
+           screen without a badge, which is the honest way to say it is not
+           finished. -->
+      <button class="sug-topic" data-act="resume">
+        <div class="lvl">${draft} of 10 picked</div>
+        <div class="t">${esc(S.topic.title)}</div>
+        <div class="why">Pick up where you left off.</div>
+      </button>
+    </section>` : ''}
+
+    ${done.length ? `<section class="endbar">
+      <button class="btn ghost" data-act="discover">Other people&rsquo;s Top 10 lists</button>
+    </section>` : ''}
+    ${notes()}`;
+  dockEl.innerHTML = '';
+}
+
+/* One of your own, opened from the case. Deliberately NOT `renderOther` with
+   a flag: that screen's whole shape is the gate - a locked badge, a line
+   about what opens it, and a CTA to go and make one. None of that applies to
+   a list you made, and the half of it that would survive is the half that
+   says nothing. */
+function renderMine(topicId) {
+  const d = (S.done || []).find(x => x.topicId === topicId);
+  if (!d) { S.scene = 'you'; save(); return renderYou(); }
+  const films = (d.ranked || []).map(id => byId.get(id)).filter(Boolean);
+  // Other takes on the same topic, which is where this screen earns its
+  // place: a badge case that only looks inward is a trophy shelf, and the
+  // product is an argument.
+  const theirs = SOURCES.filter(s => s.topic.id === topicId);
+  app.innerHTML = `
+    <div class="topbar"><h1 class="display-lg fitline">${esc(d.title)}</h1>
+      <button class="link" data-act="you">Back</button></div>
+    <div class="finished-head">
+      <div class="badge-inline">${badgeSVG(d.badge, 200).replace(/class="layer"/g, 'class="layer on"')}</div>
+      <div class="insc">${esc((d.badge || {}).inscription || '')}</div>
+    </div>
+    <section><ol>${films.map((f, i) => `<li><div class="tenrow ${i === 0 ? 'one' : ''}">
+      <span class="num">${i + 1}</span><span class="thumb"><img src="${art(f)}" alt=""></span>
+      <span class="meta"><span class="t">${esc(f.t)}</span><span class="s">${f.y}${f.d ? ' · ' + esc(f.d) : ''}</span></span>
+    </div></li>`).join('')}</ol></section>
+    ${theirs.length ? `<section>
+      <div class="section-head"><h2 class="section-h">Other takes on this</h2></div>
+      <p class="prompt" style="margin:0 0 var(--s3)">Your badge opened ${
+        theirs.length === 1 ? 'this one' : `all ${theirs.length}`} the moment you finished.</p>
+      ${theirs.map(s => `<button class="sug-topic" data-other="${esc(s.id)}">
+        <div class="lvl">${esc(s.role)}</div><div class="t">${esc(s.label)}</div>
+        <div class="why">Read it and see where you disagree.</div></button>`).join('')}
+    </section>` : ''}
+    <section class="endbar">
+      <button class="btn" data-sharemine="${esc(d.topicId)}">Share this Top 10</button>
+    </section>
+    ${notes()}`;
+  fitOneLine($('.fitline'));
   dockEl.innerHTML = '';
 }
 
@@ -3508,6 +3744,14 @@ function renderFinished() {
       <p class="prompt" style="margin:0 0 var(--s3)">They can read the whole list without the app.
         The badge stays locked until they make their own.</p>
       <button class="btn" data-act="share">Share this Top 10</button>
+    </section>
+
+    <section>
+      <div class="section-head"><h2 class="section-h">Your Top 10s</h2></div>
+      <p class="prompt" style="margin:0 0 var(--s3)">${(S.done || []).length === 1
+        ? 'One badge so far. They live here.'
+        : `All ${(S.done || []).length} of them, with their badges.`}</p>
+      <button class="btn ghost" data-act="opencase">Open your badge case</button>
     </section>
 
     <section class="endbar">
@@ -3776,6 +4020,9 @@ function render() {
   if (S.scene === 'intro') renderIntro();
   else if (S.scene === 'discover') renderDiscover();
   else if (S.scene === 'other') renderOther(S.other);
+  else if (S.scene === 'you') renderYou();
+  else if (S.scene === 'topic') renderTopicPage(S.topicPage);
+  else if (S.scene === 'mine') renderMine(S.mine);
   else if (S.scene === 'build') renderBuild();
   else if (S.scene === 'cut') renderCut();
   else if (S.scene === 'rank') { if (!S.rank) startDuel(); else renderDuel(); }
@@ -3785,7 +4032,7 @@ function render() {
 }
 
 document.addEventListener('click', e => {
-  const t = e.target.closest('[data-title],[data-add],[data-deeper],[data-remove],[data-move],[data-toggle],[data-toggle-service],[data-facet],[data-facetjump],[data-higher],[data-sheet],[data-clear],[data-act],[data-topic],[data-focusnode],[data-dropfocus],[data-mapnode],[data-other]');
+  const t = e.target.closest('[data-title],[data-add],[data-deeper],[data-remove],[data-move],[data-toggle],[data-toggle-service],[data-facet],[data-facetjump],[data-higher],[data-sheet],[data-clear],[data-act],[data-topic],[data-focusnode],[data-dropfocus],[data-mapnode],[data-other],[data-mine],[data-sharemine],[data-topicpage]');
   if (!t) return;
 
   if (t.dataset.clear) { e.stopPropagation(); const k = t.dataset.clear; S.filters[k] = k === 'services' ? [] : null; save(); renderBuild(); return; }
@@ -3793,6 +4040,23 @@ document.addEventListener('click', e => {
     S.title = +t.dataset.title; S.back = S.scene; S.scene = 'title'; save(); render(); return;
   }
   if (t.dataset.add) { addFilm(+t.dataset.add, t); return; }
+  if (t.dataset.mine) { S.mine = t.dataset.mine; S.scene = 'mine'; save(); render(); return; }
+  /* A browse gesture opens the topic; only a CTA commits to it. The criteria
+     travel in the attribute rather than an id, because a topic page can be
+     opened for a topic nobody has made yet. */
+  if (t.dataset.topicpage) {
+    S.topicPage = JSON.parse(t.dataset.topicpage); S.topicBack = S.scene;
+    S.scene = 'topic'; save(); render(); return;
+  }
+  /* Sharing one of YOUR OWN from the case, rather than the one the build
+     screen happens to be on. `mine` stays absent for the same reason it does
+     on the live share: the comparison belongs to whoever opens the link. */
+  if (t.dataset.sharemine) {
+    const d = (S.done || []).find(x => x.topicId === t.dataset.sharemine);
+    if (d) shareLink(Share.link({ title: d.title, author: 'you', topicId: d.topicId,
+      items: d.ranked, badge: d.badge, unlocked: true }, location.origin));
+    return;
+  }
   if (t.dataset.deeper) {
     const id = +t.dataset.deeper;
     follow(id); S.q = ''; renderBuild();
@@ -3874,6 +4138,14 @@ document.addEventListener('click', e => {
       S.introSeen = (S.introSeen || 0) + 1;
       S.scene = 'build'; save(); render(); break;
     case 'discover': S.scene = 'discover'; save(); render(); break;
+    /* The Badge Case remembers where you came from, because it is reachable
+       from two different places and "Done" has to mean the same thing in
+       both: back to what you were doing. */
+    case 'you': S.scene = 'you'; save(); render(); break;
+    case 'opencase': S.youBack = S.scene; S.scene = 'you'; save(); render(); break;
+    case 'youback': S.scene = S.youBack || ((S.done || []).length ? 'done' : 'build'); save(); render(); break;
+    case 'topicback': S.scene = S.topicBack || 'discover'; save(); render(); break;
+    case 'resume': S.scene = 'build'; save(); render(); break;
     case 'backhome': S.scene = (S.done || []).length ? 'done' : 'build'; save(); render(); break;
     case 'notyet': announce(`${t.dataset.label} is not built yet`); break;
     case 'clearq': S.q = ''; save(); renderBuild(); break;
@@ -3947,6 +4219,7 @@ window.dockStep = dockStep;
 window.theirTen = theirTen; window.listName = listName;
 window.topicTitle = topicTitle; window.topicPrompt = topicPrompt; window.makeTopic = makeTopic;
 window.supply = supply; window.offerable = offerable; window.inTopic = inTopic; window.KEY = KEY;
+window.consensusTen = consensusTen;
 window.rabbitHole = rabbitHole; window.CAT = CAT; window.renderBuild = renderBuild;
 render();
 </script>
