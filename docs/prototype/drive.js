@@ -530,7 +530,9 @@ const DOMAIN_SPEECH = `(() => {
           inStrip: cells.filter(c => c.classList.contains('plate')).length,
           kicker: (plate.querySelector('.k') || {}).textContent.trim(),
           name: (plate.querySelector('.n') || {}).textContent.trim(),
-          voters: (plate.querySelector('.v') || {}).textContent.trim(),
+          // Everything the plate says, so an extra line cannot creep back in
+          // unnoticed — the plate is one poster wide and has room for two.
+          says: [...plate.children].map(c => c.textContent.trim()).join(' / '),
           ranks: ranks.join(','),
           /* The duplicate copy is what makes -50% land where the first copy
              began. If the two halves are not the same width the wall jumps
@@ -566,13 +568,17 @@ const DOMAIN_SPEECH = `(() => {
   check(wall.list.every(r => r.name.length > 3 && !/^top 10/i.test(r.name)),
     `and then what makes it different, not the words they share `
     + `(${wall.list.map(r => r.name).join(' · ')})`);
-  /* NOT a byline. Mischa asked, of the first version, who Sam is, why he
-     should care, and why that would make him make his own - and there is no
-     good answer. A stranger's taste is noise; a crowd's verdict is a claim
-     you can disagree with, and disagreement is what makes somebody open the
-     app (2026-11-17). */
-  check(wall.list.every(r => /^From [\d,+]+ Top 10s$/i.test(r.voters)),
-    `attributed to the crowd, not to an invented person ("${wall.list[0].voters}")`);
+  /* NO BYLINE, which is the same rule arrived at from the other end. Mischa
+     asked, of the first version, who Sam is, why he should care, and why that
+     would make him make his own - and there is no good answer, so no list on
+     this screen wears a person's name. The plate used to carry the crowd
+     credit ("From 2,800+ Top 10s"); at one poster wide there is no room for
+     it and the tagline underneath says the same thing about the whole corpus.
+     What is asserted is that the plate says the kicker and the name and
+     NOTHING ELSE, so neither a byline nor anything else can creep back on to
+     it unnoticed. */
+  check(wall.list.every(r => r.says === 'Top 10 / ' + r.name),
+    `and nothing else on it — no byline, invented or otherwise ("${wall.list[0].says}")`);
   check(wall.list.every(r => Math.abs(r.seam) < 0.05 && r.samePair),
     `the loop is seamless to the pixel, not nearly `
     + `(${wall.list.map(r => r.seam).join(', ')} off)`);
@@ -867,13 +873,16 @@ const DOMAIN_SPEECH = `(() => {
         return r.width > 10 && r.left > -4 && r.right < window.innerWidth + 4
           && r.bottom <= copyTop + 1 && r.top >= -1; };
       [...document.querySelectorAll('.wallrow .plate')].forEach(pl => {
-        const n = pl.querySelector('.n'), v = pl.querySelector('.v');
-        if (onScreen(n)) items.push({ k: 'list name', ink: 'text', ...box(n) });
-        if (onScreen(v)) items.push({ k: 'list credit', ink: 'dim', ...box(v) });
+        const n = pl.querySelector('.n'), k = pl.querySelector('.k');
+        if (n && onScreen(n)) items.push({ k: 'list name', ink: 'text', ...box(n) });
+        // The kicker is the accent, not the dim ink — measured on its own
+        // because it is the smallest type on the wall.
+        if (k && onScreen(k)) items.push({ k: 'TOP 10 kicker', ink: 'accent', ...box(k) });
       });
       const ink = { text: getComputedStyle(document.querySelector('.wallcopy h1')).color,
-        dim: getComputedStyle(document.querySelector('.wallcopy .promise')).color };
-      document.querySelectorAll('.wallcopy h1, .wallcopy .pitch, .wallcopy .promise, .plate .k, .plate .n, .plate .v')
+        dim: getComputedStyle(document.querySelector('.wallcopy .promise')).color,
+        accent: getComputedStyle(document.querySelector('.plate .k')).color };
+      document.querySelectorAll('.wallcopy h1, .wallcopy .pitch, .wallcopy .promise, .plate .k, .plate .n')
         .forEach(e => { e.style.visibility = 'hidden'; });
       document.querySelectorAll('.wallrow .poster').forEach(c => {
         c.style.background = '#fff';

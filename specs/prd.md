@@ -795,9 +795,10 @@ fifteen seconds**: ten posters is 1,110px of travel between names on a 393pt
 screen, so a row carries its name about 15% of the time and a cycle is three
 times longer than a look at a splash. It is **pinned to its row** now, bottom
 corner, alternating side with the drift, with the posters passing behind it.
-Nameless 0% of the time, two names on screen at all times. The reasoning, the
-two fixes that measured worse, and the gate that now holds it are in
-design.md.
+Nameless 0% of the time, three names on screen at all times. The reasoning,
+the two fixes that measured worse, and the gate that now holds it are in
+design.md — along with the sweep that then narrowed it to one poster wide over
+four and a half rows, so the artwork gets the room back.
 
 **The tagline is Mischa's, and its number is a placeholder with a condition
 on it.** *"The tag line should be '5000+ lists from the community. Share
@@ -838,8 +839,12 @@ field TMDB does supply and would open the whole "Disney animated / A24 / Studio
 Ghibli" family of lists people actually name out loud.
 
 **Acceptance:**
-- Four rows, each one list: a plate carrying `TOP 10`, the list's own name and
-  a crowd credit, pinned to the row, then ten posters ranked 1–10, twice.
+- Four and a half rows, each one list: a plate carrying `TOP 10` over the
+  list's own name and nothing else, pinned to the row's top corner and exactly
+  one poster wide, then ten posters ranked 1–10, twice. The half row is a peek,
+  faded out, and goes on a screen under 620pt.
+- **At least three posters cycling in each row** (Mischa, 2026-11-18), which
+  is what sets both the plate's width and the row count.
 - **A list name is readable at every moment**, and more than one on average —
   sampled over the first eight seconds, not inferred from a screenshot.
 - The strip's two copies are the same width to within a sub-pixel, so the

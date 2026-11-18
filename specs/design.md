@@ -1684,11 +1684,12 @@ comparison was between three rendered screens instead of three paragraphs.
 
 | Part | What it is |
 |---|---|
-| `.wallrows` | Four rows, `position: absolute; inset: 0`, flex column, own stacking context |
-| `.wallrow` | One list. `flex: 1 1 0`, so a row's height is the screen divided by four |
+| `.wallrows` | Four and a half rows, `position: absolute; inset: 0`, flex column, own stacking context |
+| `.wallrow` | One list. `flex: 1 1 0`, so a row's height is the screen divided by 4.5 |
+| `.wallrow:last-child` | The half row: `flex-grow: .5`, masked to nothing. Hidden under 620pt |
 | `.wallrail` | The moving part, `inset: 0`, carrying the edge mask |
 | `.strip` | `ten posters × 2`, drifting `0 → −50%` |
-| `.plate` | **Pinned** to its row's bottom corner, alternating side. `TOP 10` / the list's name / `From N+ Top 10s` |
+| `.plate` | **Pinned** to its row's top corner, alternating side, **one poster wide**. `TOP 10` over the list's name, and nothing else |
 | `.poster` | `aspect-ratio: 2/3`, height 100% of its row, rank 1–10 on the artwork |
 | `.wallveil` | The gentle one: seats the wall, never past `.32` |
 | `.wallcopy::before` | The strong one: sized to the copy, not the viewport |
@@ -1748,6 +1749,60 @@ test: sample the first 8 seconds and require a readable name at every moment,
 and more than one on average. A screenshot proves one frame; this proves the
 frames between them, which is precisely what a dozen screenshots of the broken
 version failed to notice.
+
+### One poster wide, and four and a half rows (2026-11-18, Mischa)
+
+*"For each row freeze the list name but shortened… and have it just take up
+the space of 1 poster, so that at least 3 posters are seen cycling through the
+row at any time… what if we have 4.5 rows in that treatment and the last half
+row is faded out."* Both, and the sweep says why both.
+
+The pinned plate that fixed the nameless wall was **56% of the row wide** and
+carried three lines — kicker, name, and the crowd credit *"From 2,800+ Top
+10s"*. It left about **1.5 posters** visible in each row, which is a wall of
+labels with some artwork behind it rather than the other way round.
+
+So the plate is **exactly one poster wide** (`width: 66.7cqh`, since a poster
+is `2/3` of the row's height), **anchored to the top** of its row rather than
+the bottom — which is worth 40pt of height and gets one more plate clear of
+the copy — and it carries **two lines only**. The credit line goes: at one
+poster wide there is no room, and the tagline underneath already says the same
+thing about the whole corpus. No list on this screen wears a byline, which is
+the rule from 2026-11-17 arrived at from the other end, and the suite asserts
+the plate says the kicker and the name and *nothing else*.
+
+**The row count, swept at 393×659:**
+
+| rows | names legible | posters cycling | poster | name |
+|---|---|---|---|---|
+| 4 | 3 | 2.5 | 103×155 | 12.4px |
+| **4.5** | **3 + a peek** | **3.0** | **91×136** | **10.9px** |
+| 5 | 4 | 3.4 | 81×122 | 9.8px |
+| 6 | 4 | 4.2 | 67×101 | 8.0px |
+
+Six is where the name stops being readable — 8px, under the **11px floor this
+screen measured for itself** on 2026-11-17 — so the choice was between the
+first three. **4.5 is the only one that meets "at least 3 posters cycling"
+without spending the name to get there**, and it was Mischa's own suggestion.
+
+The half row earns its place twice: it takes a share of the column, so the
+four full rows are 136pt rather than 155 — which is what buys the third poster
+— and it shows the top edge of a *fifth* list fading into the copy, which says
+the wall carries on past the screen without claiming a row it cannot show. It
+is masked at the ROW level, plate and all, unlike the others: a name at full
+strength on a row you can only half see is a promise the row cannot keep.
+
+**Under 620pt of viewport the half row goes.** The plate's type is a fraction
+of its row, so 4.5 shares of an SE's 553pt put the name at 9.6px. Dropping the
+peek gives the four real rows their height back and the name returns to 11px.
+The old splash hid its strip at the same boundary for the same reason: what
+goes is the thing that was extra.
+
+Measured across nine viewports, nothing clipped and nothing scrolling: the
+name runs **11px on an SE to 17.3px on an iPad**, with 2.2–4.2 posters
+cycling. The one soft spot is a tall narrow browser (393×820), where the rows
+grow to 172pt and only 2.2 posters fit beside the plate — a viewport no phone
+actually hands us.
 
 ### Six things that are decisions, not defaults
 
