@@ -3469,6 +3469,75 @@ const DOMAIN_SPEECH = `(() => {
   await page.waitForTimeout(300);
   check(await page.locator('.dock').count() === 1, 'and picking it up returns to the build screen');
 
+  /* ── A root is a set of tags (2026-11-18, Mischa) ───────────────────────
+     "You're joining a genre/sub-genre root... We should also have a way to
+     make a free-text custom list (e.g. top 10 disney animated movies of the
+     2000s)."
+
+     Until this, a root narrowed on ONE value per axis, so "Crime Dramas"
+     could not be named, matched or filled. These check the three things the
+     whole model rests on: a set MATCHES as a set, it is NAMED in English, and
+     two people who reach the same set by different routes get the same root. */
+  console.log('\n── Roots are sets of tags ───────────────────────');
+
+  const roots = await page.evaluate(() => {
+    const t = c => window.makeTopic(c);
+    const named = c => { const x = t(c); return { title: x.title, supply: window.supply(x), id: x.id }; };
+    const crimeDrama = t({ genre: ['Crime', 'Drama'] });
+    return {
+      // named in English, not as a tag dump
+      names: [
+        named({ genre: ['Crime', 'Drama'] }),
+        named({ genre: ['Drama', 'Romance'] }),
+        named({ genre: ['Animation', 'Family'] }),
+        named({ studio: 'Walt Disney Pictures', genre: 'Animation' }),
+        named({ studio: 'Walt Disney Pictures', genre: 'Animation', decade: 2000 }),
+      ],
+      // every film in it really carries BOTH genres
+      everyMemberHasBoth: window.CAT.filter(f => window.inTopic(f, crimeDrama))
+        .every(f => (f.g || []).includes('Crime') && (f.g || []).includes('Drama')),
+      // and it is strictly narrower than either genre alone
+      narrower: window.supply(crimeDrama) < window.supply(t({ genre: 'Crime' }))
+             && window.supply(crimeDrama) < window.supply(t({ genre: 'Drama' })),
+      // ORDER DOES NOT MATTER - the invariant the crowd depends on
+      sameEitherWay: t({ genre: ['Crime', 'Drama'] }).id === t({ genre: ['Drama', 'Crime'] }).id,
+      // and a single genre is untouched by any of it
+      singleStillWorks: t({ genre: 'Western' }).title,
+      // a studio goes by the name a person uses
+      studioShortened: !/Walt Disney Pictures/.test(t({ studio: 'Walt Disney Pictures' }).title),
+    };
+  });
+
+  const byTitle = Object.fromEntries(roots.names.map(n => [n.title, n]));
+  check(!!byTitle['Top 10 Crime Dramas'],
+    `two genres name one root in English (${roots.names.map(n => n.title.replace('Top 10 ', '')).join(' / ')})`);
+  check(!!byTitle['Top 10 Romantic Dramas'],
+    'a genre that reads as a modifier stays out of the head slot — "Romantic Dramas", not "Drama Romances"');
+  check(roots.everyMemberHasBoth,
+    'every film in a two-genre root carries both genres — a set matches as a set');
+  check(roots.narrower,
+    'and the root is narrower than either genre alone');
+  check(roots.sameEitherWay,
+    'the same tags in either order are the SAME root — two people typing different words join one crowd');
+  check(roots.singleStillWorks === 'Top 10 Westerns',
+    `a one-tag root is untouched ("${roots.singleStillWorks}")`);
+  check(roots.studioShortened,
+    'a studio goes by the name a person uses — Disney, not Walt Disney Pictures');
+
+  /* Mischa's own example, which does NOT fill, and must not be offerable.
+     Studio tags cover 21% of titles, so most three-tag phrases a person types
+     will land short - this is the case the picker has to be designed for, not
+     an edge case to engineer around. */
+  const disney = byTitle['Top 10 Disney Animated Movies'];
+  const disney2000s = byTitle['Top 10 Disney Animated Movies of the 2000s'];
+  check(disney && disney.supply >= 10,
+    `"Top 10 Disney Animated Movies" is a real root (${disney && disney.supply} films)`);
+  check(disney2000s && disney2000s.supply < 10,
+    `and narrowing it to the 2000s is not (${disney2000s && disney2000s.supply} films, needs 10)`);
+  check(await page.evaluate(() =>
+    !window.offerable(window.makeTopic({ studio: 'Walt Disney Pictures', genre: 'Animation', decade: 2000 }))),
+    'so the app refuses to offer it — a list that cannot be filled must not be named');
+
   /* ── Every list in the pool is one the wall can actually carry ──────────
      The wall shows four of six, and which four rotates per visit, so four of
      them are never on the first screen anybody sees. A rule that happens to

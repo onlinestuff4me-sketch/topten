@@ -1342,7 +1342,9 @@ function inTopic(f, t = S.topic) {
   if ((f.dm || 'movie') !== domainOf(t)) return false;
   if (t.director && f.d !== t.director) return false;
   if (t.actor && !(f.ca || []).includes(t.actor)) return false;
-  if (t.genre && !f.g.includes(t.genre)) return false;
+  // EVERY genre, not one: a root is a set, so "Crime Dramas" means both.
+  for (const g of genresOf(t)) if (!(f.g || []).includes(g)) return false;
+  if (t.studio && !(f.br || []).includes(t.studio)) return false;
   if (t.decade && Math.floor(f.y / 10) * 10 !== t.decade) return false;
   return true;
 }
@@ -2985,7 +2987,49 @@ const GENRE_HEAD = { Comedy: 'Comedies', Thriller: 'Thrillers', Drama: 'Dramas',
   Documentary: 'Documentaries', Western: 'Westerns', Mystery: 'Mysteries', Romance: 'Romances' };
 const GENRE_ADJ = { 'Science Fiction': 'Sci-Fi', 'Sci-Fi & Fantasy': 'Sci-Fi',
   'Action & Adventure': 'Action', Animation: 'Animated', History: 'Historical',
-  Music: 'Musical', 'War & Politics': 'War' };
+  Music: 'Musical', 'War & Politics': 'War', Romance: 'Romantic' };
+
+/* A studio's own name is not what a person calls it. "Top 10 Walt Disney
+   Pictures Animated Movies of the 2000s" is the catalogue talking; "Top 10
+   Disney Animated Movies of the 2000s" is the list Mischa asked for. Only the
+   studios a root can actually be built on need an entry - `br` tags 21% of
+   titles and twenty-six studios reach ten. */
+const STUDIO_ADJ = {
+  'Walt Disney Pictures': 'Disney', 'Disney Channel': 'Disney Channel',
+  'DreamWorks Animation': 'DreamWorks', 'Marvel Studios': 'Marvel',
+  'Prime Video': 'Prime Video', 'Warner Bros. Pictures': 'Warner Bros.',
+  'Universal Pictures': 'Universal', 'Columbia Pictures': 'Columbia',
+  'Paramount Pictures': 'Paramount', 'A24': 'A24', 'Blumhouse': 'Blumhouse',
+  'Pixar': 'Pixar', 'Studio Ghibli': 'Ghibli', 'Netflix': 'Netflix',
+};
+const studioName = b => STUDIO_ADJ[b] || b;
+
+/* ── A ROOT IS A SET OF TAGS (2026-11-18, Mischa) ──────────────────────────
+   "You're joining a genre/sub-genre root... A more sophisticated version
+   would look at all the elements of a movie (studio = disney, era = 2000s,
+   format = animated), so that people could map any free-text to a tagged
+   set."
+
+   Until now a root narrowed on ONE value per axis, so "Crime Dramas" could
+   not be named or filled. A root is now a set, and `genre` may be a list.
+   Criteria still arrive in the old shape from every existing caller - a bare
+   string stays legal - because the alternative was rewriting forty call
+   sites to prove a point about representation. */
+const genresOf = t => !t || !t.genre ? [] : (Array.isArray(t.genre) ? t.genre : [t.genre]);
+
+/* The canonical tag list for a root. Sorted, so two roots built from the same
+   criteria in a different order are the same root and the crowd does not
+   split in two. This is what the picker will search and what `topicId`
+   hashes. */
+function tagsOf(t) {
+  const tags = [`kind:${domainOf(t)}`];
+  for (const g of genresOf(t).slice().sort()) tags.push(`genre:${g}`);
+  if (t.studio) tags.push(`studio:${t.studio}`);
+  if (t.director) tags.push(`director:${t.director}`);
+  if (t.actor) tags.push(`actor:${t.actor}`);
+  if (t.decade) tags.push(`decade:${t.decade}`);
+  return tags;
+}
 const cap = s => String(s).charAt(0).toUpperCase() + String(s).slice(1);
 // The word a genre goes by in a sentence, so a card's reason and the name
 // above it call the same thing the same thing.
@@ -3002,14 +3046,31 @@ const decadeName = d => (d >= 2000 ? `${d}s` : `${String(d).slice(2)}s`);
 // One decomposition, two renderings. The title and the prompt are the same
 // sentence in two registers, so they cannot drift into describing different
 // lists — which is precisely how a list ends up misnamed.
+/* Naming a set of tags in English.
+
+   One genre with a plural form becomes the HEAD - "Westerns", "Dramas". The
+   rest become adjectives in front of it - "Crime Dramas". A genre that reads
+   better as a modifier says so in GENRE_ADJ and stays out of the head slot,
+   which is why Drama + Romance is "Romantic Dramas" and not "Drama Romances".
+
+   Order is English's, not the tag set's: person, studio, genre adjectives,
+   head, decade. "Top 10 Disney Animated Movies of the 2000s". */
 function nameParts(t) {
   const meta = DOMAINS.find(d => d.id === domainOf(t)) || DOMAINS[0];
-  const head = (meta.id === 'movie' && t.genre && GENRE_HEAD[t.genre]) || null;
-  const bare = !t.genre && !t.director && !t.actor && !t.decade;
+  const gs = genresOf(t);
+  // A genre with its own ADJ form prefers to modify; otherwise the last one
+  // alphabetically that has a plural takes the head slot, which is stable.
+  const headable = meta.id === 'movie'
+    ? gs.filter(g => GENRE_HEAD[g] && !GENRE_ADJ[g]).sort() : [];
+  const headGenre = headable.length ? headable[headable.length - 1] : null;
+  const adjs = gs.filter(g => g !== headGenre).sort()
+    .map(g => GENRE_ADJ[g] || g);
+  if (t.studio) adjs.unshift(studioName(t.studio));
+  const bare = !gs.length && !t.director && !t.actor && !t.decade && !t.studio;
   return {
     person: t.director || t.actor || null,
-    adj: head ? null : (t.genre ? (GENRE_ADJ[t.genre] || t.genre) : null),
-    head: head || cap(meta.noun),
+    adj: adjs.length ? adjs.join(' ') : null,
+    head: (headGenre && GENRE_HEAD[headGenre]) || cap(meta.noun),
     tail: t.decade ? ` of the ${decadeName(t.decade)}` : bare ? ' of All Time' : '',
   };
 }
@@ -3916,13 +3977,14 @@ function otherDomains() {
   }).join('');
 }
 
+/* The id IS the tag set, joined. Two people who reach the same root by
+   different routes - a suggestion, a typed phrase, a title they picked - get
+   the same id and therefore the same crowd. The old version enumerated the
+   shapes it knew and returned the domain for anything else, so every
+   multi-tag root would have collided on "movie". */
 function topicId(t) {
-  if (t.director) return `${domainOf(t)}:director:${t.director}`;
-  if (t.actor) return `${domainOf(t)}:actor:${t.actor}`;
-  if (t.genre && t.decade) return `${domainOf(t)}:genre:${t.genre}:${t.decade}`;
-  if (t.genre) return `${domainOf(t)}:genre:${t.genre}`;
-  if (t.decade) return `${domainOf(t)}:decade:${t.decade}`;
-  return t.id || domainOf(t);
+  const tags = tagsOf(t);
+  return tags.length === 1 ? (t.id || domainOf(t)) : tags.join('|');
 }
 
 /* Every card here is a pair: criteria we will name the new list by, and the

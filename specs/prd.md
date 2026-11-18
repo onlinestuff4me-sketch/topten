@@ -839,6 +839,43 @@ and reveal; badge generation off the main thread.
 - Acceptance: Instruments traces recorded at each milestone; no dropped-frame
   regressions accepted into main.
 
+**15. Roots. (Decided 2026-11-18, Mischa — built the same day.)** A list's
+subject is a **root**, and a root is a **set of tags**, not a string and not a
+person's list. *"You're joining a genre/sub-genre root… We should also have a
+way to make a free-text custom list (e.g. top 10 disney animated movies of
+the 2000s), and you can join in and make your own top 10 list on that."*
+
+- **Free text is an input, not a storage format.** A typed phrase resolves to
+  tags; the root is the tag set. Two people who type different words for the
+  same thing join one root and one crowd.
+- **The id IS the tag set**, sorted: `kind:movie|genre:Crime|genre:Drama|decade:1990`.
+  Sorting is what makes order irrelevant, which is what keeps the crowd whole.
+- **A root must be fillable.** `offerable(t) = supply(t) >= 10`, already the
+  rule, now load-bearing: *"Top 10 Disney Animated Movies of the 2000s"* is
+  seven films in this catalogue and the app refuses to name it.
+- Acceptance: a two-genre root names in English (*Crime Dramas*, not *Crime
+  Drama Movies*); every item in it carries every tag; the same tags in either
+  order give one id; an unfillable set is not offerable.
+
+**The order of play (Mischa, 2026-11-18).** *"Ppl should have to finish their
+first generic favorite list first. But then after that they should be able to
+create genre-based and tag-based lists, starting with those tags, or starting
+with a single title."*
+
+1. First launch asks for the broad one — *your 10 favorite movies of all
+   time*. No picker, no tags. Asking somebody to choose a sub-genre before
+   they have chosen a film is the hard part first.
+2. **After that first finished list**, two ways into a custom root:
+   **from tags** (type a phrase, pick from what can actually be filled) or
+   **from a single title** (search or browse to a film, and the app offers
+   the roots that film belongs to).
+
+**Built so far:** roots as tag sets, the namer, and the fillability rule.
+**Not built:** the picker, and the start-from-a-title path. Measured root
+space and the data limits are in `docs/list-mechanics.md` — 87 one-tag and
+423 two-tag roots can be filled today; studio tags cover 21% of titles, and
+TMDB keywords (*procedural*, *heist*) are not fetched at all.
+
 ## Nice-to-Have (P1)
 
 - **Social layer:** follows, a takes-feed from followed users, unlock
