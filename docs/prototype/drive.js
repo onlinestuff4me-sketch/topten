@@ -649,13 +649,19 @@ const DOMAIN_SPEECH = `(() => {
       series.push(await page.evaluate(() => {
         const copyTop = document.querySelector('.wallcopy').getBoundingClientRect().top;
         return [...document.querySelectorAll('.wallrow .plate')].filter(pl => {
-          const r = pl.getBoundingClientRect();
-          // Readable means mostly on screen AND clear of the copy, which is
-          // where the veil goes opaque.
+          /* The NAME's box, not the plate's. The plate is a whole poster
+             slot now, so its bottom is its row's bottom whatever the text is
+             doing - and a criterion measured on the card called a name
+             readable when it sat under the copy, and unreadable when it had
+             moved up out of the way. The question is whether the words are
+             legible, so the words are what is measured. */
+          const n = pl.querySelector('.n');
+          if (!n) return false;
+          const r = n.getBoundingClientRect();
           const visW = Math.min(r.right, window.innerWidth) - Math.max(r.left, 0);
           const visH = Math.min(r.bottom, copyTop) - Math.max(r.top, 0);
-          // Geometry is not enough: a plate faded to nothing still has a box
-          // in the right place. Cheap guard against the gate passing on
+          // Geometry is not enough: text faded to nothing still has a box in
+          // the right place. Cheap guard against the gate passing on
           // something nobody can see.
           const cs = getComputedStyle(pl);
           if (cs.visibility === 'hidden' || +cs.opacity < 0.1) return false;

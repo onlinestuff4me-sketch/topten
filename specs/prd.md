@@ -840,8 +840,9 @@ Ghibli" family of lists people actually name out loud.
 
 **Acceptance:**
 - Four and a half rows, each one list: a plate carrying `TOP 10` over the
-  list's own name and nothing else, pinned to the row's top corner and exactly
-  one poster wide, then ten posters ranked 1–10, twice. The half row is a peek,
+  list's own name and nothing else, pinned to the row and occupying **a whole
+  poster slot** — one poster wide, the full height of the row — then ten
+  posters ranked 1–10, twice. The half row is a peek,
   faded out, and goes on a screen under 620pt.
 - **At least three posters cycling in each row** (Mischa, 2026-11-18), which
   is what sets both the plate's width and the row count.

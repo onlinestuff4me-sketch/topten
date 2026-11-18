@@ -1689,7 +1689,7 @@ comparison was between three rendered screens instead of three paragraphs.
 | `.wallrow:last-child` | The half row: `flex-grow: .5`, masked to nothing. Hidden under 620pt |
 | `.wallrail` | The moving part, `inset: 0`, carrying the edge mask |
 | `.strip` | `ten posters × 2`, drifting `0 → −50%` |
-| `.plate` | **Pinned** to its row's top corner, alternating side, **one poster wide**. `TOP 10` over the list's name, and nothing else |
+| `.plate` | **Pinned**, alternating side, **a whole poster slot** — one poster wide and the full height of the row. `TOP 10` over the list's name, and nothing else |
 | `.poster` | `aspect-ratio: 2/3`, height 100% of its row, rank 1–10 on the artwork |
 | `.wallveil` | The gentle one: seats the wall, never past `.32` |
 | `.wallcopy::before` | The strong one: sized to the copy, not the viewport |
@@ -1763,13 +1763,43 @@ carried three lines — kicker, name, and the crowd credit *"From 2,800+ Top
 labels with some artwork behind it rather than the other way round.
 
 So the plate is **exactly one poster wide** (`width: 66.7cqh`, since a poster
-is `2/3` of the row's height), **anchored to the top** of its row rather than
-the bottom — which is worth 40pt of height and gets one more plate clear of
-the copy — and it carries **two lines only**. The credit line goes: at one
+is `2/3` of the row's height) and, from Mischa's next note the same day —
+*"the card on each row would be the full height of the row (with a bit bigger
+text) so it's more visible"* — **the full height of its row too**. At 2:3 that
+makes the card exactly a poster's shape, so every row reads as one sentence:
+here is a title card, and here are its ten.
+
+That is the better idea for a reason worth keeping. As a chip in a corner it
+was a label stuck *on* the wall; at a poster's size it is a card *in* it. It
+also buys the type its room back — a chip 59pt tall had to hold two lines in
+43pt of it, while a full-height card has 120pt, so the name goes from
+**10.9px to 15.6px**.
+
+**Its text is top-aligned, and that is a measurement not a preference.** A
+full-height card bottom-aligns its name into the lowest 40pt of the row, which
+on the third row is exactly where the copy begins — so going full height cost
+a legible name until the text moved up. Two names legible bottom-aligned,
+three top-aligned.
+
+The plate carries **two lines only**. The credit line goes: at one
 poster wide there is no room, and the tagline underneath already says the same
 thing about the whole corpus. No list on this screen wears a byline, which is
 the rule from 2026-11-17 arrived at from the other end, and the suite asserts
 the plate says the kicker and the name and *nothing else*.
+
+**The glass is 82%, swept too.** The worst case behind the card is a white
+poster, measured with every poster forced white:
+
+| alpha | list name | `TOP 10` kicker | |
+|---|---|---|---|
+| .88 | 12.0:1 | 6.7:1 | reads as a black box, not glass |
+| **.82** | **10.1:1** | **5.6:1** | posters ghost through, margin intact |
+| .76 | 8.1:1 | 4.5:1 | at the bar exactly, which is no margin |
+| .70 | 6.6:1 | 3.7:1 | fails |
+
+88% was right when the plate carried an 11px credit line. That line is gone
+and the name is 15.6px, so the ceiling moved and the artwork behind the card
+is visible again — which is the whole point of calling it glass.
 
 **The row count, swept at 393×659:**
 
