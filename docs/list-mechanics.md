@@ -91,50 +91,133 @@ genres, genre pairs, decades, decade cuts, directors, actors — and shows the
 supply beside each (`Crime Dramas · 187 films`). No free text, because free
 text can name a list that cannot exist.
 
-## 4. Originator vs. room — the one real fork
+## 4. Decided: you join a ROOT, not a person (2026-11-18, Mischa)
 
-**What exists today in the database** (`supabase/migrations/0001_init.sql`):
+> *"It seems like you're not joining a person's list, you're joining a
+> genre/sub-genre root… you could be one of the first to make a list for a
+> particular root — which should come with a set of badges. We should also
+> have a way to make a free-text custom list (e.g. top 10 disney animated
+> movies of the 2000s), and you can join in and make your own top 10 list on
+> that. A more sophisticated version of this app would look at all the
+> elements of a movie (studio = disney, era = 2000s, format = animated), so
+> that people could map any free-text to a tagged set."*
 
-- `topics` — a first-class table, so a topic is an object, not a string
-- `remix_edges` — `from_ten_id → to_ten_id`, with `no_self_remix`
-- …and the prototype uses **neither**. There is no originator concept in the
-  app at all; `isFirstTake()` in `achievements.js` is a fixture check.
+**A root is a set of tags.** Not a string, and not a person's list. That is
+the whole model, and it is sharper than the "topic is a room" version it
+replaces, because it says what a room *is*:
 
-So the schema already supports both of these, and the app commits to neither:
+- **free text is an INPUT, not a storage format.** You type *"disney animated
+  movies of the 2000s"*; the app resolves it to
+  `studio:Walt Disney Pictures + genre:Animation + decade:2000`; the root is
+  that tag set.
+- **so two people who type different words land in the same place.** *"Disney
+  cartoons from the 2000s"* resolves to the same three tags and joins the same
+  root. A raw string would have made two rooms and split the crowd.
+- **a person is never the thing you join.** Being first on a root is credit,
+  not ownership.
 
-| | **A — the topic is a room** | **B — the list is a root (TikTok)** |
+The database already fits this: `topics` is a first-class table, so a root is
+an object with an id. `remix_edges` stays unused — lineage is not the model.
+
+### The root space, measured
+
+Tagging every title with genre / decade / studio / director / franchise
+yields **2,303 distinct tags** over 3,469 titles, and:
+
+| | roots that can be filled |
+|---|---|
+| one tag | **87** |
+| two tags | **423** |
+| | **~510 real roots today** |
+
+Which axes can actually carry a root:
+
+| axis | tags | fill ten | share of titles tagged |
+|---|---|---|---|
+| genre | 27 | **24** | 100% |
+| decade | 13 | **11** | 100% |
+| studio | 36 | 26 | **21%** |
+| director | 1,714 | **22** | 96% |
+| franchise | 511 | **2** | 26% |
+
+**Genre × decade is the backbone.** Both tag every title, and between them
+they produce most of the 510. Studio and director are a thin garnish —
+1,714 directors and only 22 of them have ten films — and franchise is
+effectively unusable at 2.
+
+### Mischa's own example does not fill, and that is the point
+
+```
+Walt Disney Pictures + Animation            28 titles  ✓
+                     + decade 2000           9 titles  ✗  one short
+```
+
+*"Top 10 Disney animated movies of the 2000s"* is **nine films**. The rule in
+section 3 — `offerable(t) = supply(t) >= 10` — forbids it, correctly: a list
+that cannot be filled must not be offerable, or the tenth slot is a lie.
+
+This is not an edge case to engineer around. It is what the picker has to be
+*designed for*, because studio tagging covers 21% of titles and most
+three-tag phrases a person types will land short. So:
+
+1. **Show supply live while typing**, per candidate root:
+   `Disney animated movies · 28` / `…of the 2000s · 9, needs 10`.
+2. **When a phrase near-misses, offer the nearest root that fills** — drop the
+   narrowest tag and say so: *"Nine of those. Try Disney animated movies —
+   28."*
+3. **Never fail silently into a half-built list.**
+
+### Being early on a root: a set of badges, not one
+
+Mischa asked for a set. The ladder, and what each needs from the backend:
+
+| | earned for | needs |
 |---|---|---|
-| what you join | the topic | a specific person's list |
-| the unit of gravity | *Crime Dramas* | *Sam's Crime Dramas* |
-| what you see on arrival | everyone's lists, and what everyone picked | the original, then its remixes |
-| lineage | flat — all takes are equal | a tree, depth matters |
-| consensus | natural: merge all lists in the room | awkward: merge across a tree? |
-| failure mode | nobody feels like an author | the first mover owns the topic forever |
+| **First Here** | the first list on a root | a root's created-at, already implied by `topics` |
+| **Early** | among the first ten on a root | a count at publish time |
+| **Started Something** | a root you were first on that ten others join | the same count, read later |
+| **Trailblazer** | first on ten different roots | a tally |
 
-**Recommendation: A, with originator credit.** The topic is the room, so
-*what everyone picked* keeps working — it is the thing the whole comparison
-feature is built on, and it is the app's best trick. But the **first list on a
-topic is credited on the topic page** (*"Started by Sam"*), which buys the
-TikTok hook — somebody authored this corner of the app — without a tree that
-makes consensus incoherent and lets a first mover own a subject forever.
+All four are counts against `topics` / `tens`, which the schema already
+supports. None needs `remix_edges`.
 
-The `Started Something` achievement already assumes exactly this shape:
-*start a topic ten other people go on to make.*
+### What a "more sophisticated version" would actually need
+
+Mischa is right that the richer the tag space, the more free text resolves.
+What we have and what we do not:
+
+| element | have it? |
+|---|---|
+| genre (incl. *format* — Animation, Documentary) | yes, 100% |
+| era / decade | yes, 100% |
+| studio | **21% only** |
+| director, cast | yes |
+| franchise | yes but unusable |
+| **keywords** (*heist, procedural, coming-of-age*) | **no — not fetched** |
+| country, certification, runtime band | no |
+
+The single biggest unlock is **TMDB keywords**: it is the field that carries
+*procedural*, *heist*, *dystopia*, *time travel*. Cost is roughly 3,500 extra
+calls on a catalogue build and a larger `catalog.js`. Studio coverage would
+improve by taking production companies more fully rather than the curated
+brand list now in `br`.
 
 ---
 
 ## What this implies, if the recommendations hold
 
 1. **Keep the broad first list.** No change.
-2. **Let a topic carry more than one genre.** `t.genre` becomes an array;
-   `inTopic` uses `every`; the namer learns to say *Crime Dramas*.
-3. **Build a topic picker** that type-aheads over offerable combinations and
-   shows supply. This is the screen that answers *"how do I make a list about
-   the thing I actually want?"*, and the app does not have it.
-4. **Credit the first list on a topic**, and leave `remix_edges` unused until
-   there is a reason for a tree.
+2. **A root is a SET of tags**, not one value per axis. `inTopic` must match
+   every tag, and the namer must say *Crime Dramas* and *Disney Animated
+   Movies of the 2000s*. Without this none of Mischa's examples can exist.
+3. **Build the picker**: type-ahead over offerable roots, supply shown beside
+   each, and a near-miss offers the nearest root that fills. This is the
+   screen that answers *"how do I make a list about the thing I actually
+   want?"* and the app does not have it at all.
+4. **Credit the first list on a root**, and ship the four-badge ladder above.
+5. **Leave `remix_edges` unused.** Lineage is not the model.
 
-Open, and genuinely Mischa's: whether a topic should be *findable by typing*
-at all before the first list is finished, or whether the picker lives only in
-the discovery surface. Asking somebody to type a sub-genre on first run is
-the thing section 1 argues against.
+Open, and genuinely Mischa's: whether the picker is reachable on first run or
+only after the first list is finished. Section 1 argues for the latter —
+asking somebody to type a sub-genre before they have picked a film is the
+hard part first.
