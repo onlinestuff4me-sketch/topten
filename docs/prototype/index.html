@@ -558,10 +558,25 @@ footer.notes .build { color: var(--text-disabled); margin-top: var(--s2); }
 /* The splash frame. 62 / 18 / 20 — the artifact gets the room the poster
    marquee used to have, because a real Ten is the thing worth looking at and
    a scrolling wall of posters was decoration (2026-11-17). */
-.intro { --frame: 16px; min-height: 100svh; display: flex; flex-direction: column; gap: var(--s3);
+/* The leftover height is SHARED, not banked in one place (2026-11-18,
+   Mischa: "make the hero bigger, and/or fix the spacing"). The artwork band
+   used to take all of it and centre inside itself, which on a 393x659 phone
+   put 71px of nothing above the hero and 54px below the strip - 125px, a
+   fifth of the screen, doing no work. The hero cannot answer this by growing:
+   it is already the full width of the column, and its height follows from ten
+   2:3 posters in five columns.
+
+   So the bands size to their content and the slack becomes the two gaps
+   between them, which is the same air spent where it separates things rather
+   than pooled at the top. */
+/* A narrower side margin than the rest of the app, because on this screen the
+   artwork IS the content and 6px a side is 12px of poster. The hero and the
+   tiles below it share the margin, so they still line up. */
+.intro { --frame: 16px; --margin: 14px; min-height: 100svh; display: flex; flex-direction: column;
+  justify-content: space-between; gap: var(--s3);
   padding: max(env(safe-area-inset-top), var(--frame)) var(--margin) max(env(safe-area-inset-bottom), var(--frame)); }
 .intro > * { min-height: 0; }
-.intro .art { flex: 1 1 auto; display: flex; flex-direction: column; justify-content: center; }
+.intro .art { flex: 0 1 auto; display: flex; flex-direction: column; justify-content: flex-start; }
 
 /* Somebody's Ten, as the object we want screenshotted: byline, title, badge,
    and all ten in rank order. Five across and two down, because the shape of
@@ -584,10 +599,17 @@ footer.notes .build { color: var(--text-disabled); margin-top: var(--s2); }
    figure's default margin-block is 1em. Writing only the inline axis handed
    it 16px back top and bottom, which is most of the overflow this cap was
    added to remove. */
-.hero-ten { margin: 0 auto; max-width: min(100%, 54svh);
+/* 64svh, not 54 (2026-11-18, Mischa: "make the hero bigger"). The cap is
+   there to stop the hero becoming absurd on a tall screen, but at 54 it was
+   binding on PHONES - hardest on an iPhone SE, where it held the posters to
+   48px when the column had room for 58. Swept across six viewports: at 64 the
+   column is what limits the hero everywhere a phone is concerned, and the
+   cap only speaks again on a tablet. Posters grow 20% on an SE, 7% on a 15
+   Pro, and the CTA and promise stay on screen on all six. */
+.hero-ten { margin: 0 auto; max-width: min(100%, var(--hero-cap, 64svh));
   position: relative; display: flex; flex-direction: column; gap: var(--s3);
   background: var(--bg-surface); border: 1px solid var(--border-subtle);
-  border-radius: var(--r-sheet); padding: var(--s4);
+  border-radius: var(--r-sheet); padding: var(--s3);
   box-shadow: 0 1px 2px rgba(28,26,23,.05), 0 18px 40px -18px rgba(28,26,23,.25); }
 @media (prefers-color-scheme: dark) {
   .hero-ten { box-shadow: 0 1px 2px rgba(0,0,0,.5), 0 18px 40px -18px rgba(0,0,0,.7); }
@@ -697,9 +719,15 @@ footer.notes .build { color: var(--text-disabled); margin-top: var(--s2); }
    the hero's own eyebrow directly above it. */
 .mini-ten .kicker { font-size: 0.625rem; line-height: 1.2; font-weight: 700;
   letter-spacing: .06em; text-transform: uppercase; color: var(--text-secondary); }
-.mini-ten .lead { font-size: 0.75rem; line-height: 1.25; font-weight: 700; color: var(--accent-ink); }
-.mini-ten .sub { font-size: 0.6875rem; line-height: 1.3; font-weight: 600; color: var(--text-secondary);
-  min-height: 1.3em; }
+/* 11px, measured rather than chosen. The longest label the four topics make
+   is "Animated 2000s"; in the 100px column it is 98px at 12px - two pixels
+   of slack, which would break the moment a wider face loaded, and CI's
+   DejaVu is about 10% wider, which has broken this screen twice already. At
+   11px it is 90px, so the margin matches what the font difference costs.
+   `nowrap` makes a regression loud: anything longer clips visibly rather
+   than silently becoming two lines again. */
+.mini-ten .lead { font-size: 0.6875rem; line-height: 1.3; font-weight: 700;
+  color: var(--accent-ink); white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
 
 .intro-copy { flex: 0 0 auto; display: flex; flex-direction: column; justify-content: center; gap: var(--s2); }
 /* No `nowrap`. The clamp's floor is 2rem, which is the right thing for
@@ -2491,39 +2519,26 @@ const INTRO_TOPICS = [
    a browse gesture into a save. */
 let introOrder = null;
 
-/* A tile is about a third the width of a phone - 100px of text column - and
-   that is not enough for a list name on one line however it is shortened:
-   "Animated · 2000s" measures 126px at 12px/700, and dropping to 10px only
-   gets it to 105. So one line is not available, and leaving it to wrap gave
-   a row where some labels ran to two lines and others to one (Mischa,
-   2026-11-18: "I don't like that some are two lines, others are just one
-   line") - the tiles were already equal height, it was the text that was
-   ragged.
+/* A tile is about a third the width of a phone - 100px of text column - so
+   the label is the kicker and ONE line under it (Mischa, 2026-11-18):
 
-   So every label is TWO lines by construction, each a line of its own:
+     Top 10 Crime Movies of the 90s       ->  TOP 10 / Crime 90s
+     Top 10 Animated Movies of the 2000s  ->  TOP 10 / Animated 2000s
+     Top 10 Hitchcock Movies              ->  TOP 10 / Hitchcock
+     Top 10 Drama Shows                   ->  TOP 10 / Drama Shows
 
-     lead | the subject, everything before the domain noun
-     sub  | the decade if the name carries one, else the domain noun
+   Three things come out. "Top 10 " is the kicker's job. "of the" goes
+   because a tile is a label, not a sentence. And "Movies" goes because it
+   is the UNMARKED case - a shelf here is films unless it says otherwise, so
+   dropping it costs nothing, while "Shows" and "Books" are precisely the
+   cases that must keep their noun or a tile would claim to be about films.
+   That asymmetry is the rule, not an oversight.
 
-     Crime Movies of the 90s       ->  Crime      / 90s
-     Sci-Fi Movies                 ->  Sci-Fi     / Movies
-     Animated Movies of the 2000s  ->  Animated   / 2000s
-     Hitchcock Movies              ->  Hitchcock  / Movies
-     Horror Movies of the 80s      ->  Horror     / 80s
-     Drama Shows                   ->  Drama      / Shows
-
-   Measured: the widest lead is "Hitchcock" at 72px and the widest sub is
-   "Movies" at 48px, both inside 100px, so neither line can wrap and the row
-   is even whatever topic is in the hero. The domain noun survives wherever
-   it is the only qualifier ("Drama / Shows"), and the FULL name is on the
-   button's accessible name, so nothing is lost to a reader. */
-const introLabel = name => {
-  const full = name.replace(/^Top 10 /, '');
-  const decade = full.match(/ \S+ of the (\d+s)$/);
-  if (decade) return { lead: full.slice(0, decade.index), sub: decade[1] };
-  const noun = full.match(/ (\S+)$/);
-  return noun ? { lead: full.slice(0, noun.index), sub: noun[1] } : { lead: full, sub: '' };
-};
+   The measurement that sets the type size is on `.mini-ten .lead` below. */
+const introLabel = name => name
+  .replace(/^Top 10 /, '')
+  .replace(/ Movies/g, '')
+  .replace(/ of the /g, ' ');
 
 function introTens() {
   const all = INTRO_TOPICS.map(c => consensusTen(makeTopic(c))).filter(Boolean);
@@ -2584,9 +2599,8 @@ function renderIntro() {
           aria-label="Show ${esc(name)}">
           <span class="mini-grid" aria-hidden="true">${o.ten.ranked.slice(0, 3).map(f =>
             `<img src="${art(f, 'w185')}" alt="" loading="lazy" decoding="async">`).join('')}</span>
-          <span class="what">${(l => `<span class="kicker">Top 10</span>`
-            + `<span class="lead">${esc(l.lead)}</span>`
-            + `<span class="sub">${esc(l.sub)}</span>`)(introLabel(name))}</span>
+          <span class="what"><span class="kicker">Top 10</span><span
+            class="lead">${esc(introLabel(name))}</span></span>
         </button>`;
       }).join('')}
     </div>`;

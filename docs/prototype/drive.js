@@ -560,7 +560,6 @@ const DOMAIN_SPEECH = `(() => {
     [...document.querySelectorAll('.mini-ten')].map(b => ({
       kicker: (b.querySelector('.kicker') || {}).textContent || '',
       lead: (b.querySelector('.lead') || {}).textContent || '',
-      sub: (b.querySelector('.sub') || {}).textContent || '',
     })));
   /* Both halves of the rule, which pull in opposite directions and are both
      Mischa's. 2026-11-17: a caption set at full size in "Top 10 " tells you
@@ -573,8 +572,8 @@ const DOMAIN_SPEECH = `(() => {
   check(titles.every(t => !/^top 10/i.test(t.lead.trim())),
     `and its big line is what makes it different, not the words they share `
     + `(${titles.map(t => t.lead.trim()).join(' · ')})`);
-  check(titles.every(t => t.lead.trim().length > 3 && t.sub.trim().length > 1),
-    'and neither row of it is reduced to an ellipsis');
+  check(titles.every(t => t.lead.trim().length > 3),
+    'and that line is not reduced to an ellipsis');
 
   const introText = await page.locator('.intro').innerText();
   check(/free/i.test(introText), 'it answers what this costs before asking for anything');
@@ -2687,14 +2686,17 @@ const DOMAIN_SPEECH = `(() => {
       over: Math.round(document.documentElement.scrollHeight - window.innerHeight),
       tiles: [...document.querySelectorAll('.mini-ten')].map(b => {
         const w = b.querySelector('.what'), r = b.getBoundingClientRect();
-        // The label is two spans; textContent would glue them into
-        // "Animated2000s" and a failure message has to be readable.
-        const lead = b.querySelector('.lead'), sub = b.querySelector('.sub');
-        const label = [lead && lead.textContent.trim(), sub && sub.textContent.trim()]
-          .filter(Boolean).join(' \u00b7 ');
+        /* The line is `nowrap`, so it cannot grow taller when it does not
+           fit - it clips sideways instead. Measuring only the HEIGHT would
+           therefore report every label as fine however far past its column
+           the text ran, which is the vacuous-gate shape this suite has been
+           caught by twice. Measure the width of the line too. */
+        const lead = b.querySelector('.lead');
+        const label = lead ? lead.textContent.trim() : '';
+        const cut = !!lead && lead.scrollWidth > lead.clientWidth + 1;
         return { label, aria: b.getAttribute('aria-label') || '',
           tag: b.tagName, at: b.dataset.intro,
-          clippedLabels: !!w && w.scrollHeight > w.clientHeight + 1,
+          clippedLabels: (!!w && w.scrollHeight > w.clientHeight + 1) || cut,
           w: Math.round(r.width), h: Math.round(r.height) };
       }),
     };

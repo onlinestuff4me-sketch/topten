@@ -1467,63 +1467,73 @@ phone viewports × six hero positions: overflow 1px everywhere (the pre-existing
 rounding the splash sweep already tolerates), nothing clipped, two lines at
 most.
 
-**Every label is two lines, by construction** *(amended 2026-11-18 after
-Mischa: "I don't like that some are two lines, others are just one line")*.
-One line is not available at this width — "Animated · 2000s" measures 126pt in
-a 100pt column at 12pt/700, and dropping the type to 10pt only gets it to
-105pt — and letting it wrap gave a row where one label ran to two lines and its
-neighbour to one. The tiles were already equal height; it was the **text** that
-was ragged.
-
-So `introLabel` returns a pair, and the label is a two-row grid:
+**The label is the kicker and ONE line under it** *(amended 2026-11-18, Mischa:
+"can the smaller ones be Top 10 on top line and then one line below it")*.
 
 | row | what it holds |
 |---|---|
-| `kicker` | **"TOP 10"** — 10pt/700, uppercase, `text.secondary` *(added 2026-11-18)* |
-| `lead` | the subject — everything before the domain noun — 12pt/700 `accent.ink` |
-| `sub` | the **decade** if the name has one, else the **domain noun** — 11pt/600 `text.secondary` |
+| `kicker` | **"TOP 10"** — 10pt/700, uppercase, `text.secondary` |
+| `lead` | everything else, on one line — **11pt/700** `accent.ink`, `nowrap` |
 
 ```
-Crime Movies of the 90s       ->  TOP 10 / Crime      / 90s
-Animated Movies of the 2000s  ->  TOP 10 / Animated   / 2000s
-Hitchcock Movies              ->  TOP 10 / Hitchcock  / Movies
-Drama Shows                   ->  TOP 10 / Drama      / Shows
+Top 10 Crime Movies of the 90s       ->  TOP 10 / Crime 90s
+Top 10 Animated Movies of the 2000s  ->  TOP 10 / Animated 2000s
+Top 10 Hitchcock Movies              ->  TOP 10 / Hitchcock
+Top 10 Drama Shows                   ->  TOP 10 / Drama Shows
 ```
 
-**The kicker, and the rule it appears to contradict** *(Mischa, 2026-11-18:
-"each mini card should have Top 10 in it")*. On 2026-11-17 the shared prefix
-was **stripped** from these captions, because "Top 10 " set at full size took
-half an 84pt line and said nothing about which list this is. Both are right,
-and they are not the same rule:
+Three things come out of the name. **"Top 10 "** is the kicker's job.
+**"of the"** goes because a tile is a label, not a sentence. And **"Movies"**
+goes because it is the *unmarked* case — a shelf here is films unless it says
+otherwise, so dropping it costs nothing, while **"Shows"** and **"Books"** are
+precisely the cases that must keep their noun or a tile would claim to be
+about films. That asymmetry is the rule, not an oversight.
 
-- the words all four share are a **kicker** — 10pt, 12pt of height, and what
-  they say is *this is a list*, which is the thing the tiles were failing to
-  say at all;
-- the **big line stays the distinguishing word**, which is what the November
-  17th finding was actually about.
+**11pt is measured, not chosen.** The longest label the four topics produce is
+"Animated 2000s": in the 100pt column it is **98pt at 12pt** — two pixels of
+slack, which breaks the moment a wider face loads, and CI's DejaVu is about
+10% wider, which has broken this screen twice. At **11pt it is 90pt**, so the
+margin matches what the font difference costs. Verified at 11pt in the system
+face and both CI fallbacks.
 
-`drive.js` asserts the two separately — every tile's kicker reads "Top 10",
-and no tile's `lead` begins with it — because satisfying one by hand would
-otherwise quietly undo the other.
+`white-space: nowrap` is deliberate: a label that outgrows its column **clips
+visibly** rather than quietly becoming two lines again, which is the failure
+this went through two rounds to remove. The harness measures the line's
+**width** against its column for the same reason — a `nowrap` line cannot grow
+taller, so a height-only check would pass every label however far past the
+edge it ran, which is the vacuous-gate shape this suite has been caught by
+twice before.
 
-Measured: the widest `lead` is "Hitchcock" at 72pt and the widest `sub` is
-"Movies" at 48pt, both inside the 100pt column, so **neither row can wrap** and
-every tile is 103pt tall whatever topic is in the hero — which also gave the
-hero back about 80pt of the budget the first version had taken. The domain noun
-survives wherever it is the only qualifier (*Drama / Shows*), and the **full**
-name stays on the button's accessible name (`Show Top 10 Animated Movies of the
-2000s`), so the shortening is for the eye only and a screen reader loses
-nothing.
+## The splash's leftover height is shared, not banked (2026-11-18)
 
-**Four topics, not six — a correctness fix rather than a trim.** A tap is a
-*swap*, and a swap only ever exchanges the hero with one of the three visible
-tiles, so with six topics whatever sat in fifth and sixth place could never
-reach the strip and nobody would ever see it. Six topics, four reachable. The
-splash now holds exactly as many topics as fit on screen at once: a genre with
-a decade, a style with a decade, a person, and a medium that is not film —
-between them, what the topic engine can narrow by. `drive.js` asserts the
-identity rather than a count (tiles plus hero **are** the set of intro topics),
-so adding a fifth topic fails the suite rather than quietly hiding it.
+*Mischa: "make the hero bigger, and/or fix the spacing."* Both, and the
+measurements say why neither alone was enough.
+
+**The spacing.** `.art` held `flex: 1 1 auto` and centred inside itself, so it
+took **all** the leftover height and split it above the hero and below the
+strip: on a 393×659 phone that was **71pt of nothing above the hero and 54pt
+below the strip** — 125pt, a fifth of the screen, doing no work. The bands now
+size to their content under `justify-content: space-between`, so the hero sits
+flush to the top frame and the slack becomes the two gaps that separate things:
+**64pt** strip→headline, **63pt** headline→button.
+
+**The hero.** It could not answer this by growing, because its width was capped
+at **`54svh`** — a cap meant to stop it becoming absurd on a tablet, which was
+quietly binding on *phones*. Hardest on an iPhone SE, where it held the posters
+to **48pt in a column with room for 58**. Swept across six viewports:
+
+| | SE | 13 mini | 15 Pro | Pro Max | iPad mini |
+|---|---|---|---|---|---|
+| poster at `54svh`, 20pt margin | 48.1 | 56.3 | 57.4 | 68.8 | 91.4 |
+| poster at `64svh`, 14pt margin | **57.8** | **57.8** | **61.4** | 68.8 | 94.8 |
+
+At 64 the **column** is what limits the hero everywhere a phone is concerned
+and the cap only speaks again on a tablet. The splash's side margin drops to
+**14pt** (6pt a side is 12pt of poster, and on this screen the artwork *is* the
+content) and the hero card's padding to 12pt; the strip shares the margin, so
+the two still line up. The CTA and the promise stay on screen on all six
+viewports.
+
 
 **At accessibility text sizes a row breaks mid-word rather than spilling.**
 `overflow-wrap: break-word`, which fires only when a word cannot fit a line of
