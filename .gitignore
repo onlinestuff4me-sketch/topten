@@ -38,6 +38,11 @@ docs/prototype/posters/
 # TMDB's artwork, and these are reproducible in 30 seconds.
 docs/prototype/review/
 
+# The raw TMDB keyword fetch. keywords.js (filtered, shipped) IS committed;
+# this is the cache that means changing what counts as a list subject costs
+# no API calls. See fetch_keywords.py.
+docs/prototype/keywords.raw.json
+
 # A throwaway sweep script with SHOTS unset writes to the literal path
 # "undefined/shots/", and `git add -A` committed 3.8MB of it on 2026-11-18.
 # One-off harness scripts belong in the scratchpad; this catches the one

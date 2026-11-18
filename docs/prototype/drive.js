@@ -3538,6 +3538,65 @@ const DOMAIN_SPEECH = `(() => {
     !window.offerable(window.makeTopic({ studio: 'Walt Disney Pictures', genre: 'Animation', decade: 2000 }))),
     'so the app refuses to offer it — a list that cannot be filled must not be named');
 
+  /* ── Keywords: the axis that carries "heist" (2026-11-18) ──────────────
+     Mischa asked for them by name. Genre is 27 flat labels and studio tags
+     21% of titles; neither carries the words a person types. TMDB keywords
+     tag 80% of titles and 800 of them reach ten, which is 800 roots this one
+     axis adds.
+
+     They are fetched by fetch_keywords.py, FILTERED there, and shipped as
+     keywords.js beside the catalogue - not inside it, because
+     build_catalog.py rewrites that file wholesale and would drop them. */
+  console.log('\n── Keywords as a root axis ──────────────────────');
+
+  const kw = await page.evaluate(() => {
+    const t = c => window.makeTopic(c);
+    const named = c => { const x = t(c); return { title: x.title, n: window.supply(x) }; };
+    const all = window.KEYWORDS || {};
+    const counts = {};
+    for (const id of Object.keys(all)) for (const k of all[id]) counts[k] = (counts[k] || 0) + 1;
+    const heist = t({ keyword: 'heist' });
+    return {
+      loaded: Object.keys(all).length,
+      distinct: Object.keys(counts).length,
+      // the words Mischa used, and the ones that read worst if unhandled
+      heist: named({ keyword: 'heist' }),
+      coming: named({ keyword: 'coming of age' }),
+      london: named({ keyword: 'london, england' }),
+      crossed: named({ keyword: 'heist', genre: 'Thriller' }),
+      // every member really carries the keyword
+      everyMemberHasIt: window.CAT.filter(f => window.inTopic(f, heist))
+        .every(f => (all[f.id] || []).includes('heist')),
+      // order-independence holds on this axis too
+      sameEitherWay: t({ keyword: ['heist', 'revenge'] }).id === t({ keyword: ['revenge', 'heist'] }).id,
+      // and the filter really ran: no mood tags, no credits stingers, no bare decades
+      moodLeaked: ['amused', 'intense', 'suspenseful', 'awestruck'].filter(m => counts[m]),
+      pipelineLeaked: ['duringcreditsstinger', 'aftercreditsstinger', 'woman director'].filter(m => counts[m]),
+      decadeLeaked: Object.keys(counts).filter(k => /^(19|20)\d0s$/.test(k)),
+    };
+  });
+
+  check(kw.loaded > 2000 && kw.distinct > 5000,
+    `keywords.js is loaded beside the catalogue (${kw.loaded} titles, ${kw.distinct} distinct tags)`);
+  check(kw.heist.title === 'Top 10 Heist Movies' && kw.heist.n >= 10,
+    `a keyword is a root ("${kw.heist.title}", ${kw.heist.n} films)`);
+  check(kw.coming.title === 'Top 10 Coming of Age Movies',
+    `title-cased with the small words left small ("${kw.coming.title}")`);
+  check(kw.london.title === 'Top 10 London Movies',
+    `and a place loses its qualifier — the tag is "london, england" ("${kw.london.title}")`);
+  check(kw.crossed.title === 'Top 10 Heist Thrillers' && kw.crossed.n >= 10,
+    `keywords cross with genres ("${kw.crossed.title}", ${kw.crossed.n})`);
+  check(kw.everyMemberHasIt,
+    'every film in a keyword root really carries that keyword');
+  check(kw.sameEitherWay,
+    'two keywords in either order are the same root');
+  check(kw.moodLeaked.length === 0,
+    `no mood tags survived the filter — "Top 10 Awestruck Movies" is not a list (${JSON.stringify(kw.moodLeaked)})`);
+  check(kw.pipelineLeaked.length === 0,
+    `nor production noise (${JSON.stringify(kw.pipelineLeaked)})`);
+  check(kw.decadeLeaked.length === 0,
+    `nor bare decades, which would duplicate the decade axis (${JSON.stringify(kw.decadeLeaked)})`);
+
   /* ── Every list in the pool is one the wall can actually carry ──────────
      The wall shows four of six, and which four rotates per visit, so four of
      them are never on the first screen anybody sees. A rule that happens to

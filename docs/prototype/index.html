@@ -1120,6 +1120,7 @@ footer.notes .build { color: var(--text-secondary); margin-top: var(--s2); }
 <div id="live" class="sr" aria-live="polite"></div>
 
 <script src="catalog.js"></script>
+<script src="keywords.js"></script>
 <script src="badge.js"></script>
 <script src="achievements.js"></script>
 <script src="share.js"></script>
@@ -1344,6 +1345,7 @@ function inTopic(f, t = S.topic) {
   if (t.actor && !(f.ca || []).includes(t.actor)) return false;
   // EVERY genre, not one: a root is a set, so "Crime Dramas" means both.
   for (const g of genresOf(t)) if (!(f.g || []).includes(g)) return false;
+  if (t.keyword) { const ks = keywordsFor(f); for (const k of keysOf(t)) if (!ks.includes(k)) return false; }
   if (t.studio && !(f.br || []).includes(t.studio)) return false;
   if (t.decade && Math.floor(f.y / 10) * 10 !== t.decade) return false;
   return true;
@@ -3016,6 +3018,26 @@ const studioName = b => STUDIO_ADJ[b] || b;
    string stays legal - because the alternative was rewriting forty call
    sites to prove a point about representation. */
 const genresOf = t => !t || !t.genre ? [] : (Array.isArray(t.genre) ? t.genre : [t.genre]);
+const keysOf = t => !t || !t.keyword ? [] : (Array.isArray(t.keyword) ? t.keyword : [t.keyword]);
+
+/* TMDB keywords: the axis that carries heist, dystopia, time travel, neo-noir
+   — the words people actually type. Fetched by fetch_keywords.py, filtered
+   there of mood tags and production noise, and loaded beside the catalogue
+   rather than inside it so a catalogue rebuild cannot silently drop them.
+
+   80% of titles carry at least one, against 21% for studio, and 800 of them
+   reach ten titles. That is 800 roots this axis adds on its own. */
+const KW = () => (window.KEYWORDS || {});
+const keywordsFor = f => (KW()[f.id] || []);
+
+/* A keyword in a list's name. Title-cased, and a place loses its qualifier:
+   the tag is "london, england" and the list is "Top 10 London Movies". */
+const SMALL_WORDS = new Set(['of', 'the', 'a', 'an', 'and', 'or', 'in', 'on',
+  'at', 'to', 'for', 'with', 'vs', 'from', 'by']);
+const keywordName = k => String(k).split(',')[0].trim().split(/\s+/)
+  .map((w, i) => (i > 0 && SMALL_WORDS.has(w)) ? w
+    : w.charAt(0).toUpperCase() + w.slice(1))
+  .join(' ');
 
 /* The canonical tag list for a root. Sorted, so two roots built from the same
    criteria in a different order are the same root and the crowd does not
@@ -3024,6 +3046,7 @@ const genresOf = t => !t || !t.genre ? [] : (Array.isArray(t.genre) ? t.genre : 
 function tagsOf(t) {
   const tags = [`kind:${domainOf(t)}`];
   for (const g of genresOf(t).slice().sort()) tags.push(`genre:${g}`);
+  for (const k of keysOf(t).slice().sort()) tags.push(`keyword:${k}`);
   if (t.studio) tags.push(`studio:${t.studio}`);
   if (t.director) tags.push(`director:${t.director}`);
   if (t.actor) tags.push(`actor:${t.actor}`);
@@ -3065,8 +3088,12 @@ function nameParts(t) {
   const headGenre = headable.length ? headable[headable.length - 1] : null;
   const adjs = gs.filter(g => g !== headGenre).sort()
     .map(g => GENRE_ADJ[g] || g);
+  // Keywords sit closest to the head noun - "Disney Animated Heist Movies" -
+  // because they are the most specific thing being said.
+  for (const k of keysOf(t).slice().sort().reverse()) adjs.push(keywordName(k));
   if (t.studio) adjs.unshift(studioName(t.studio));
-  const bare = !gs.length && !t.director && !t.actor && !t.decade && !t.studio;
+  const bare = !gs.length && !t.director && !t.actor && !t.decade && !t.studio
+    && !keysOf(t).length;
   return {
     person: t.director || t.actor || null,
     adj: adjs.length ? adjs.join(' ') : null,
