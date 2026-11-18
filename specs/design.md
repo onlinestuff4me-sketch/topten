@@ -1684,14 +1684,70 @@ comparison was between three rendered screens instead of three paragraphs.
 
 | Part | What it is |
 |---|---|
-| `.wallrows` | Four rows, `position: absolute; inset: 0`, flex column |
+| `.wallrows` | Four rows, `position: absolute; inset: 0`, flex column, own stacking context |
 | `.wallrow` | One list. `flex: 1 1 0`, so a row's height is the screen divided by four |
-| `.strip` | `[plate, ten posters] × 2`, drifting `0 → −50%` |
-| `.plate` | `TOP 10` / the list's name / `From N+ Top 10s`. `aspect-ratio: 5/4` |
+| `.wallrail` | The moving part, `inset: 0`, carrying the edge mask |
+| `.strip` | `ten posters × 2`, drifting `0 → −50%` |
+| `.plate` | **Pinned** to its row's bottom corner, alternating side. `TOP 10` / the list's name / `From N+ Top 10s` |
 | `.poster` | `aspect-ratio: 2/3`, height 100% of its row, rank 1–10 on the artwork |
 | `.wallveil` | The gentle one: seats the wall, never past `.32` |
 | `.wallcopy::before` | The strong one: sized to the copy, not the viewport |
 | `.wallcopy` | Headline, tagline, CTA, promise — in flow at the bottom |
+
+### The nameless wall, and why the plate is pinned (2026-11-18, found by measuring)
+
+The first build carried the plate as a cell in the strip, so a name arrived,
+its ten drifted past, and the next name arrived behind them. It read
+beautifully in every screenshot. It was also **broken for most of the time
+anyone looked at it**, and nothing in the suite said so.
+
+Sampled every 250ms with the animations restarted so `t=0` is the same instant
+for every row:
+
+| | average names on screen | nameless | longest gap |
+|---|---|---|---|
+| first 15s, plate in the strip | 0.30 | **78%** | 11.8s |
+| steady state (90s), plate in the strip | 0.66 | 40% | 12.5s |
+| first 15s, plate pinned | **2.00** | **0%** | 0s |
+
+The cause is arithmetic, not tuning. Ten posters is **1,110px of travel
+between one name and the next**, on a screen **393px** wide, at 37px/s. A row
+shows its name about 15% of a cycle, and a cycle is 30 seconds while a look at
+a splash is ten.
+
+Two fixes were tried and measured before the real one:
+
+- **A wider plate made it worse** — 88% nameless. A label that is wide is
+  *fully* visible for less of its pass, not more: the window is
+  `(screen − plate) / speed`, so widening the plate shrinks it twice over.
+- **Spreading the rows' phases made it worse too.** In a fifteen-second look
+  only half a cycle happens at all, so spreading four rows over a whole cycle
+  simply moved most of the names outside the window.
+
+So the plate is pinned to its row and the posters pass behind it. It
+alternates sides with the drift — a row running left wears its plate on the
+left, so its posters travel *towards* the name and slip under it — which also
+means four plates read as a zigzag down the wall rather than a column of
+labels down one edge.
+
+**It is real glass now**, which it never was before: as a flex sibling of the
+posters nothing was behind it, and the contrast probe caught the
+`backdrop-filter` sampling flat `--vault-bg` at every viewport. Pinned over a
+moving rail there is finally something to blur. `--vault-plate` is the vault
+at 88%, set by measurement against a white poster, and the gate forces every
+poster white before sampling: **12.2:1** for the name, **5.3:1** for the
+credit line.
+
+**The phase spread stayed**, for a different reason. Without it every row
+starts at the same point in its cycle, the vertical seams between posters line
+up across all four rows, and the wall reads as one lattice sliding about
+rather than four independent lists.
+
+**The gate that was missing.** The claim "this is a wall of lists" now has a
+test: sample the first 8 seconds and require a readable name at every moment,
+and more than one on average. A screenshot proves one frame; this proves the
+frames between them, which is precisely what a dozen screenshots of the broken
+version failed to notice.
 
 ### Six things that are decisions, not defaults
 
@@ -1719,6 +1775,10 @@ scattered at first paint rather than stacked in a column down the left edge.
 Measured on a 15 Pro: **44px/s** forward, **34px/s** back — one poster every
 two and a half seconds, the screen's width in nine. The first value tried was
 52s; at 25px/s the wall read as still unless you watched it.
+
+**The edge mask belongs to the moving part.** It lives on `.wallrail`, not on
+the row: applied to the row it also faded the pinned name plate, which does
+not move and has no business being faded.
 
 **Both edges fade to a quarter, not to nothing.** A strip clipped square reads
 as broken — the first frame had a name plate sliced down the middle by the

@@ -783,12 +783,21 @@ that budget the other way: the posters are **155px** on the same phone, 2.7×
 the area, and four lists are legible at once instead of one plus three
 thumbnails.
 
-**The name plate is the whole decision.** A wall of posters says "this app has
-a lot of films in it", which is not a claim worth making and not one we could
-honour. A wall of *named, numbered lists* says "this app is full of other
-people's Top 10s", which is the product. The plate leads each pass of the
-strip rather than being pinned to the row, so a name arrives, its ten drift
-past, and the next name arrives behind them.
+**The name plate is the whole decision, so it has to stay on screen.** A wall
+of posters says "this app has a lot of films in it", which is not a claim
+worth making and not one we could honour. A wall of *named, numbered lists*
+says "this app is full of other people's Top 10s", which is the product.
+
+*Amended 2026-11-18, hours after it shipped.* The plate first LED each pass of
+the strip — a name arrived, its ten drifted past, the next name arrived behind
+them. Measured, that wall showed **no list name at all for 78% of the first
+fifteen seconds**: ten posters is 1,110px of travel between names on a 393pt
+screen, so a row carries its name about 15% of the time and a cycle is three
+times longer than a look at a splash. It is **pinned to its row** now, bottom
+corner, alternating side with the drift, with the posters passing behind it.
+Nameless 0% of the time, two names on screen at all times. The reasoning, the
+two fixes that measured worse, and the gate that now holds it are in
+design.md.
 
 **The tagline is Mischa's, and its number is a placeholder with a condition
 on it.** *"The tag line should be '5000+ lists from the community. Share
@@ -830,7 +839,9 @@ Ghibli" family of lists people actually name out loud.
 
 **Acceptance:**
 - Four rows, each one list: a plate carrying `TOP 10`, the list's own name and
-  a crowd credit, then ten posters ranked 1–10, twice.
+  a crowd credit, pinned to the row, then ten posters ranked 1–10, twice.
+- **A list name is readable at every moment**, and more than one on average —
+  sampled over the first eight seconds, not inferred from a screenshot.
 - The strip's two copies are the same width to within a sub-pixel, so the
   −50% loop has no visible seam.
 - The wall runs to all four edges at every supported size, and the whole

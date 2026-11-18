@@ -521,14 +521,16 @@ const DOMAIN_SPEECH = `(() => {
         const strip = row.querySelector('.strip');
         const cells = [...strip.children];
         const half = cells.length / 2;
-        const plates = cells.filter(c => c.classList.contains('plate'));
+        // The plate is pinned to the ROW now, not carried in the strip.
+        const plate = row.querySelector('.plate');
         const posters = cells.filter(c => c.classList.contains('poster'));
         const ranks = posters.slice(0, 10).map(p => (p.querySelector('.rank') || {}).textContent);
         return {
-          cells: cells.length, plates: plates.length, posters: posters.length,
-          kicker: (plates[0].querySelector('.k') || {}).textContent.trim(),
-          name: (plates[0].querySelector('.n') || {}).textContent.trim(),
-          voters: (plates[0].querySelector('.v') || {}).textContent.trim(),
+          cells: cells.length, plates: row.querySelectorAll('.plate').length, posters: posters.length,
+          inStrip: cells.filter(c => c.classList.contains('plate')).length,
+          kicker: (plate.querySelector('.k') || {}).textContent.trim(),
+          name: (plate.querySelector('.n') || {}).textContent.trim(),
+          voters: (plate.querySelector('.v') || {}).textContent.trim(),
           ranks: ranks.join(','),
           /* The duplicate copy is what makes -50% land where the first copy
              began. If the two halves are not the same width the wall jumps
@@ -544,16 +546,16 @@ const DOMAIN_SPEECH = `(() => {
           seam: +(cells[half].getBoundingClientRect().left - cells[0].getBoundingClientRect().left
             - strip.getBoundingClientRect().width / 2).toFixed(3),
           samePair: cells[0].outerHTML === cells[half].outerHTML,
-          clipped: plates.some(p => !plateFits(p)),
+          clipped: !plateFits(plate),
         };
       }),
     };
   }, PLATE_FITS);
   check(wall.rows >= 3, `the first screen is a wall of other people's lists (${wall.rows} rows)`);
   check(wall.fills, 'full bleed — it runs to all four edges rather than sitting in a panel');
-  check(wall.list.every(r => r.plates === 2 && r.posters === 20),
-    `each row is one list: a name plate and its ten, written twice for the loop `
-    + `(${wall.list.map(r => r.plates + '+' + r.posters).join(' ')})`);
+  check(wall.list.every(r => r.plates === 1 && r.inStrip === 0 && r.posters === 20),
+    `each row is one list: a name plate that stays, and its ten written twice `
+    + `for the loop (${wall.list.map(r => r.plates + '+' + r.posters).join(' ')})`);
   check(wall.list.every(r => r.ranks === '1,2,3,4,5,6,7,8,9,10'),
     `ranked one through ten — the order IS the product (${wall.list[0].ranks})`);
   /* A wall of posters would say "this app has a lot of films in it". The
@@ -615,6 +617,60 @@ const DOMAIN_SPEECH = `(() => {
   check(still.names.every(Boolean),
     `and the still frame is every list named, in full (${still.names.filter(Boolean).join(' · ')})`);
   await page.emulateMedia({ reducedMotion: 'no-preference' });
+
+  /* ── A list name is on screen, the whole time somebody is looking ──────
+     The claim this screen makes is that the app is full of other people's
+     ranked tens, and the name plates are the only thing on the wall that
+     says so. That claim had no test, and it shipped broken: with the plate
+     carried in the strip as one cell in eleven, the wall showed NO list name
+     at all for 78% of the first fifteen seconds. Every screenshot taken of
+     it happened to catch a plate, which is exactly how a defect this loud
+     survives being looked at a dozen times.
+
+     Sampled rather than reasoned about, over the window somebody actually
+     spends here, with the animations restarted so t=0 is the same instant
+     for every row. A screenshot proves one frame; this proves the frames
+     between them. */
+  console.log('');
+  const namesOverTime = async (seconds = 8) => {
+    await page.evaluate(() => {
+      document.querySelectorAll('.wallrow .strip').forEach(el => {
+        el.style.animation = 'none'; void el.offsetWidth; el.style.animation = '';
+      });
+    });
+    const series = [];
+    for (let i = 0; i < seconds * 4; i++) {
+      series.push(await page.evaluate(() => {
+        const copyTop = document.querySelector('.wallcopy').getBoundingClientRect().top;
+        return [...document.querySelectorAll('.wallrow .plate')].filter(pl => {
+          const r = pl.getBoundingClientRect();
+          // Readable means mostly on screen AND clear of the copy, which is
+          // where the veil goes opaque.
+          const visW = Math.min(r.right, window.innerWidth) - Math.max(r.left, 0);
+          const visH = Math.min(r.bottom, copyTop) - Math.max(r.top, 0);
+          // Geometry is not enough: a plate faded to nothing still has a box
+          // in the right place. Cheap guard against the gate passing on
+          // something nobody can see.
+          const cs = getComputedStyle(pl);
+          if (cs.visibility === 'hidden' || +cs.opacity < 0.1) return false;
+          return visW > r.width * 0.75 && visH > r.height * 0.6;
+        }).length;
+      }));
+      await page.waitForTimeout(250);
+    }
+    let run = 0, worst = 0;
+    for (const c of series) { run = c === 0 ? run + 1 : 0; worst = Math.max(worst, run); }
+    return { series, none: series.filter(c => c === 0).length / series.length,
+      avg: series.reduce((a, c) => a + c, 0) / series.length, worst: worst * 0.25 };
+  };
+  const names = await namesOverTime();
+  check(names.none === 0,
+    `a list name is readable at every moment of the first 8 seconds — `
+    + `${names.avg.toFixed(1)} on screen on average, nameless `
+    + `${(names.none * 100).toFixed(0)}% of it, longest gap ${names.worst}s`);
+  check(names.avg >= 1.5,
+    `and more than one of them, so the wall reads as a wall of lists `
+    + `(${names.avg.toFixed(2)} average)`);
 
   /* ── The copy over it ───────────────────────────────────────────────────*/
   const introText = await page.locator('.intro').innerText();
@@ -801,12 +857,19 @@ const DOMAIN_SPEECH = `(() => {
         ['tagline', '.wallcopy .pitch', 'dim'], ['promise', '.wallcopy .promise', 'dim']]) {
         const el = document.querySelector(sel); if (el) items.push({ k, ink, ...box(el) });
       }
-      [...document.querySelectorAll('.wallrow .plate')].forEach((pl, i) => {
-        const r = pl.getBoundingClientRect();
-        if (r.left > -4 && r.right < window.innerWidth + 4 && r.width > 10) {
-          items.push({ k: 'list name', ink: 'text', ...box(pl.querySelector('.n')) });
-          items.push({ k: 'list credit', ink: 'dim', ...box(pl.querySelector('.v')) });
-        }
+      /* Only the plate text a reader can actually see. A plate that sits
+         UNDER the copy block is covered by it, so sampling its box reads the
+         CTA's gold rather than the plate's glass — the bottom row measured
+         2.1:1 against a button nobody can see it through. Occluded text is
+         not low-contrast text; it is not text. */
+      const copyTop = document.querySelector('.wallcopy').getBoundingClientRect().top;
+      const onScreen = el => { const r = el.getBoundingClientRect();
+        return r.width > 10 && r.left > -4 && r.right < window.innerWidth + 4
+          && r.bottom <= copyTop + 1 && r.top >= -1; };
+      [...document.querySelectorAll('.wallrow .plate')].forEach(pl => {
+        const n = pl.querySelector('.n'), v = pl.querySelector('.v');
+        if (onScreen(n)) items.push({ k: 'list name', ink: 'text', ...box(n) });
+        if (onScreen(v)) items.push({ k: 'list credit', ink: 'dim', ...box(v) });
       });
       const ink = { text: getComputedStyle(document.querySelector('.wallcopy h1')).color,
         dim: getComputedStyle(document.querySelector('.wallcopy .promise')).color };

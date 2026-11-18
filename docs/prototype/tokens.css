@@ -53,6 +53,14 @@
      --border-subtle have to --bg-base in the lit themes. */
   --vault-surface: rgb(244 241 234 / .07);
   --vault-line: rgb(244 241 234 / .16);
+  /* Glass over moving artwork: the splash's name plates sit on the wall with
+     posters passing behind them. 88%, not the 10-18% a pane takes over a
+     known background, because the worst case behind this one is a white
+     poster - at 82% the 11px credit line measured 4.5:1, over the bar by a
+     rounding error, which is not a margin. At 88% it is 5.6:1 and still reads
+     as glass once it is blurred. The gate in drive.js forces every poster
+     white and samples the rendered pixels rather than trusting this note. */
+  --vault-plate: rgb(var(--vault-rgb) / .88);
 
   --serif: "New York", ui-serif, Georgia, "Times New Roman", serif;
   --sans: -apple-system, BlinkMacSystemFont, "SF Pro Text", system-ui, sans-serif;
@@ -75,11 +83,12 @@
   --m-settle: 260ms;
   /* The splash wall's drift: the time one row takes to travel its own list
      once. Ambient rather than interactive, so it is three orders of magnitude
-     slower than everything above - measured on a 15 Pro, 44px a second
-     forward and 34 on the rows that run the other way, which is one poster
-     every two and a half seconds and the width of the screen in nine. The
-     first value tried was 52s, and at 25px/s the wall read as still until you
-     watched it. Every other number on that wall is derived from this one: the
+     slower than everything above - measured on a 15 Pro, 37px a second
+     forward and 28.5 on the rows that run the other way, which is one poster
+     every 2.8 seconds and the width of the screen in eleven. The first value
+     tried was 52s, and at 25px/s the wall read as still until you watched it.
+     (The numbers moved from 44 and 34 when the name plate stopped being a
+     cell in the strip: same period, one cell less to travel.) Every other number on that wall is derived from this one: the
      reverse rows take 1.3x it and each row's phase offset is a seventh of it,
      so there is one speed to change and not five. */
   --m-wall: 30s;

@@ -616,8 +616,13 @@ footer.notes .build { color: var(--text-disabled); margin-top: var(--s2); }
    reported it. Four flex rows of `1fr` cannot have that bug - a row's height
    IS the leftover divided by four, whatever the screen, and the poster's
    width follows from its aspect ratio. */
-.wallrows { position: absolute; inset: 0; display: flex; flex-direction: column;
-  gap: var(--s2); padding: var(--s2) 0; }
+/* `z-index: 0` and `isolation` are load-bearing, not tidiness. The pinned
+   plates need a z-index to sit above their own row's posters, and without a
+   stacking context here that z-index competed with `.wallcopy`'s - so a plate
+   painted over the headline and another over the CTA. Contained, the whole
+   wall stays one layer under the veil and the copy, whatever its insides do. */
+.wallrows { position: absolute; inset: 0; z-index: 0; isolation: isolate;
+  display: flex; flex-direction: column; gap: var(--s2); padding: var(--s2) 0; }
 /* Both edges fade rather than cutting. A strip clipped square reads as broken
    - the first frame had a name plate sliced down the middle by the edge of
    the phone - where a strip that fades reads as continuing past the screen,
@@ -625,7 +630,19 @@ footer.notes .build { color: var(--text-disabled); margin-top: var(--s2); }
    nothing: a plate caught half off the edge is still legible at 25%, and a
    fade to transparent hid the first characters of the name on the row whose
    plate starts flush left. */
-.wallrow { flex: 1 1 0; min-height: 0; overflow: hidden; --i: 0; container-type: size;
+.wallrow { position: relative; flex: 1 1 0; min-height: 0; overflow: hidden;
+  --i: 0; --rows: 4; container-type: size; }
+/* The posters live in a rail inside the row, because the edge mask belongs to
+   the moving part alone. Applied to the row it also faded the name plate,
+   which does not move and has no business being faded.
+
+   `.wallrail`, not `.rail`: the app already has a `.rail` - the horizontal
+   scroller the browse rows use - carrying `margin: 0 -20px` and 8px of
+   bottom padding. Reusing the name made this one 40px too wide and its
+   posters 8px too short, silently, because both rules applied. Exactly the
+   collision `.wallveil` was named around when `.scrim` turned out to be the
+   sheet backdrop. The wall's own parts are all `wall*` for this reason. */
+.wallrow .wallrail { position: absolute; inset: 0;
   -webkit-mask-image: linear-gradient(90deg, rgb(0 0 0 / .25) 0, #000 7%, #000 93%, rgb(0 0 0 / .25) 100%);
   mask-image: linear-gradient(90deg, rgb(0 0 0 / .25) 0, #000 7%, #000 93%, rgb(0 0 0 / .25) 100%); }
 
@@ -641,7 +658,7 @@ footer.notes .build { color: var(--text-disabled); margin-top: var(--s2); }
    makes -50% exact. */
 .wallrow .strip { display: flex; width: max-content; height: 100%;
   animation: drift var(--m-wall) linear infinite;
-  animation-delay: calc(var(--i) * var(--m-wall) / -7); }
+  animation-delay: calc(var(--i) * var(--m-wall) / var(--rows) * -1); }
 /* Alternate rows run the other way and slower. One direction at one speed
    reads as a single sheet sliding behind a window; two reads as a surface. */
 .wallrow:nth-child(even) .strip { animation-direction: reverse;
@@ -684,13 +701,23 @@ footer.notes .build { color: var(--text-disabled); margin-top: var(--s2); }
    plates to the left edge instead would have stacked them into a column of
    labels down one side of the screen.
 
-   A gap in the wall, not a pane over it. The plate is a flex SIBLING of the
-   posters, so nothing is ever behind it but the vault - the first version was
-   written as smoked glass with a `backdrop-filter`, and the contrast probe
-   showed its backdrop sampling as flat --vault-bg at every viewport, which is
-   what a blur of nothing looks like. It is a surface lifted off the
-   background by 7% of the vault's own ink instead, which is the same move the
-   rest of the app makes with --bg-surface.
+   IT NO LONGER TRAVELS, and that is the most important thing on this screen.
+
+   As a cell in the strip it was on screen 15% of the time per row, and the
+   wall showed no list name at all for 78% of the first fifteen seconds -
+   measured, after it had shipped, on the one screen whose entire argument is
+   that these are lists. The cause is arithmetic rather than tuning: ten
+   posters is 1,110px of travel between one name and the next, on a screen
+   393px wide. Widening the plate made it WORSE (88%), because a wide label is
+   fully visible for less of its pass, not more; spreading the rows' phases
+   made it worse again, because in a fifteen-second look only half a cycle
+   happens at all. Nothing short of a label that stays could fix it.
+
+   So it is pinned to its row and the posters pass behind it. It alternates
+   sides with the drift, sitting where that row's posters are heading, so four
+   plates read as a zigzag down the wall rather than a column of labels down
+   one edge - and it is real glass now, because for the first time there is
+   something moving behind it to blur.
 
    ITS TYPE IS SIZED IN CONTAINER UNITS, which is a deliberate exception to
    the Dynamic Type rule and the only one on this screen. The plate is
@@ -704,9 +731,17 @@ footer.notes .build { color: var(--text-disabled); margin-top: var(--s2); }
    tablet, where a fixed 17px read as a caption lost in a 240px panel. The
    copy a reader actually has to read - headline, tagline, CTA, promise - is
    all in `rem` and honours Dynamic Type in full. */
-.wallrow .plate { aspect-ratio: 5/4; display: flex; flex-direction: column;
-  justify-content: flex-end; gap: 1.5cqh; padding: 7.5cqh;
-  background: var(--vault-surface); border: 1px solid var(--vault-line); }
+.wallrow .plate { position: absolute; z-index: 2; bottom: 0; left: 0;
+  width: 56cqw; max-width: 280px; display: flex; flex-direction: column;
+  justify-content: flex-end; gap: 1.5cqh; padding: 7cqh 8cqh;
+  background: var(--vault-plate); border: 1px solid var(--vault-line);
+  border-left: 0; border-bottom: 0; border-radius: 0 var(--r-sheet) 0 0;
+  -webkit-backdrop-filter: blur(18px) saturate(1.3); backdrop-filter: blur(18px) saturate(1.3); }
+/* The side follows the drift: a row running left wears its plate on the left,
+   so its posters travel towards the name and slip behind it. */
+.wallrow:nth-child(even) .plate { left: auto; right: 0;
+  border-right: 0; border-left: 1px solid var(--vault-line);
+  border-radius: var(--r-sheet) 0 0 0; }
 .wallrow .plate .k { font-size: 6.5cqh; font-weight: 700; letter-spacing: .1em;
   text-transform: uppercase; color: var(--accent-bright); }
 .wallrow .plate .n { font-family: var(--serif); font-weight: 600; font-size: 11cqh;
@@ -2524,6 +2559,21 @@ const WALL_ROWS = 4;
    it is a launch blocker until it is read from the database. */
 const CORPUS_CLAIM = 5000;
 
+/* Where in its own cycle each row starts, so the NAMES are spread through
+   time rather than bunched at the first second.
+
+   Not for the names - the plate is pinned now and never leaves. For the
+   GRID. Every row used to start within a seventh of a cycle of every other,
+   so the vertical seams between posters lined up across all four rows and the
+   wall read as a lattice sliding about rather than four independent lists.
+   Interleaving the halves (0, 2, 1, 3 for four rows; 0, 3, 1, 4, 2, 5 for
+   six) puts the starts a quarter of a cycle apart and the seams never agree.
+
+   This was also tried as the fix for the nameless wall, and failed: in a
+   fifteen-second look only half a cycle happens at all, so spreading the
+   rows over a whole one simply moved most of the names outside the window. */
+const phaseOf = (i, n) => (i % 2) * Math.ceil(n / 2) + Math.floor(i / 2);
+
 /* The wall's rows: one consensus Ten per list, in pool order from this
    visit's offset. `consensusTen` returns null for a list the catalog cannot
    fill, so a row can never be a list of nine. */
@@ -2546,6 +2596,9 @@ function renderIntro() {
      has no seam - and because both copies use the same poster URLs, the
      second costs no network.
 
+     The plate is a SIBLING of the rail rather than a cell inside the strip,
+     so it stays put while the ten drift behind it.
+
      The whole wall is `aria-hidden`. A screen reader meeting forty poster
      images and eighty rank numerals on the first screen of the app is the
      failure this already has a rule about, and the information the wall
@@ -2556,15 +2609,18 @@ function renderIntro() {
     <div class="wallrows" aria-hidden="true">
       ${rows.map((r, i) => {
         const name = listName(r.ranked, r.topic);
-        const copy = `<div class="cel plate">
+        const copy = r.ranked.map((f, n) => `<div class="cel poster">
+            <img src="${art(f, 'w342')}" alt="" decoding="async" draggable="false">
+            <span class="rank">${n + 1}</span>
+          </div>`).join('');
+        return `<div class="wallrow" style="--i:${phaseOf(i, rows.length)}; --rows:${rows.length}">
+          <div class="wallrail"><div class="strip">${copy}${copy}</div></div>
+          <div class="plate">
             <span class="k">Top 10</span>
             <span class="n">${esc(name.replace(/^Top 10 /, ''))}</span>
             <span class="v">From ${esc(roughly(r.voters))} Top 10s</span>
-          </div>${r.ranked.map((f, n) => `<div class="cel poster">
-            <img src="${art(f, 'w342')}" alt="" decoding="async" draggable="false">
-            <span class="rank">${n + 1}</span>
-          </div>`).join('')}`;
-        return `<div class="wallrow" style="--i:${i}"><div class="strip">${copy}${copy}</div></div>`;
+          </div>
+        </div>`;
       }).join('')}
     </div>`;
 

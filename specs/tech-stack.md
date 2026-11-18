@@ -579,3 +579,35 @@ contrast probe is what said so — it sampled the plate's backdrop as flat
 The rule it leaves behind: **if a `backdrop-filter` is not visibly doing
 something, it is not doing anything** — check what is actually painted behind
 the element before paying for the blur.
+
+## Three ways a new component collides with an old one (2026-11-18, Claude)
+
+All three hit the splash wall inside a day, all three were silent, and all
+three are the same mistake: a new part of the page assuming it is alone.
+
+**1. A class name the app already uses.** `.wallrail` is called that because
+`.rail` was taken — it is the horizontal scroller the browse rows use, and it
+carries `margin: 0 calc(var(--margin) * -1)` and 8px of bottom padding. Both
+rules applied, so the wall's rail came out **40px too wide and its posters 8px
+too short**, with nothing reported. `.wallveil` is named around the same trap:
+`.scrim` is the sheet backdrop, `position: fixed; z-index: 40; opacity: 0`,
+which would have made the splash's veil invisible and fixed to the viewport.
+
+*The rule this leaves:* a component that owns a screen gets a prefix, and a
+new class name is grepped for before it is used. `grep -n '\.foo' index.html`
+costs a second.
+
+**2. A z-index with no stacking context to live in.** The pinned name plates
+need `z-index: 2` to sit above their own row's posters. `.wallrows` had no
+`z-index`, so that 2 was measured against `.wallcopy`'s 1 in the *same*
+context — and a plate painted over the headline, another over the CTA. The fix
+is one line on the parent (`z-index: 0; isolation: isolate`), and the rule is
+that any container whose children carry z-indexes should establish a context,
+so its insides cannot outrank its siblings.
+
+**3. A probe that samples occluded pixels.** The contrast gate read the bottom
+plate at 2.1:1 and was right about the pixels: that plate sits *under* the
+copy block, so what it sampled was the CTA's gold. Occluded text is not
+low-contrast text, it is not text — the gate now skips any plate text whose
+box is below the copy's top edge, the same line the "is a name readable"
+gate uses.
