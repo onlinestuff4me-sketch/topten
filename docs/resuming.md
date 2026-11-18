@@ -63,9 +63,20 @@ before a line of Swift was written against it.
 - **CI (Linux, `kit-linux`):** `swift build` + `swift test` on TopTenKit.
   Falsified once on a throwaway branch to prove the gate can go red.
 - **Browser (Chromium, iPhone 15 Pro viewport, `docs/prototype/drive.js`):**
-  the prototype driven end to end — **450+ assertions** in `drive.js`, plus 45
+  the prototype driven end to end — **488 assertions** in `drive.js`, plus 80
   in `drive_share.js` and 23 in `drive_db.js`, zero page errors. All three run
   in CI.
+
+  **Run `drive.js` the way CI runs it before pushing anything that touches an
+  image.** `docs/prototype/posters/` is gitignored, so CI has no artwork at
+  all and every poster answers 204, while a machine that has run
+  `build_catalog.py` has all 7,000 of them. That difference turned a green
+  local run into a red `main` on 2026-11-18. The suite now prints which world
+  it is in on its first line; to force CI's:
+
+  ```sh
+  POSTER_MIRROR=$(mktemp -d) node drive.js
+  ```
 
   Four of those gates are worth knowing about before changing the splash,
   because each was added after the thing it measures had already shipped
@@ -185,8 +196,10 @@ management API are blocked at this environment's proxy, so that is a Mac-side
 step — and Top Ten needs its **own** project, not Stack's.
 
 **Three public web surfaces** — `docs/prototype/ten.html`, `topic.html`,
-`card.html`, all built from `share.js`. 45 browser assertions in
-`drive_share.js`.
+`card.html`, all built from `share.js`. 80 browser assertions in
+`drive_share.js` — including, since 2026-11-18, the page with JavaScript
+off, the page with no artwork, and the reader-vs-sender comparison, none of
+which had ever been tested.
 
 **Data travels in the link** rather than from a database, so the pages are real
 and shareable with no backend standing up. `Share.fromLocation` is the only
