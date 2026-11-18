@@ -723,7 +723,17 @@ from ("From 5,000+ Top 10s"), and the three questions answer themselves:
   taste. Everybody argues with a ranking that presents itself as definitive.
 - **Why make my own?** Because `shared_with_consensus` can then tell you
   exactly how far from the crowd you are, and that number does not exist until
-  you have made one. The screen says so: *"Yours will be different. See how."*
+  you have made one.
+
+  *Amended 2026-11-18 (Mischa): the sub-line that said this out loud —*
+  *"Yours will be different. See how."* — *is cut. "It's not needed."* The
+  screen makes the argument without a sentence about it: a stranger's ranked
+  ten, four more lists you can swap into its place, and a headline asking what
+  **yours** is. A line explaining a screen that explains itself is the same
+  cost the blurb above the discovery cards was removed for on 2026-08-15. The
+  assertion in `drive.js` went with the copy — a suite that still demands a
+  line the product has deliberately dropped is a suite arguing with the
+  product.
 
 **The badge on the hero is LOCKED**, which is the mechanic the product already
 runs on (Req 12): you cannot see what was earned on a topic until you have

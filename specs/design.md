@@ -1479,20 +1479,37 @@ So `introLabel` returns a pair, and the label is a two-row grid:
 
 | row | what it holds |
 |---|---|
+| `kicker` | **"TOP 10"** — 10pt/700, uppercase, `text.secondary` *(added 2026-11-18)* |
 | `lead` | the subject — everything before the domain noun — 12pt/700 `accent.ink` |
 | `sub` | the **decade** if the name has one, else the **domain noun** — 11pt/600 `text.secondary` |
 
 ```
-Crime Movies of the 90s       ->  Crime      / 90s
-Animated Movies of the 2000s  ->  Animated   / 2000s
-Hitchcock Movies              ->  Hitchcock  / Movies
-Drama Shows                   ->  Drama      / Shows
+Crime Movies of the 90s       ->  TOP 10 / Crime      / 90s
+Animated Movies of the 2000s  ->  TOP 10 / Animated   / 2000s
+Hitchcock Movies              ->  TOP 10 / Hitchcock  / Movies
+Drama Shows                   ->  TOP 10 / Drama      / Shows
 ```
+
+**The kicker, and the rule it appears to contradict** *(Mischa, 2026-11-18:
+"each mini card should have Top 10 in it")*. On 2026-11-17 the shared prefix
+was **stripped** from these captions, because "Top 10 " set at full size took
+half an 84pt line and said nothing about which list this is. Both are right,
+and they are not the same rule:
+
+- the words all four share are a **kicker** — 10pt, 12pt of height, and what
+  they say is *this is a list*, which is the thing the tiles were failing to
+  say at all;
+- the **big line stays the distinguishing word**, which is what the November
+  17th finding was actually about.
+
+`drive.js` asserts the two separately — every tile's kicker reads "Top 10",
+and no tile's `lead` begins with it — because satisfying one by hand would
+otherwise quietly undo the other.
 
 Measured: the widest `lead` is "Hitchcock" at 72pt and the widest `sub` is
 "Movies" at 48pt, both inside the 100pt column, so **neither row can wrap** and
-every tile is 91pt tall whatever topic is in the hero — which also gave the
-hero back about 90pt of the budget the first version had taken. The domain noun
+every tile is 103pt tall whatever topic is in the hero — which also gave the
+hero back about 80pt of the budget the first version had taken. The domain noun
 survives wherever it is the only qualifier (*Drama / Shows*), and the **full**
 name stays on the button's accessible name (`Show Top 10 Animated Movies of the
 2000s`), so the shortening is for the eye only and a screen reader loses

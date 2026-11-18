@@ -557,10 +557,24 @@ const DOMAIN_SPEECH = `(() => {
      eats the half of an 84px line that says WHICH list this is. With the
      prefix in, four of six read "Top 10…" and told you nothing. */
   const titles = await page.evaluate(() =>
-    [...document.querySelectorAll('.mini-ten .what')].map(e => e.innerText.trim()));
-  check(titles.length > 0 && !titles.some(t => /^Top 10/.test(t)),
-    `each labelled by what makes it different, not by the words they share (${titles.slice(0, 3).join(' · ')}…)`);
-  check(titles.every(t => t.length > 3), 'and none of them reduced to an ellipsis');
+    [...document.querySelectorAll('.mini-ten')].map(b => ({
+      kicker: (b.querySelector('.kicker') || {}).textContent || '',
+      lead: (b.querySelector('.lead') || {}).textContent || '',
+      sub: (b.querySelector('.sub') || {}).textContent || '',
+    })));
+  /* Both halves of the rule, which pull in opposite directions and are both
+     Mischa's. 2026-11-17: a caption set at full size in "Top 10 " tells you
+     nothing about WHICH list it is, and ate half the line. 2026-11-18: every
+     mini card should still say Top 10. So the shared words are a kicker and
+     the big line is what makes this one different - asserted separately, or
+     satisfying one would quietly undo the other. */
+  check(titles.length > 0 && titles.every(t => /^top 10$/i.test(t.kicker.trim())),
+    `every tile says Top 10 (${titles.map(t => t.kicker.trim()).join(', ')})`);
+  check(titles.every(t => !/^top 10/i.test(t.lead.trim())),
+    `and its big line is what makes it different, not the words they share `
+    + `(${titles.map(t => t.lead.trim()).join(' · ')})`);
+  check(titles.every(t => t.lead.trim().length > 3 && t.sub.trim().length > 1),
+    'and neither row of it is reduced to an ellipsis');
 
   const introText = await page.locator('.intro').innerText();
   check(/free/i.test(introText), 'it answers what this costs before asking for anything');
@@ -569,11 +583,13 @@ const DOMAIN_SPEECH = `(() => {
     'the headline is still "What\'s your Top 10?" — the locked product voice');
   check(/Free\. No ads\. No subscription\. Ever\./.test(introText),
     'and the promise survives the redesign, as fine print under the CTA');
-  // The answer to "why would that make me make my own?" has to be ON the
-  // screen, not implied by it. `shared_with_consensus` is the payoff and this
-  // line is the promise of it.
-  check(/different/i.test(introText) && /see how/i.test(introText),
-    'the screen says what making one gets you: yours will differ, and we show you how');
+  /* The sub-line "Yours will be different. See how." was asserted here from
+     2026-08-15 until Mischa cut it on 2026-11-18: "it's not needed". The
+     screen makes that argument without a sentence about it - a stranger's
+     ranked ten, and four more lists you can swap into its place, over a
+     headline asking what YOURS is. The check goes with the line; keeping an
+     assertion for copy that has been deliberately removed is how a suite
+     starts arguing with the product. */
 
   /* The one-line rule still covers the headline and the list title. Mischa,
      2026-08-15: the splash "breaks our one-line rule twice". The bullets it

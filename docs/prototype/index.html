@@ -688,6 +688,15 @@ footer.notes .build { color: var(--text-disabled); margin-top: var(--s2); }
    than two blocks because the rows are then exactly two whatever is in them,
    and an empty `sub` still holds its line. */
 .mini-ten .what { display: grid; min-width: 0; overflow-wrap: break-word; }
+/* "Top 10" on every tile (Mischa, 2026-11-18). It is the words all four
+   share, which is exactly why it is a KICKER and not part of the big line:
+   set at full size it would eat half the column and say nothing about which
+   list this is - the finding that stripped it from these captions in the
+   first place, on 2026-11-17. As a 10px kicker it costs 12px of height and
+   says the thing that matters, that each of these is a list. It rhymes with
+   the hero's own eyebrow directly above it. */
+.mini-ten .kicker { font-size: 0.625rem; line-height: 1.2; font-weight: 700;
+  letter-spacing: .06em; text-transform: uppercase; color: var(--text-secondary); }
 .mini-ten .lead { font-size: 0.75rem; line-height: 1.25; font-weight: 700; color: var(--accent-ink); }
 .mini-ten .sub { font-size: 0.6875rem; line-height: 1.3; font-weight: 600; color: var(--text-secondary);
   min-height: 1.3em; }
@@ -2575,7 +2584,8 @@ function renderIntro() {
           aria-label="Show ${esc(name)}">
           <span class="mini-grid" aria-hidden="true">${o.ten.ranked.slice(0, 3).map(f =>
             `<img src="${art(f, 'w185')}" alt="" loading="lazy" decoding="async">`).join('')}</span>
-          <span class="what">${(l => `<span class="lead">${esc(l.lead)}</span>`
+          <span class="what">${(l => `<span class="kicker">Top 10</span>`
+            + `<span class="lead">${esc(l.lead)}</span>`
             + `<span class="sub">${esc(l.sub)}</span>`)(introLabel(name))}</span>
         </button>`;
       }).join('')}
@@ -2585,7 +2595,6 @@ function renderIntro() {
     <div class="art">${artifact}${strip}</div>
     <div class="intro-copy">
       <h1>What's your Top 10?</h1>
-      ${t ? `<p class="pitch">Yours will be different. See how.</p>` : ''}
     </div>
     <div class="cta">
       <button class="btn" data-act="begin">Make your first list</button>
