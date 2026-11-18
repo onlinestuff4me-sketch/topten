@@ -1,269 +1,162 @@
-# Top Ten — Badge System Specification
+# Badges
 
-**Status:** Draft v1
-**Last updated:** 2026-11-17
-**Owner:** Mischa
+**Rewritten 2026-11-18 (Mischa).** Everything below this line replaces a
+spec for a per-list badge composer. What it replaced, and why, is the first
+section — the reasoning is kept because the old design was reached by
+argument and the new one has to beat it on the record, not by forgetting it.
 
-## What a badge is
+---
 
-The badge is the reward for finishing a Ten and the currency of the reveal
-gate. It must feel: **crafted** (belongs to a designed family, never AI
-slop), **personal** (visibly derived from *this* list), and **witty** (the
-inscription is an inside joke that lands if you know the list).
+## What changed, and why
 
-**Decided 2026-08-14 (Mischa):** badges are **procedurally composed from a
-hand-crafted design kit, with on-device Foundation Models choosing the
-composition and writing the inscription.** No diffusion/image-gen in v1.
-Reasoning: per-badge image-gen has cost, moderation burden, and quality
-variance — and one mid badge deflates the whole ritual; a composed system
-guarantees the floor while the LLM supplies the personal wit. Image-gen may
-return as a premium tier (P1, licensing permitting).
+Mischa, 2026-11-18: *"The badge system seems complicated and confusing. We
+could have a standard set of badges that reward you for making lists (e.g.
+made 10 lists, made a list in each category). But not a badge for each list."*
+And: *"Badges is a new system, like achievements, just one set of achievements
+you unlock for taking actions in the app."*
 
-## Anatomy — five layers, back to front
+**The old system.** Every finished Ten produced a badge composed from a kit:
+8 backplate shapes × 4 materials × 8 enamels × 16 motifs = 4,096 visual
+combinations, plus an inscription written by an on-device model with a
+template fallback. It was specified in detail and built in full.
 
-1. **Backplate** — the badge's silhouette. Kit of ~12 hand-drawn shapes
-   (circle seal, shield, laurel oval, ticket stub, star burst, pennant,
-   hexagon plaque, ribbon rosette, film reel, marquee lozenge, keystone,
-   scalloped medal). Each shape carries domain affinity metadata (ticket
-   stub/film reel skew movies) but any shape is legal anywhere.
-2. **Field** — the backplate's fill: a material (enamel gloss, brushed
-   brass, velvet matte, frosted glass, lacquer) + a two-color palette, both
-   snapped into Laurel-safe LCH ranges (L 25–75, C ≤ 60).
+**What it actually produced**, measured across 103 real topics
+(`docs/badge-mechanics-audit.md`):
 
-   **Amended 2026-11-17 (Claude, measured).** The hue comes from the
-   **topic**; the artwork sets the **tone** within it. This supersedes
-   "derived from the Ten's artwork (dominant hues of the top 3 items)",
-   which was measured against the real catalogue and found to do the
-   opposite of what it promised. The dominant hue of all 3,469 posters:
+| | |
+|---|---|
+| inscriptions that said nothing about the list | **47%** |
+| badges reading *"Argued into this order"* | **one in five** |
+| motifs landing on compass / eye / mask | **36%** |
+| dimensions derived from a hash and signalling nothing | **shape, material** |
 
-   | Lab hue | what it is | share |
-   |---|---|---|
-   | 20–120° | amber / olive / yellow | **66%** |
-   | 220–300° | blue / violet | 25% |
-   | everything else | | 9% |
+Hitchcock got an eye. Westerns got a sun. Documentaries got a Roman column.
+Comedies of the 80s got a smiley face.
 
-   Two thirds of all artwork sits in one 100° band, because that is the band
-   the industry grades to. A badge whose hue is read off it is not a badge
-   that belongs to *this* list — it is the same badge as everybody else's,
-   and eleven of the first twenty rendered badges came out the same olive.
-   Raising chroma made them more olive; the band itself was the problem.
+**The diagnosis was not "tune it".** The complexity sat in the dimensions
+that carried no meaning, and the two that were supposed to make a badge
+personal failed about half the time. More motifs and more templates would
+have raised the floor and kept the shape: a gold-rimmed enamel roundel of a
+kind an ADA jury has seen on a thousand gamified apps, carrying a line that
+could sit on any list ever made.
 
-   Hanging the hue on the topic fixes the distribution (a hash is flat where
-   poster hues are not — measured at 11.3–13.7% across the eight enamels
-   over 4,000 topic names) and is the better product rule besides: **every
-   take on one topic is one colour**, so a topic's badges read as a set.
-   The remix graph is the engine of this app, and a shared enamel makes a
-   topic visible as a place rather than a string. The artwork keeps its job
-   — a list of dark posters is fired deeper than a list of bright ones — so
-   two takes on a topic are the same colour and never the same badge.
+**And a badge for finishing is a participation trophy.** You got one every
+time, so it said nothing about you. That is the deeper reason the audit
+numbers were bad: there was nothing for the system to be *about*.
 
-   **The enamels.** Eight, and the yellow band is deliberately absent:
-   anything in 62–128° at these lightnesses is olive, and olive beside a
-   gold rim is mud.
+---
 
-   | | hue | | hue |
-   |---|---|---|---|
-   | oxblood | 12° | teal | 205° |
-   | terracotta | 38° | navy | 248° |
-   | forest | 148° | aubergine | 288° |
-   | verdigris | 176° | plum | 330° |
+## What a badge is now
 
-   A palette of eight that recurs is a family you recognise across a shelf;
-   a continuous hue is a gradient soup where every badge is a near-miss of
-   its neighbour. Real enamel badges work this way because the kiln had a
-   finite set too.
-3. **Motif** — the central emblem. A curated library (~120 at launch,
-   grows over time) of custom-drawn glyphs tagged with themes: genres
-   (a tommy gun for crime, a katana, a rose, a spaceship, a briefcase-glow),
-   moods, eras, and famous-object references. Motifs are the visual half of
-   the inside joke — the briefcase-glow motif on a Tarantino badge does the
-   winking.
-4. **Metals** — trim ring, rivets, laurel sprigs. Rank-signaling: sprigs
-   appear only on badges for topics where the user's take was among the
-   first three ever made (a quiet founder's mark).
-5. **Inscription** — a **ribbon** carrying the LLM-written line. ≤ 6 words,
-   set in New York per design.md.
+**One fixed set of ten, hand-drawn, identical for everybody**, earned for
+what you have done across the app. Nothing is generated, so there is nothing
+to audit and no way for the system to produce something embarrassing.
 
-   **Amended 2026-11-17 (Claude).** "or arc" is struck. An arc is a circle,
-   and five of the eight backplates are not circles: drawn as an arc the
-   inscription ran outside the shape on every one of those and crossed the
-   motif on the rest. Clipping it to the plate only moved the fault — on the
-   ticket stub and the keystone the text then stopped dead at the edge,
-   which reads as a rendering bug rather than as a design.
+| | glyph | earned for |
+|---|---|---|
+| **First Ten** | star | finishing your first Top 10 |
+| **Ten Tens** | laurel | ten lists |
+| **The Long Shelf** | column | fifty lists |
+| **All-Rounder** | compass | a list in every category |
+| **Time Served** | planet | lists covering five different decades |
+| **First In** | flame | being first to take on a topic |
+| **Answered** | sword | making your own version of someone else's topic |
+| **Started Something** | sun | ten people taking on a topic you made first |
+| **Nobody Agrees** | skull | a Ten sharing nothing with the crowd |
+| **Exactly Right** | eye | a Ten the crowd agrees with completely |
 
-   The ribbon is a banner across the lower third with swallowtail ends that
-   **overhang** the plate. It is identical on all eight shapes by
-   construction, which an arc can never be. It is drawn in the enamel's own
-   shadow with gold lettering, not gold with dark lettering: the rim and the
-   motif are already gold, and a third gold mass turns the badge into one
-   metal blob.
+The last two run on `shared_with_consensus`, which has been in the schema and
+in `TopTenKit` since M1 and previously had nowhere to show.
 
-   The text is sized to the band and then pinned with `textLength` +
-   `lengthAdjust="spacingAndGlyphs"`. The serif differs on every surface a
-   badge renders on (New York on iOS, Georgia in most browsers, DejaVu Serif
-   on the CI runner, half again as wide), and a badge is an identity object
-   that has to look the same in the app, on the share page and in a link
-   preview. Identical beats unconstrained.
+### Three rules it is built on
 
-A badge is fully described by a small JSON-able struct
-(`BadgeComposition`): shape id, material, palette seeds, motif id,
-metal options, inscription string, plus the generation seed. **Badges are
-data, rendered live** — SwiftUI/Core Graphics on iOS, a matching renderer
-for web/OG images. Never stored as flattened images (except cached exports).
+1. **About you, not about a list.** This is the whole difference. A badge you
+   get for finishing is a receipt; a badge you get for finishing *fifty* is a
+   fact about you.
+2. **Locked ones are visible, and state their condition.** The exact opposite
+   of the old reveal gate, deliberately. A locked achievement that hides what
+   it wants cannot ask you for anything. Progress is shown where the target is
+   above 1 — *4 of 10 lists* — because the bar is the invitation.
+3. **Nothing is composed.** The tenth person to earn *Ten Tens* gets the
+   identical object the first one did. That is what makes it worth having, and
+   it is why there is no generation pipeline in this document any more.
 
-## The generation pipeline
+### The marks
 
-1. **Inputs:** the completed Ten (items + ranks + metadata: genres, people,
-   years, keywords from the catalog), the topic, and the user's badge
-   history (to avoid repeating shapes/motifs across their case).
-2. **Deterministic pre-pass (pure Swift, in `TopTenKit`):** derive palette
-   from artwork; compute candidate motif set by metadata tags; compute
-   candidate shapes weighted by domain + not-recently-used. This pass alone
-   must yield a complete, good-looking badge — it IS the fallback.
-3. **Foundation Models pass (on-device, guided generation):** a `@Generable`
-   `BadgeDirection` struct — the model picks one motif from the candidate
-   set (id-constrained enum, so it cannot hallucinate assets), one shape,
-   one material, and writes the **inscription**: a reference to one item's
-   iconic quote/scene/detail that resonates with the whole list's theme.
-   Prompt receives the ranked items + topic + motif candidate descriptions.
-   Guardrails: inscriptions must pass the framework's safety checks; output
-   is structurally constrained, so failure modes are "bland," never
-   "broken."
-4. **Assembly & render:** compose layers, run the reveal.
+The glyphs are the ones `badge.js` already carried for the old motif layer.
+They were drawn as decoration that meant nothing in particular; here each one
+means exactly one thing, which is the job they were always better suited to.
 
-Rules for the inscription (enforced in prompt + post-check):
+Drawn on a plain disc: earned is a filled disc with a gold rim and a gold
+glyph; unearned is an empty disc with a hairline rim and a secondary-text
+glyph. **Fill *and* stroke**, because several of the kit are drawn as strokes
+— the sun's rays, the compass needle, the planet's ring — and a fill-only
+rule renders them as a dot with ghost lines. (Found by measuring: every
+glyph's bounding box came back 63–97 units across, so nothing was small; they
+were simply unpainted.)
 
-- ≤ 6 words, no item title verbatim from rank 1 (too obvious — prefer ranks
-  2–10 or a cross-list theme), no quotation marks, no emoji.
-- It must be *derived from* the list — a quote fragment, a scene reference,
-  a shared trope — not a generic compliment ("Great taste!") which is the
-  quality floor we reject. Post-check: if the model returns a line that
-  contains none of the candidate reference tokens supplied in the prompt,
-  fall back to the template inscriptions (below).
+---
 
-**Amendment 2026-08-14 (M1.5 prototype, Claude):** the post-check must be
-**code that rejects, not a rule the generator is asked to follow** — and it
-must police the templates too, not only the model. The prototype's own
-template `Ten kept, <title> last` produced "Ten kept, The Shawshank
-Redemption last": exactly six words by luck, and eight with a longer title.
-Nothing in the pipeline would have caught it, because the templates were
-assumed safe. Every candidate line — model-written or template-filled — is
-now filtered on word count and on containing the rank-1 title, and a
-candidate that fails is discarded rather than trimmed. Trimming produces
-half-jokes; discarding produces a different joke.
-- Language matches the user's locale.
+## The reveal, after the badge
 
-**Fallback ladder** (device unsupported / Apple Intelligence off / model
-unavailable / post-check failed): deterministic pre-pass composition +
-template inscriptions built from list metadata ("Ten heists, zero regrets" -
-style patterns with slot-filled metadata). The reveal ritual is identical —
-users must not be able to tell which path ran.
+Finishing a Ten used to assemble a badge: plate, motif, metals, then an
+inscription struck letter by letter onto a ribbon. **What finishing gives you
+is the list**, so the ceremony lands on the list:
 
-Latency budget: ≤ 3s end-to-end (Req 4). Generation runs during the rank
-ceremony's final beats when possible (speculative start once 8 of 10 are
-slotted; discard on change).
+1. the list's name arrives,
+2. the ten rows settle in rank order, one every 90ms,
+3. **only if this list earned one**, an achievement mark strikes in.
 
-## The reveal draws the whole badge (2026-11-17)
+Most finishes will show nothing at step 3, and that is correct — see rule 1.
+Reduce Motion lands every row on the same end state with no timeline at all,
+and `skipReveal` does the same on demand.
 
-`revealSequence` has always specified "backplate, motif, metals,
-**inscription last, letter-by-letter**". The prototype was doing the first
-three and then typing the inscription into a separate line of DOM text under
-the badge, while the badge's own inscription layer was never switched on at
-all. So the reveal - the one screen that draws a badge at 260px - was the
-only surface in the product showing a badge without its ribbon.
+---
 
-Now the ribbon cloth lands as the final layer and the letters are struck onto
-it one at a time, which is what the sequence said. The line under the badge
-is the **list name**, which the reveal had never stated out loud despite
-being the moment you finish that list.
+## There is no gate
 
-The inscription is emitted as one `tspan` per character on every surface, so
-any renderer can animate it; outside the vault they are simply all visible.
-`drive.js` reads the inscription off the drawn tspans rather than off a
-neighbouring element - a stronger assertion, because it proves the words are
-on the artifact and not merely on the screen.
+**Retired 2026-11-18 (Mischa):** *"You can read and share anyone's list, and
+you can form your own version of someone's list."*
 
-**An inner keyline** was added to the metals layer at the same time: a thin
-rule inset 12% from the plate edge. A 260px badge of one flat field and one
-large glyph reads as a sticker; a border for the field to sit inside is what
-most separates a struck badge from a drawn one. It costs two paths and is
-visible on all eight plates.
+The reveal gate hid other people's badges until you made your own take on
+their topic, and `AGENTS.md` called it "the engine that turns browsing into
+creating". With no badge per list there is nothing left for it to hide, and
+"you have not earned the right to see that someone has made ten lists" is
+meaningless.
 
-## A locked badge is a badge, frosted (2026-11-17)
+**What replaces it as the engine: the remix offer.** Every list you read
+carries the obvious next move — *Make your own Top 10 Crime Movies of the
+90s* — and on a topic you have already made, the same place offers the way
+back to yours. The pull is the topic, not a lock.
 
-badges.md has always said "silhouette under frost". It was drawn as a rounded
-square with a padlock on it — the icon every app uses for every locked thing
-— and on the splash that is the first thing anybody sees of the badge system.
+Consequences, so nothing is left half-retired:
 
-It is now the real kit: a plate from the eight, a motif behind the lock, both
-in a flat frost tone. **The silhouette is seeded from the topic**, so a
-topic's locked badge is consistently ITS shape with ITS motif, and the shape
-you glimpse locked is the shape you get when it opens. A frosted silhouette
-says "there is a particular object here that you have not earned yet"; a
-padlock says "no".
+- `unlockedTopics()` is now `finishedTopics()`; the set is still needed to
+  know whether a tray is a draft.
+- The locked-badge renderer, the `badgecell` on discover cards, and the
+  *"Badge locked until you make yours"* lines are gone.
+- The database's `topic_unlocks` table and the `badges` table are now dead
+  weight — see `specs/prd.md` Req 12 for the migration still owed.
 
-**A hash fix came with it.** The seed goes through `badgeHash`, and every use
-of that hash is a modulo — enamel, plate, motif — so the LOW bits are the
-only ones that matter, and FNV-1a's low bits are its weak end. Across 208 of
-the app's real topic names the raw hash spread fine (10.6–13.5% per bucket),
-but the seven stand-in people's topics put five of six on the same plate,
-which on one screen reads as a bug rather than as chance. A final avalanche
-mixes the high bits down: those six become four distinct shapes and the
-spread over real titles stays healthy (7.7–15.4%).
+---
 
-## Reveal & gating rules
+## Still true, and still worth keeping
 
-- The badge is **never previewable** during creation — no partial renders,
-  no "generating…" spinner visible before the ceremony (speculative work is
-  silent).
-- Reveal runs `Motion.revealSequence` (design.md), skippable after 0.8s,
-  offline-capable, narrated for VoiceOver.
-- **Your** badges are always visible to you (badge case).
-- **Others'** badges render locked (silhouette under frost, per design.md)
-  until you complete your own take on that topic; then all badges on that
-  topic unlock for you, retroactively and forever.
-- The *list* is never gated — only badges. (PRD Req 12; open question there
-  tracks whether to tighten this.)
-- Re-ranking a published Ten: **offer, never force** (decided 2026-08-15,
-  Mischa). The badge persists unless membership changes, or ≥3 items move ≥3
-  slots — then regeneration is *offered*: "Your Top 10 changed. New badge?"
+- **Badges are data, rendered live**, never flattened images. One renderer
+  serves the app, the share page and the OG card, which is why they cannot
+  disagree.
+- **Moderation is now trivial.** There is no generated text and no generated
+  composition, so the whole "anti-slop" and safety apparatus the old pipeline
+  needed does not apply. An achievement name is written once, by us.
+- **Extension is adding a row to a table**, not growing a glyph library:
+  a new achievement is a predicate and a glyph.
 
-  A badge is an earned object and the user may be attached to it, so a small
-  edit must not silently replace one; but a badge that no longer describes its
-  list is a lie the app is telling on the user's behalf. The line between
-  those two lives in `TopTenKit/BadgeEligibility.swift` rather than in this
-  paragraph, because *"significant change"* is exactly the kind of phrase two
-  people read two different ways. Membership is judged on sets before order is
-  considered at all: a badge composed from items that have left the list is
-  stale wherever the survivors ended up.
+## What is deliberately not here any more
 
-## Quality bar & anti-slop tests
-
-Every kit asset is hand-approved. Before any badge-affecting change ships:
-
-- **The lineup test:** render 20 random badges as a wall — they must read
-  as one family (a real product screen: the Badge Case) with no two
-  near-identical neighbors.
-- **The stranger test:** an inscription shown without its list should be
-  intriguing; shown *with* its list it should land. If it needs the list's
-  author to explain it, it failed.
-- **The floor test:** force the fallback ladder's bottom rung; the result
-  must still be a badge you'd screenshot.
-
-## Moderation & safety
-
-Inscriptions come from a safety-guarded on-device model with structurally
-constrained output, referencing catalog metadata — exposure is low by
-construction. Still: profanity/slur list check post-generation (kit-level,
-locale-aware); badge reports on web pages route to takedown of the
-inscription (badge re-renders with template line) pending review. Freeform
-topics (P1) will require a real moderation pass — flagged in the PRD.
-
-## Extension points (design now, build later)
-
-- **Premium image-gen tier (P1):** `BadgeComposition` gains an optional
-  `heroImageRef`; the composed badge remains the frame so even generated
-  art stays in-family. Licensing re-audit required first (PRD Non-Goals).
-- Seasonal metal finishes; founder sprigs already reserve the metadata slot.
-- Motif library growth is content ops, not code — assets + tags ship in
-  catalog updates.
+The composition kit, the enamel-per-topic rule, the material sheens, the
+inscription rules, the `@Generable` pass, the fallback ladder, the latency
+budget for generation, and the anti-slop tests. All of it served a per-list
+badge. The enamel rule was good work and measured — hues flat at 11.3–13.7%
+across 4,000 topic names — and it is recorded here only so that nobody
+rediscovers it as new: if a topic ever needs a colour again, that is where
+the answer is, in this file's history.

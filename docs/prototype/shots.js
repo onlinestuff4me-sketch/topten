@@ -82,8 +82,10 @@ const MAKE_DONE = (crit) => {
   const t = window.makeTopic(crit);
   const ten = CAT.filter(f => window.inTopic(f, t))
     .sort((a, b) => (b.vc || 0) - (a.vc || 0)).slice(0, 10);
-  return { topicId: t.id, title: t.title, domain: t.domain,
-    ranked: ten.map(f => f.id), badge: compose(ten.map(f => f.id), t) };
+  // No badge: finishing a list stopped producing one on 2026-11-18. A done
+  // entry is the list and its name, which is what the app now stores.
+  return { topicId: t.id, title: window.listName(ten, t), domain: t.domain,
+    ranked: ten.map(f => f.id) };
 };
 
 const THREE = [{ genre: 'Crime', decade: 1990 }, { genre: 'Animation', decade: 2000 },
@@ -124,6 +126,15 @@ const SCREENS = {
   case: {
     what: 'Your Top 10s — the badge case',
     dark: true,
+    seed: (h) => {
+      eval(h.prep); const makeDone = eval(h.makeDone);
+      S.done = h.three.map(makeDone);
+      S.scene = 'you'; save(); render();
+    },
+  },
+
+  you: {
+    what: 'You — the achievement set and your finished lists',
     seed: (h) => {
       eval(h.prep); const makeDone = eval(h.makeDone);
       S.done = h.three.map(makeDone);

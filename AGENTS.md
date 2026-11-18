@@ -5,10 +5,31 @@ starting with movies and TV. The job it does is identity, not utility: *define
 yourself through your favorites, and be seen doing it.* You build a **Ten**
 (exactly ten items, ranked), the app's on-device LLM notices patterns in your
 picks and suggests ever-more-specific **Topics** to rabbit-hole into, and
-finishing a Ten reveals a generated **Badge** — a crafted emblem with an
-inside-joke inscription drawn from your own list. Other people's badges stay
-hidden until you make your own take on their topic, which is the engine that
-turns browsing into creating.
+what finishing gives you is the list itself. **Everything is readable by
+everybody**; the engine that turns browsing into creating is the remix — you
+read somebody's Top 10 Westerns and make yours.
+
+**Amended 2026-11-18 (Mischa), superseding the badge-per-list and the reveal
+gate.** This used to read: *"finishing a Ten reveals a generated Badge — a
+crafted emblem with an inside-joke inscription drawn from your own list.
+Other people's badges stay hidden until you make your own take on their
+topic, which is the engine that turns browsing into creating."* Both halves
+are gone.
+
+Mischa: *"The badge system seems complicated and confusing… Badges is a new
+system, like achievements, just one set of achievements you unlock for taking
+actions in the app."* And: *"You can read and share anyone's list, and you can
+form your own version of someone's list."*
+
+- **No badge per list.** A reward you get every single time is a receipt. The
+  composer is retired: `docs/badge-mechanics-audit.md` measured it over 103
+  real topics and found it varied two dimensions derived from a hash, put a
+  compass on Drama, and wrote one of two hard-coded lines on 35% of lists.
+- **Badges are now achievements** — one fixed, hand-drawn set of ten, about
+  what you have done across the app rather than about any one list, and the
+  locked ones are visible with their conditions stated. See `specs/badges.md`.
+- **No reveal gate.** Nothing is withheld from a reader. The pull to create is
+  the remix offer sitting on every list you read.
 
 Top Ten is a sibling project to **Stack** (the TV/movie tracker at
 `github.com/onlinestuff4me-sketch/stack`). It inherits Stack's process

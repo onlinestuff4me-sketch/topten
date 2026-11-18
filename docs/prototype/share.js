@@ -67,20 +67,15 @@ const Share = (() => {
 
   /* ── The badge block ──────────────────────────────────────────────────────
      The gate, drawn rather than enforced. The list above it is fully visible;
-     this is the only thing withheld, and it says exactly what opens it — a
-     lock with no key on it is just a wall. */
-  function badgeBlock(ten) {
-    const open = ten.unlocked && ten.badge;
-    const inner = open
-      ? window.badgeSVG(ten.badge, 200).replace(/class="layer"/g, 'class="layer on"')
-      : window.lockedBadge(true);
+     Nothing is withheld from a reader any more: the reveal gate was retired
+     on 2026-11-18 (specs/badges.md) along with the badge-per-list it hid.
+     What stood here as a lock is now the offer that replaced it — the whole
+     reason a stranger on this page is worth anything to the product is that
+     they might go and make their own. */
+  function remixBlock(ten) {
     return `<aside class="badgecol">
-      ${inner}
-      <span class="state">${open ? 'Badge unlocked' : 'Badge locked'}</span>
-      ${open && ten.badge.inscription
-        ? `<p class="insc">${esc(ten.badge.inscription)}</p>`
-        : `<p class="how">Make your own ${esc(ten.title)} and this badge opens —
-             along with every other badge on the same list.</p>`}
+      <p class="how">You can read any Top 10 here. The one worth having is
+        your own.</p>
       <a class="cta" href="./?topic=${encodeURIComponent(ten.topicId || '')}">Make your ${esc(ten.title)}</a>
     </aside>`;
   }
@@ -150,7 +145,7 @@ const Share = (() => {
           <p class="byline">A Top 10 by <b>${esc(ten.author)}</b></p>
           ${tenList(ten)}
         </div>
-        ${badgeBlock(ten)}
+        ${remixBlock(ten)}
       </div>
       ${compareBlock(ten)}
       ${footer()}`;
@@ -189,7 +184,6 @@ const Share = (() => {
      lets the badge take a third of the frame, because at thumbnail size the
      badge is the only thing legible and it is the thing being sold. */
   function card(ten) {
-    const open = ten.unlocked && ten.badge;
     const picks = ten.items.slice(0, 5).map((f, i) => `<div class="pick">
       <div class="art">${art(f, 'w342') ? `<img src="${esc(art(f, 'w342'))}" alt="">` : ''}
         <span class="n">${i + 1}</span></div>
@@ -202,11 +196,12 @@ const Share = (() => {
         <p class="byline">A Top 10 by <b>${esc(ten.author)}</b></p>
         <div class="picks">${picks}</div>
       </div>
+      <!-- The badge that sat here is retired (2026-11-18). A link preview has
+           one job - say whose list this is and make it look worth opening -
+           and the five picks already do it better than an emblem did. -->
       <div class="right">
-        ${open ? window.badgeSVG(ten.badge, 230).replace(/class="layer"/g, 'class="layer on"')
-               : window.lockedBadge(true)}
-        <span class="state">${open ? 'Badge earned' : 'Badge locked'}</span>
-        ${open && ten.badge.inscription ? `<p class="insc">${esc(ten.badge.inscription)}</p>` : ''}
+        <span class="state">Top 10</span>
+        <p class="insc">${esc(ten.title)}</p>
       </div>
     </div>`;
   }
@@ -287,7 +282,7 @@ const Share = (() => {
     if (plate) plate.classList.add('no-art');
   }, true);
 
-  return { fromLocation, link, tenPage, topicPage, card, cardFallback, consensus,
+  return { fromLocation, link, tenPage, topicPage, card, cardFallback, consensus, remixBlock,
            previewTags, applyPreviewTags, missing, esc, art, byId };
 })();
 

@@ -359,6 +359,34 @@ an earned object.
   Foundation-Models-capable device or the fallback path engages invisibly;
   the badge references at least one actual item from the Ten.
 
+**Amended 2026-11-18 (Mischa) — badges are achievements, and there is no
+gate.** Mischa: *"The badge system seems complicated and confusing… Badges is
+a new system, like achievements, just one set of achievements you unlock for
+taking actions in the app."* And: *"You can read and share anyone's list, and
+you can form your own version of someone's list."*
+
+What this changes across Requirements 4, 11 and 12, in one place:
+
+- **Finishing a Ten produces no badge.** The per-list composer and the
+  inscription generator are deleted. `docs/badge-mechanics-audit.md` has the
+  measurement that justified it: across 103 real topics it wrote one of two
+  hard-coded lines on 35% of lists, landed 36% of motifs on compass/eye/mask,
+  and varied two dimensions derived from a hash.
+- **The reveal lands on the list.** Name, then the ten rows in rank order,
+  then — only when one was earned — an achievement mark.
+- **Badges are one fixed set of ten**, about what you have done across the
+  app. Locked ones are visible and state their conditions. `specs/badges.md`
+  has the set and the rules.
+- **There is no reveal gate.** Everything is readable by everybody. The
+  engine that turns browsing into creating is the remix offer carried on
+  every list a reader opens.
+
+**Still owed:** the `badges` and `topic_unlocks` tables in
+`supabase/migrations/0001_init.sql` are now dead weight, and an achievements
+table does not exist. The prototype is local-first, so nothing is blocked by
+this, but the migration is outstanding and should land before publishing is
+real.
+
 **5. The rabbit-hole engine.** After every completed Ten (and on the Today
 surface), the on-device LLM analyzes the user's Tens and proposes new topics
 across a specificity range — from highly specific ("Top 10 needle-drops in
@@ -637,6 +665,11 @@ profile shows drafts. Public profile shows published Tens only.
 - Acceptance: badge case is the profile's hero; tapping a badge opens the
   Ten; drafts never visible to others.
 
+**Superseded 2026-11-18 (Mischa).** There is no badge case, because there are
+no per-list badges. The screen is now **You**: the ten achievements, earned
+and unearned, above your finished lists by name. Tapping a list opens it.
+Drafts still show, and are still never visible to others.
+
 **Built 2026-11-18 (Claude, overnight) — and the hole it closed was bigger
 than the requirement.** Until this screen existed, a finished Ten was
 **unreachable the moment you left the screen that announced it**. `S.done`
@@ -775,6 +808,13 @@ lock, "BADGE LOCKED", and the one sentence that opens it ("Unlocks when you
 make your own Crime films Ten"). Unlocked, the same row shows the real badge
 and says so. A status and an action competing as two verbs on one card is what
 made the old one unreadable.
+
+**Retired 2026-11-18 (Mischa).** Requirement 12 no longer applies: there is
+no gate and no per-list badge to gate. *"You can read and share anyone's
+list, and you can form your own version of someone's list."* The requirement
+is kept here rather than deleted because the amendments under it — the list
+name is the card, a list's name is its criteria, nothing on a card is a
+description, one CTA per card — were decided separately and all still hold.
 
 - Acceptance (added): every discovery card's list name renders larger than its
   creator's name; no card carries a description line or any user-entered text;

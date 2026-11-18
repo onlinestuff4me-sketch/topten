@@ -102,13 +102,24 @@ const q = (o) => {
   check(noAuth.forms === 0 && !noAuth.signIn,
     'nothing on it asks you to sign in — a browser arrives from a link');
 
-  // PRD Req 12: the LIST is never gated, only the badge.
-  check(await p.locator('.badgecol').count() === 1, 'the badge sits beside the list, not inside it');
-  check((await p.locator('.badgecol .state').innerText()).trim() === 'BADGE UNLOCKED',
-    'an unlocked badge says so');
-  check(await p.locator('.badgecol svg').count() === 1, 'and is really drawn');
-  check((await p.locator('.badgecol .insc').innerText()).trim() === 'Crime, all ten',
-    'wearing its inscription');
+  /* Nothing on this page is gated (2026-11-18). The badge that used to sit
+     beside the list, locked until you made your own take, is retired with the
+     whole badge-per-list idea. What stands in its place is the offer, which
+     is now the only thing converting a reader into a maker. */
+  const aside = await p.evaluate(() => ({
+    present: !!document.querySelector('.badgecol'),
+    cta: document.querySelector('.badgecol .cta')?.innerText.trim() || '',
+    href: document.querySelector('.badgecol .cta')?.getAttribute('href') || '',
+    anyBadge: document.querySelectorAll('.badgecol svg, .lockedbadge').length,
+    lockWords: (document.body.innerText.match(/\block(ed)?\b/gi) || []).length,
+  }));
+  check(aside.present && /^Make your Top 10 /.test(aside.cta),
+    `a shared list offers the reader the obvious next move ("${aside.cta}")`);
+  check(/topic=/.test(aside.href),
+    `and carries the topic into the app (${aside.href.slice(0, 48)}…)`);
+  check(aside.anyBadge === 0, 'with no badge beside it — that system is retired');
+  check(aside.lockWords === 0,
+    `and nothing on the page is locked (${aside.lockWords} mentions)`);
 
   const titleTag = await p.title();
   check(/Top 10 Crime Movies of the 90s/.test(titleTag) && /Sam/.test(titleTag),
@@ -146,24 +157,24 @@ const q = (o) => {
   await p.screenshot({ path: `${SHOTS}/20-ten-phone.png`, fullPage: true });
   await p.close();
 
-  console.log('\n── The reveal gate ──────────────────────────────────────────');
+  console.log('\n── A link from somebody whose topic you have not made ──');
+  /* This used to be "The reveal gate": the same link without `unlocked=1`
+     showed a frosted badge and a line saying what would open it. There is no
+     such state now, so what this proves is that the page is IDENTICAL either
+     way - a reader who has made nothing sees exactly what a reader who has
+     made everything sees. */
   p = await open(`${BASE}/ten.html?${shared.replace('&unlocked=1', '')}`);
-  const gate = await p.evaluate(() => ({
-    state: document.querySelector('.badgecol .state')?.innerText.trim(),
-    locked: document.querySelectorAll('.lockedbadge').length,
-    how: document.querySelector('.badgecol .how')?.innerText.replace(/\s+/g, ' ').trim(),
+  const stranger = await p.evaluate(() => ({
     rows: document.querySelectorAll('.ten .row').length,
-    titles: [...document.querySelectorAll('.ten .t')].map(e => e.innerText),
+    titles: [...document.querySelectorAll('.ten .row')].every(r => r.innerText.trim().length > 3),
+    cta: document.querySelector('.badgecol .cta')?.innerText.trim() || '',
+    hidden: document.querySelectorAll('[hidden], .locked, .lockedbadge').length,
   }));
-  check(gate.state === 'BADGE LOCKED', 'without the unlock the badge reads as locked');
-  check(gate.locked === 1, 'and draws the lock, not an empty box');
-  check(/Make your own/.test(gate.how) && /opens/.test(gate.how),
-    `it names the key as well as the lock ("${gate.how}")`);
-  // The one that matters: gating the badge must not gate the list.
-  check(gate.rows === 10 && gate.titles.every(t => t && t !== 'Unavailable'),
-    'and every one of the ten is still readable — the list is never gated');
-  check(await p.locator('.cta').count() >= 1, 'with one way to earn it');
-  await p.screenshot({ path: `${SHOTS}/21-ten-locked.png`, fullPage: true });
+  check(stranger.rows === 10 && stranger.titles,
+    `a reader with no take of their own gets the whole ten (${stranger.rows} rows)`);
+  check(/^Make your Top 10 /.test(stranger.cta),
+    `and the same offer as everybody else ("${stranger.cta}")`);
+  check(stranger.hidden === 0, 'with nothing on the page withheld');
   await p.close();
 
   console.log('\n── A link with nothing in it ────────────────────────────────');
@@ -183,7 +194,7 @@ const q = (o) => {
   // a reason that had nothing to do with the behaviour under test.
   const junk = q({ t: '<script>alert(1)</script>', by: '"><img src=x>',
                    items: `99999999,${F.crime90s[0].id}`,
-                   badge: 'not-base64', unlocked: '1' });
+                   unlocked: '1' });
   p = await open(`${BASE}/ten.html?${junk}`);
   const safe = await p.evaluate(() => ({
     injected: document.querySelectorAll('img[src="x"]').length,
@@ -191,14 +202,12 @@ const q = (o) => {
     heading: document.querySelector('h1')?.innerText,
     unavailable: [...document.querySelectorAll('.ten .t')].filter(e => e.innerText === 'Unavailable').length,
     rows: document.querySelectorAll('.ten .row').length,
-    badgeDrawn: !!document.querySelector('.badgecol svg'),
   }));
   check(safe.injected === 0 && safe.scripts === 0, 'markup in the URL is escaped, not executed');
   check(safe.heading.includes('<script>'), 'and shown as the text it is');
   check(safe.unavailable === 1 && safe.rows === 2,
     `an id the catalog no longer holds reads as Unavailable and the rest still renders ` +
     `(${safe.unavailable} of ${safe.rows})`);
-  check(safe.badgeDrawn, 'an unreadable badge parameter still draws a badge rather than a void');
   await p.close();
 
   console.log('\n── The topic page ───────────────────────────────────────────');
@@ -255,6 +264,7 @@ const q = (o) => {
       w: Math.round(r.width), h: Math.round(r.height),
       picks: document.querySelectorAll('.pick').length,
       badge: document.querySelectorAll('.right svg').length,
+      kicker: document.querySelector('.right .state')?.innerText.trim() || '',
       insc: document.querySelector('.right .insc')?.innerText.trim(),
       title: document.querySelector('h1')?.innerText,
       overflowX: document.documentElement.scrollWidth - 1200,
@@ -265,19 +275,33 @@ const q = (o) => {
   check(card.overflowX <= 0 && card.overflowY <= 0,
     `and nothing spills out of the frame (x ${card.overflowX}, y ${card.overflowY})`);
   check(card.picks === 5, 'it shows five picks — the frame is not the page');
-  check(card.badge === 1 && card.insc === 'Crime, all ten', 'and the badge, wearing its line');
+  check(card.badge === 0 && /^TOP 10$/i.test(card.kicker),
+    `the card carries the list's name rather than a badge ("${card.kicker}")`);
   check(card.title === 'Top 10 Crime Movies of the 90s', 'under the list\'s own name');
   await p.screenshot({ path: `${SHOTS}/23-card.png` });
   await p.close();
 
-  // A locked badge on a card is the interesting case: the card is what makes
-  // somebody click, so the lock has to look like an invitation.
-  p = await open(`${BASE}/card.html?${shared.replace('&unlocked=1', '')}`, 1200, 630);
-  check((await p.locator('.right .state').innerText()).trim() === 'BADGE LOCKED',
-    'a card for a badge you have not earned says so');
-  check(await p.locator('.lockedbadge').count() === 1, 'and draws the lock');
-  await p.screenshot({ path: `${SHOTS}/24-card-locked.png` });
-  await p.close();
+  /* The same card without `unlocked=1`. There is no locked state any more, so
+     what matters is that the two are IDENTICAL - a link preview that differed
+     by who was looking would leak the old gate back in through the one
+     surface nobody tests by eye. */
+  const cardFor = async (q) => {
+    const pg = await open(`${BASE}/card.html?${q}`, 1200, 630);
+    const shape = await pg.evaluate(() => ({
+      title: document.querySelector('h1')?.innerText.trim(),
+      picks: document.querySelectorAll('.pick').length,
+      kicker: document.querySelector('.right .state')?.innerText.trim(),
+      badges: document.querySelectorAll('.right svg, .lockedbadge').length,
+    }));
+    await pg.close();
+    return shape;
+  };
+  const withUnlock = await cardFor(shared);
+  const without = await cardFor(shared.replace('&unlocked=1', ''));
+  check(JSON.stringify(withUnlock) === JSON.stringify(without),
+    `the card is the same whoever is looking (${JSON.stringify(without)})`);
+  check(without.badges === 0 && without.picks === 5,
+    'five picks and no badge, either way');
 
   console.log('\n── The link, round-tripped ──────────────────────────────────');
   // Share.link builds what Share.fromLocation reads. If those two ever

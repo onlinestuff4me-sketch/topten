@@ -538,12 +538,6 @@ section { margin-top: var(--s8); }
 .other-ten .mini b { position: absolute; left: 0; bottom: 0; font-family: var(--serif); font-size: 0.625rem; background: rgba(18,17,16,.72); color: #F4F1EA; padding: 0 4px; border-radius: 0 4px 0 4px; }
 /* The gate, stated: what the badge is, and the one thing that opens it. It is
    a status, never a second verb competing with the card's action. */
-.other-ten .badgecell { display: flex; align-items: center; gap: var(--s3); margin-top: var(--s3); padding-top: var(--s3); border-top: 1px solid var(--border-subtle); }
-.other-ten .badgecell svg { width: 44px; height: 44px; flex: 0 0 44px; }
-.other-ten .badgecell .lockedbadge { flex: 0 0 44px; }
-.other-ten .badgecell .state { display: block; font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-secondary); }
-.other-ten .badgecell.open .state { color: var(--accent); }
-.other-ten .badgecell .how { display: block; font-size: 0.8125rem; color: var(--text-secondary); margin-top: 2px; }
 /* One action per card, full width, 48pt tall, saying what it does. It was a
    line of grey text floating in the middle of the card. */
 .other-ten .cta { display: flex; width: 100%; min-height: 48px; align-items: center; justify-content: center;
@@ -554,7 +548,6 @@ section { margin-top: var(--s8); }
 .other-ten .cta:active { transform: scale(.985); }
 /* The gate-crossing action on a person's page: the same 48pt pill, and never
    welded to the sentence above it. */
-.gate-cta { margin-top: var(--s4); }
 /* The locked badge: the badge's plate in status.locked, wearing a lock. It
    was a circle over a bar, which at 44pt reads as an avatar — the one thing it
    must not be mistaken for on a screen full of other people. */
@@ -1038,6 +1031,86 @@ footer.notes .build { color: var(--text-secondary); margin-top: var(--s2); }
      are for. */
   .wallrow .cel.no-art { background: var(--vault-surface);
     box-shadow: inset 0 0 0 1px var(--vault-line); }
+
+/* ── Achievements (2026-11-18) ────────────────────────────────────────────
+   One fixed set, identical for everyone, replacing the per-list badge
+   composer. A LOCKED one is fully visible and states its condition - the
+   opposite of the old reveal gate, and the point: an achievement that hides
+   what it wants cannot ask you for anything. */
+.achs { display: grid; grid-template-columns: repeat(auto-fill, minmax(104px, 1fr));
+  gap: var(--s4) var(--s3); }
+.ach { display: flex; flex-direction: column; align-items: center; text-align: center;
+  gap: var(--s1); }
+.ach-mark { width: 64px; height: 64px; display: block; }
+.ach-mark svg { width: 100%; height: 100%; display: block; }
+.mark .disc { fill: var(--accent-muted); }
+.mark .rim { fill: none; stroke: var(--accent); stroke-width: 6; }
+/* Fill AND stroke, like badge.js's motif layer. Several glyphs in the kit
+   are drawn as strokes - the sun's rays, the compass needle, the planet's
+   ring - so a fill-only rule renders them as a dot with ghost lines. Caught
+   by measuring: every bounding box came back 63-97 units across, so nothing
+   was small; they were simply unpainted. */
+.mark .g { fill: var(--accent); stroke: var(--accent);
+  stroke-width: 6; stroke-linejoin: round; stroke-linecap: round; }
+.mark.off .disc { fill: none; }
+.mark.off .rim { stroke: var(--border-subtle); }
+.mark.off .g { fill: var(--text-secondary); stroke: var(--text-secondary); }
+.ach-name { font-family: var(--serif); font-size: 0.9375rem; line-height: 1.2;
+  color: var(--text-primary); }
+.ach.off .ach-name { color: var(--text-secondary); }
+.ach-note { font-size: 0.75rem; line-height: 1.25; color: var(--text-secondary); }
+.ach-bar { display: block; width: 56px; height: 3px; border-radius: 2px;
+  background: var(--border-subtle); overflow: hidden; margin-top: var(--s1); }
+.ach-bar span { display: block; height: 100%; background: var(--accent); }
+
+/* Your finished lists: a list, not a trophy shelf. The badge used to be the
+   thing worth looking at; now the list's own name is. */
+.mylists { list-style: none; margin: 0; padding: 0; }
+.mylist { display: flex; align-items: baseline; justify-content: space-between; gap: var(--s3);
+  width: 100%; min-height: 56px; padding: var(--s3) var(--s4); text-align: left;
+  background: var(--bg-surface); border: 1px solid var(--border-subtle);
+  border-radius: var(--r-card); margin-bottom: var(--s2); }
+.mylist .t { font-family: var(--serif); font-size: 1.0625rem; color: var(--text-primary); }
+.mylist .s { font-size: 0.8125rem; color: var(--text-secondary); white-space: nowrap; }
+
+/* ── The reveal, after the badge (2026-11-18) ─────────────────────────────
+   The ceremony lands on the Ten itself. Rows settle in rank order; each one
+   carries its own transition and is switched on by the timeline in
+   `runReveal`, so Reduce Motion lands every one of them on the same end
+   state with no timeline at all. */
+.reveal-ten { list-style: none; margin: var(--s6) 0 0; padding: 0;
+  width: 100%; max-width: 420px; }
+.rrow { display: flex; align-items: center; gap: var(--s3);
+  padding: var(--s1) 0; opacity: 0; transform: translateY(8px);
+  transition: opacity var(--m-settle) var(--ease-out),
+              transform var(--m-settle) var(--ease-out); }
+.rrow.on { opacity: 1; transform: none; }
+.rrow .num { font-family: var(--serif); font-weight: 700; font-size: 1rem;
+  color: var(--vault-accent); min-width: 1.6em; text-align: right;
+  font-variant-numeric: tabular-nums; }
+.rrow .thumb { width: 28px; height: 42px; flex: 0 0 28px; overflow: hidden;
+  border-radius: 3px; background: var(--vault-surface); }
+.rrow .thumb img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.rrow .t { font-family: var(--serif); font-size: 0.9375rem; line-height: 1.2;
+  color: var(--vault-text); overflow: hidden; text-overflow: ellipsis;
+  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; }
+
+/* An achievement struck at the end - and only when one was actually earned.
+   Most finishes show nothing here, which is the point: a reward that arrives
+   every single time is a receipt. */
+.won { margin-top: var(--s6); text-align: center; opacity: 0;
+  transform: scale(.92); transition: opacity var(--m-ring) var(--ease-out),
+  transform var(--m-ring) var(--ease-out); }
+.won.on { opacity: 1; transform: none; }
+.won-mark { display: inline-block; width: 72px; height: 72px; }
+.won-mark svg { width: 100%; height: 100%; }
+.won .mark .disc { fill: rgb(217 178 58 / .18); }
+.won .mark .rim { stroke: var(--vault-accent); }
+.won .mark .g { fill: var(--vault-accent); stroke: var(--vault-accent); }
+.won-name { font-family: var(--serif); font-size: 1.125rem; color: var(--vault-text);
+  margin: var(--s2) 0 0; }
+.won-note { font-size: 0.6875rem; font-weight: 700; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--vault-accent); margin: var(--s1) 0 0; }
 </style>
 </head>
 <body>
@@ -1048,6 +1121,7 @@ footer.notes .build { color: var(--text-secondary); margin-top: var(--s2); }
 
 <script src="catalog.js"></script>
 <script src="badge.js"></script>
+<script src="achievements.js"></script>
 <script src="share.js"></script>
 <script src="books.js"></script>
 <script>
@@ -3048,7 +3122,13 @@ function theirTen(src) {
 
 // Every topic you have finished. A locked badge opens the moment you have a
 // take on its topic — and every other badge on that topic opens with it.
-const unlockedTopics = () => new Set((S.done || []).map(d => d.topicId));
+/* `unlockedTopics()` lived here. The reveal gate it served was retired on
+   2026-11-18 (Mischa): nothing in the app is withheld from a reader now, and
+   the thing that turns browsing into creating is the remix offer on every
+   list you read. Finished topics are still worth knowing - a draft is a tray
+   on a topic you have NOT finished - so the set survives under a name that
+   says what it actually is. */
+const finishedTopics = () => new Set((S.done || []).map(d => d.topicId));
 
 /* What a stranger's list is FOR (Mischa, 2026-11-17: "Who is Sam, why do I
    care about his top 10, why would that make me want to make my own? We need
@@ -3298,13 +3378,11 @@ function whatsNext() {
 }
 
 function renderDiscover() {
-  const unlocked = unlockedTopics();
   const tens = SOURCES.map(theirTen).filter(t => t.ranked.length === 10);
   app.innerHTML = `
     <div class="topbar"><h1 class="display-lg">Other Top 10 Lists</h1><button class="link" data-act="backhome">Done</button></div>
     ${whatsNext()}
     ${tens.map((t, i) => {
-      const open = unlocked.has(t.src.topic.id);
       const who = esc(t.src.label), topic = esc(t.src.topic.title);
       // No topic line above the name any more: since the correction of
       // 2026-08-15 the name IS the topic, and printing it twice is just
@@ -3328,12 +3406,6 @@ function renderDiscover() {
           t.ranked.slice(0, 6).map((f, j) => `${j + 1}, ${f.t}`).join('; ')}">${
           t.ranked.slice(0, 6).map((f, j) =>
           `<span class="mini" aria-hidden="true"><img src="${IMG}w185${f.p}" alt=""><b>${j + 1}</b></span>`).join('')}</div>
-        <div class="badgecell ${open ? 'open' : 'locked'}">
-          ${open ? badgeSVG(compose(t.ranked.map(f => f.id), t.src.topic), 200).replace(/class="layer"/g, 'class="layer on"')
-                 : lockedBadge(false, badgeHash(t.src.topic.title))}
-          <span class="gate"><span class="state">${open ? 'Badge unlocked' : 'Badge locked'}</span>
-            <span class="how">${open ? `You have your own ${topic}` : `Unlocks when you make your own ${topic}`}</span></span>
-        </div>
         <button class="cta" data-other="${esc(t.src.id)}">${t.src.kind === 'person'
           ? `Read ${who}&rsquo;s Top 10` : 'Read this Top 10'}</button>
       </article>`;
@@ -3351,7 +3423,6 @@ function renderDiscover() {
 function renderOther(id) {
   const p = SOURCES.find(x => x.id === id); if (!p) return renderDiscover();
   const t = theirTen(p);
-  const open = unlockedTopics().has(p.topic.id);
   const mine = (S.done || []).find(d => d.topicId === p.topic.id);
   const mineIds = new Set((mine || {}).ranked || []);
   const shared = t.ranked.filter(f => mineIds.has(f.id));
@@ -3365,13 +3436,16 @@ function renderOther(id) {
         <span class="num">${i + 1}</span><span class="thumb"><img src="${art(f)}" alt=""></span>
         <span class="meta"><span class="t">${esc(f.t)}</span><span class="s">${f.y}${yours >= 0 ? ` · your #${yours + 1}` : ''}</span></span>
       </div></li>`; }).join('')}</ol></section>
-    <section style="text-align:center">
-      <div class="badge-inline">${open
-        ? badgeSVG(compose(t.ranked.map(f => f.id), p.topic), 200).replace(/class="layer"/g, 'class="layer on"')
-        : lockedBadge(true, badgeHash(p.topic.title))}</div>
-      <p class="prompt">${open ? `Badge unlocked, because you made your own ${esc(p.topic.title)}.`
-        : `Badge locked. It opens for every ${esc(p.topic.title)} at once when you make your own.`}</p>
-      ${open ? '' : `<button class="btn gate-cta" data-topic='${esc(JSON.stringify(p.topic))}'>Make your ${esc(p.topic.title)}</button>`}
+    <!-- THE ENGINE, after 2026-11-18. Nothing is withheld from a reader any
+         more - the gate is gone (specs/prd.md). What turns browsing into
+         creating is the obvious next move, stated plainly: you have just read
+         somebody's Westerns, so make yours. It is offered whether or not you
+         already have one, because on a topic you have made, the useful thing
+         is the way back to it. -->
+    <section class="endbar">
+      ${mine
+        ? `<button class="btn ghost" data-mine="${esc(p.topic.id)}">Open your ${esc(p.topic.title)}</button>`
+        : `<button class="btn" data-topic='${esc(JSON.stringify(p.topic))}'>Make your own ${esc(p.topic.title)}</button>`}
     </section>
     ${notes()}`;
   dockEl.innerHTML = '';
@@ -3426,8 +3500,7 @@ function renderTopicPage(crit) {
       <div class="section-head"><h2 class="section-h">Takes on it</h2></div>
       ${theirs.map(s => `<button class="sug-topic" data-other="${esc(s.id)}">
         <div class="lvl">${esc(s.role)}</div><div class="t">${esc(s.label)}</div>
-        <div class="why">${unlockedTopics().has(s.topic.id)
-          ? 'Badge open, because you made your own.' : 'Badge locked until you make yours.'}</div>
+        <div class="why">${esc(listName(theirTen(s).ranked, s.topic))}</div>
       </button>`).join('')}
     </section>` : ''}
 
@@ -3462,50 +3535,80 @@ function renderTopicPage(crit) {
    publishing is what introduces identity; inventing a name for a device
    would be the same fiction the seed-source decision threw out on
    2026-11-18. The handle appears when accounts do. */
+/* What `achievements.js` needs to know about this app, in one place. The
+   predicates are pure; everything app-shaped lives here, so the set can be
+   tested without a browser.
+
+   `drew` is 0 in the prototype and honest about it: nobody else's takes land
+   on a topic you invented when the other takes are fixtures. It becomes a
+   count from the remix graph when publishing is real. */
+const ACHIEVEMENT_WORLD = {
+  get domains() { return DOMAINS.filter(d => d.ready).map(d => d.id); },
+
+  /* How many of a finished Ten the crowd also picked, or null where there is
+     no crowd. A topic nobody else has taken on HAS no consensus, so it yields
+     no comparison rather than a flattering zero - "nobody agrees with you" is
+     only interesting when somebody could have. */
+  consensusOverlap(d) {
+    const src = SOURCES.find(s => s.topic.id === d.topicId);
+    const crowd = src && consensusTen(src.topic);
+    if (!crowd) return null;
+    const mine = new Set(d.ranked || []);
+    return crowd.ranked.filter(f => mine.has(f.id)).length;
+  },
+
+  // In the prototype every other take is a fixture, so a topic you invented
+  // is by definition one nobody else has. Honest, and it becomes a real
+  // lookup against the remix graph once publishing exists.
+  isFirstTake: (d) => !SOURCES.some(s => s.topic.id === d.topicId),
+  isAnswerTo: (d) => SOURCES.some(s => s.topic.id === d.topicId),
+  takesOnMyTopics: () => 0,
+};
+
 function renderYou() {
   const done = (S.done || []).slice().reverse();      // newest first
-  const open = unlockedTopics();
-  // Theirs that yours has opened. A real number off the fixtures rather than
-  // a claim: it is the one place the gate's retroactive half is countable.
-  const opened = SOURCES.filter(s => open.has(s.topic.id)).length;
+  const got = achievements(S, ACHIEVEMENT_WORLD);
+  const have = got.filter(a => a.unlocked).length;
   // A draft is a tray with something in it on a topic you have not finished.
-  const draft = (S.tray || []).length && !open.has(S.topic.id) ? S.tray.length : 0;
-
-  const line = !done.length
-    ? `Nothing here yet. The first one takes about two minutes.`
-    : `${done.length} finished, ${done.length} badge${done.length === 1 ? '' : 's'}.`
-      + (opened ? ` ${done.length === 1 ? 'It has' : 'Between them they have'} opened `
-         + `${opened} of other people&rsquo;s.` : '');
+  const finished = new Set((S.done || []).map(d => d.topicId));
+  const draft = (S.tray || []).length && !finished.has(S.topic.id) ? S.tray.length : 0;
 
   app.innerHTML = `
-    <div class="topbar"><h1 class="display-lg">Your Top 10s</h1>
+    <div class="topbar"><h1 class="display-lg">You</h1>
       <button class="link" data-act="youback">Done</button></div>
-    <p class="prompt">${line}</p>
+    <p class="prompt">${done.length
+      ? `${countNoun(done.length, S.topic).replace(/[a-z]+$/, done.length === 1 ? 'list' : 'lists')} finished, ${have} of ${got.length} badges earned.`
+      : 'Nothing here yet. The first list takes about two minutes.'}</p>
+
+    <section>
+      <div class="section-head"><h2 class="section-h">Badges</h2></div>
+      <div class="achs">${got.map(a => `
+        <div class="ach ${a.unlocked ? 'on' : 'off'}">
+          <span class="ach-mark" aria-hidden="true">${achMark(a)}</span>
+          <span class="ach-name">${esc(a.name)}</span>
+          <span class="ach-note">${a.unlocked ? 'Earned' : esc(a.note)}</span>
+          ${a.unlocked || a.need < 2 ? '' :
+            `<span class="ach-bar" role="img" aria-label="${a.have} of ${a.need}">
+               <span style="width:${Math.round(a.have / a.need * 100)}%"></span></span>`}
+        </div>`).join('')}</div>
+    </section>
 
     ${done.length ? `<section>
-      <div class="case">${done.map(d => `
-        <button class="case-item" data-mine="${esc(d.topicId)}"
-          aria-label="Open your ${esc(d.title)}">
-          <span class="case-badge" aria-hidden="true">${
-            badgeSVG(d.badge, 200).replace(/class="layer"/g, 'class="layer on"')}</span>
-          <span class="case-name">${esc(d.title)}</span>
-        </button>`).join('')}</div>
+      <div class="section-head"><h2 class="section-h">Your Top 10s</h2></div>
+      <ul class="mylists">${done.map(d => `
+        <li><button class="mylist" data-mine="${esc(d.topicId)}">
+          <span class="t">${esc(d.title)}</span>
+          <span class="s">${(d.ranked || []).length} ranked</span>
+        </button></li>`).join('')}</ul>
     </section>` : `<section class="case-empty">
-      <div class="badge-inline" aria-hidden="true">${lockedBadge(true, badgeHash('empty'))}</div>
-      <p class="prompt">A badge is what finishing gives you — and it opens every
-        other Top 10 on that topic at once.</p>
       <button class="btn" data-act="begin">Make your first list</button>
     </section>`}
 
     ${draft ? `<section>
-      <div class="section-head"><h2 class="section-h">Still going</h2></div>
-      <!-- Req 11: "Own profile shows drafts." It is the only thing on this
-           screen without a badge, which is the honest way to say it is not
-           finished. -->
+      <div class="section-head"><h2 class="section-h">Unfinished</h2></div>
       <button class="sug-topic" data-act="resume">
         <div class="lvl">${draft} of 10 picked</div>
-        <div class="t">${esc(S.topic.title)}</div>
-        <div class="why">Pick up where you left off.</div>
+        <div class="n">${esc(topicTitle(S.topic))}</div>
       </button>
     </section>` : ''}
 
@@ -3516,11 +3619,22 @@ function renderYou() {
   dockEl.innerHTML = '';
 }
 
-/* One of your own, opened from the case. Deliberately NOT `renderOther` with
-   a flag: that screen's whole shape is the gate - a locked badge, a line
-   about what opens it, and a CTA to go and make one. None of that applies to
-   a list you made, and the half of it that would survive is the half that
-   says nothing. */
+/* The mark on an achievement. A fixed glyph from badge.js's kit, on a plain
+   disc - NOT a composed badge. There is nothing to generate here: the tenth
+   person to earn "Ten Tens" gets the identical object the first one did,
+   which is what makes it worth having. Locked ones are drawn in outline and
+   still say what they are, because a locked achievement that hides its own
+   condition cannot motivate anything. */
+function achMark(a) {
+  const glyph = (window.MOTIF_PATHS && window.MOTIF_PATHS[a.glyph]) || '';
+  return `<svg viewBox="0 0 200 200" class="mark ${a.unlocked ? 'on' : 'off'}" role="img"
+    aria-label="${esc(a.name)}, ${a.unlocked ? 'earned' : 'not yet earned'}">
+    <circle cx="100" cy="100" r="92" class="disc"/>
+    <circle cx="100" cy="100" r="92" class="rim"/>
+    <g class="g" transform="translate(100 100) scale(0.58) translate(-100 -100)">${glyph}</g>
+  </svg>`;
+}
+
 function renderMine(topicId) {
   const d = (S.done || []).find(x => x.topicId === topicId);
   if (!d) { S.scene = 'you'; save(); return renderYou(); }
@@ -3533,7 +3647,6 @@ function renderMine(topicId) {
     <div class="topbar"><h1 class="display-lg fitline">${esc(d.title)}</h1>
       <button class="link" data-act="you">Back</button></div>
     <div class="finished-head">
-      <div class="badge-inline">${badgeSVG(d.badge, 200).replace(/class="layer"/g, 'class="layer on"')}</div>
       <div class="insc">${esc((d.badge || {}).inscription || '')}</div>
     </div>
     <section><ol>${films.map((f, i) => `<li><div class="tenrow ${i === 0 ? 'one' : ''}">
@@ -3647,99 +3760,98 @@ function facts(ids) {
     decade: [topDec[0] === null ? null : Number(topDec[0]), topDec[1]],
     span: Math.max(...years) - Math.min(...years) };
 }
-function compose(ids, topic) {
-  const F = facts(ids), seed = hash(ids.join(',') + topic.title);
-  const pal = F.films.slice(0, 3).map(f => f.c);
-  // The topic rides along because the badge's hue is the TOPIC's, not this
-  // list's — see the enamel note in badge.js. Every take on one topic is one
-  // colour, which is what makes a topic's badges read as a set.
-  return { shape: SHAPES[seed % SHAPES.length], motif: MOTIFS[F.genre[0]] || 'laurel', seed,
-    primary: pal[0] || '#6E675D', secondary: pal[1] || pal[0] || '#3A311A', metal: '#C9A227',
-    topic: topic.title || '', inscription: inscribe(F, seed, topic) };
-}
-function inscribe(F, seed, topic) {
-  const [g, gn] = F.genre, [d, dn] = F.director, [dec, decn] = F.decade;
-  const second = F.films[1];
-  const short = t => t.split(/[:—–-]/)[0].trim();
-  const c = [];
-  // Both the copy pass and the books pass caught the same bug here — a books
-  // badge inscribed "5 Austen films" — and each brought its own helper. One
-  // survives.
-  const N = nounFor(topic);
-  if (dn >= 3) c.push(`${dn} ${d.split(' ').pop()} ${N}, no apologies`);
-  if (gn >= 4) c.push(`${gn} ${g.toLowerCase()} ${N}, zero regrets`);
-  if (decn >= 4) c.push(`The ${dec}s never let go`);
-  if (F.span >= 45) c.push(`${F.span} years, one taste`);
-  if (second) c.push(`Everything after ${short(second.t)}`);
-  if (gn >= 3) c.push(`Ranked in ${g.toLowerCase()} order`);
-  c.push('Ten hills, all defended', 'Argued into this order');
-  const rank1 = F.films[0] ? F.films[0].t.toLowerCase() : '';
-  const ok = c.filter(l => l.split(/\s+/).length <= 6 && (!rank1 || !l.toLowerCase().includes(rank1)));
-  return ok.length ? ok[seed % ok.length] : 'Ten hills, all defended';
-}
+/* `compose()` and `inscribe()` lived here: the per-list badge composer and
+   the inscription generator. Both retired 2026-11-18 (Mischa) along with the
+   badge-per-list idea they served. The audit that justified it is in
+   docs/badge-mechanics-audit.md - across 103 real topics the composer varied
+   two dimensions derived from a hash, put a compass on Drama, and the
+   generator returned one of two hard-coded lines on 35% of lists.
+
+   `facts()` above survives: the topic suggester uses it, and it is the only
+   thing in this file that knows what a list is ABOUT. */
 
 let timers = [];
+
+/* THE REVEAL, after 2026-11-18. It used to assemble a badge composed for this
+   one list - plate, motif, metals, then an inscription struck onto a ribbon.
+   That badge is gone (docs/badge-mechanics-audit.md: one in five of them read
+   "Argued into this order"), and what finishing gives you is the list itself.
+
+   So the ceremony lands on the Ten. The name arrives, then the ten rows
+   settle in rank order, then - only if this list earned one - an achievement
+   mark strikes in. Most finishes will earn nothing, and that is correct: a
+   reward you get every single time is a receipt, not a reward.
+
+   The beats keep the old shape, so Reduce Motion still lands on the
+   identical end state and `skipReveal` still has one thing to do. */
 function renderReveal() {
-  const c = compose(S.ranked, S.topic); S.badge = c; save();
+  const before = { done: (S.done || []).slice() };
+  const entry = { topicId: S.topic.id, title: listName(S.ranked, S.topic),
+                  domain: S.topic.domain || 'movie', ranked: S.ranked.slice() };
+  const won = newlyUnlocked(before, { done: [...before.done, entry] }, ACHIEVEMENT_WORLD);
+  S.won = won.map(a => a.id); save();
+
   const v = document.createElement('div');
   v.className = 'vault';
   v.innerHTML = `<button class="skip" data-act="skip">Skip</button>
     <div class="stage">
-      <div class="badge-wrap">${badgeSVG(c)}</div>
       <p class="revealed-name">${esc(listName(S.ranked, S.topic))}</p>
-      <div class="after"><button class="btn ghost" data-act="replay">Replay</button><button class="btn" data-act="done">Your Top 10</button></div>
+      <ol class="reveal-ten">${S.ranked.map((id, i) => {
+        const f = byId.get(id);
+        return `<li class="rrow"><span class="num">${i + 1}</span>
+          <span class="thumb"><img src="${art(f)}" alt="" loading="eager"></span>
+          <span class="t">${esc(f.t)}</span></li>`;
+      }).join('')}</ol>
+      ${won.length ? `<div class="won">
+        ${won.map(a => `<span class="won-mark" aria-hidden="true">${achMark(a)}</span>`).join('')}
+        <p class="won-name">${won.map(a => esc(a.name)).join(' &middot; ')}</p>
+        <p class="won-note">New badge${won.length === 1 ? '' : 's'}</p>
+      </div>` : ''}
+      <div class="after"><button class="btn ghost" data-act="replay">Replay</button><button class="btn" data-act="done">See it</button></div>
     </div>`;
   document.body.appendChild(v);
   setBackgroundInert(true);
-  announce(`Badge revealed. Inscription: ${c.inscription}`);
+  announce(`${listName(S.ranked, S.topic)} finished.`
+    + (won.length ? ` New badge: ${won.map(a => a.name).join(', ')}.` : ''));
   runReveal(v);
 }
+
 function runReveal(v) {
   const at = (ms, fn) => timers.push(setTimeout(fn, reduced() ? 0 : ms));
   timers.forEach(clearTimeout); timers = [];
   requestAnimationFrame(() => v.classList.add('in'));
-  at(300, () => $('#l-plate', v).classList.add('on'));
-  at(900, () => $('#l-motif', v).classList.add('on'));
-  at(1400, () => $('#l-metal', v).classList.add('on'));
-  at(800, () => $('.skip', v).classList.add('on'));
-  /* The inscription lands ON the badge, which is what design.md's
-     `revealSequence` always said: "backplate, motif, metals, inscription
-     last, letter-by-letter". It used to type into a separate line of DOM
-     text under the badge while the badge's own inscription layer was never
-     switched on at all - so the reveal, the one screen that draws the badge
-     at 260px, was the only surface showing it without its ribbon.
-
-     The ribbon cloth lands first, then the letters strike onto it. The line
-     under the badge is now the LIST NAME, which the reveal never said out
-     loud despite being the moment you finish that list. */
-  at(1900, () => {
-    const ribbon = $('#l-ribbon', v);
-    if (ribbon) ribbon.classList.add('on');
-    const chs = $$('#l-ribbon .ich', v);
-    const step = Math.min(45, 700 / Math.max(chs.length, 1));
-    chs.forEach((ch, i) => at(300 + i * step, () => ch.classList.add('on')));
-    at(300 + chs.length * step + 200, () => {
-      const n = $('.revealed-name', v); if (n) n.classList.add('on');
-      $('.after', v).classList.add('on');
-    });
-  });
+  at(200, () => { const n = $('.revealed-name', v); if (n) n.classList.add('on'); });
+  at(600, () => $('.skip', v).classList.add('on'));
+  /* The ten settle in rank order. One row every 90ms reads as a list being
+     laid down; faster and they arrive as a block, slower and the screen
+     stalls before the thing you came for. */
+  const rows = $$('.rrow', v);
+  rows.forEach((r, i) => at(500 + i * 90, () => r.classList.add('on')));
+  const settled = 500 + rows.length * 90 + 250;
+  const won = $('.won', v);
+  at(settled, () => { if (won) won.classList.add('on'); });
+  at(settled + (won ? 500 : 0), () => $('.after', v).classList.add('on'));
 }
+
 function skipReveal(v) {
   timers.forEach(clearTimeout); timers = [];
   v.classList.add('in');
-  $$('.layer', v).forEach(l => l.classList.add('on'));
-  $$('#l-ribbon .ich', v).forEach(ch => ch.classList.add('on'));
   const n = $('.revealed-name', v); if (n) n.classList.add('on');
+  $$('.rrow', v).forEach(r => r.classList.add('on'));
+  const w = $('.won', v); if (w) w.classList.add('on');
   $('.after', v).classList.add('on'); $('.skip', v).classList.remove('on');
 }
 
 function renderFinished() {
-  const c = S.badge || compose(S.ranked, S.topic);
+  /* The badge that used to head this screen is gone. What you just made is
+     the list, so the list is what the screen leads with - and anything the
+     list EARNED is said once, plainly, rather than dressed as an object. */
+  const won = (S.won || []).map(id => achievements(S, ACHIEVEMENT_WORLD).find(a => a.id === id))
+    .filter(Boolean);
   app.innerHTML = `
     <div class="finished-head">
-      <div class="badge-inline">${badgeSVG(c).replace(/class="layer"/g, 'class="layer on"')}</div>
-      <h1 class="display-lg">${esc(S.topic.title)}</h1>
-      <div class="insc">${esc(c.inscription)}</div>
+      <h1 class="display-lg">${esc(listName(S.ranked, S.topic))}</h1>
+      ${won.length ? `<p class="insc">New badge: ${won.map(a => esc(a.name)).join(', ')}</p>` : ''}
     </div>
     <section><ol>${S.ranked.map((id, i) => { const f = byId.get(id); return `<li><div class="tenrow ${i === 0 ? 'one' : ''}">
       <span class="num">${i + 1}</span><span class="thumb"><img src="${art(f)}" alt=""></span>
@@ -4185,7 +4297,7 @@ document.addEventListener('click', e => {
         author: 'you',
         topicId: S.topic.id,
         items: S.ranked,
-        badge: S.badge || compose(S.ranked, S.topic),
+
         unlocked: true,
       }, location.origin);
       shareLink(url);
@@ -4197,10 +4309,10 @@ document.addEventListener('click', e => {
     case 'finish': {
       closeSheet();
       S.ranked = S.tray.slice(0, 10);
-      S.badge = compose(S.ranked, S.topic);
+
       S.done = [...(S.done || []).filter(d => d.topicId !== S.topic.id),
-                { topicId: S.topic.id, title: S.topic.title, domain: domainOf(S.topic),
-                  ranked: S.ranked.slice(), badge: S.badge }];
+                { topicId: S.topic.id, title: listName(S.ranked, S.topic),
+                  domain: domainOf(S.topic), ranked: S.ranked.slice() }];
       S.scene = 'reveal'; save(); renderReveal(); break;
     }
     case 'cut': S.scene = 'cut'; S.keep = []; save(); renderCut(); break;

@@ -2171,19 +2171,28 @@ const DOMAIN_SPEECH = `(() => {
   await page.waitForTimeout(900);
   check(await page.locator('.skip.on').count() === 1, 'the reveal becomes skippable after 0.8s, not before');
   await page.waitForTimeout(2600);
-  const insc = await badgeInscription(page);
-  check(insc.split(/\s+/).length <= 6, `inscription is at most six words: "${insc}"`);
-  // And it is struck onto the badge, not printed beside it.
-  const struck = await page.evaluate(() => {
-    const on = document.querySelectorAll('.vault #l-ribbon .ich.on').length;
-    const all = document.querySelectorAll('.vault #l-ribbon .ich').length;
-    const ribbon = document.querySelector('.vault #l-ribbon');
-    return { on, all, ribbonOn: !!ribbon && ribbon.classList.contains('on') };
+  /* The ceremony lands on the LIST. It used to assemble a badge and strike an
+     inscription onto a ribbon; both retired 2026-11-18 (specs/badges.md).
+     What this has to prove is that the thing you just made is what you are
+     shown, in order, and completely. */
+  const landed = await page.evaluate(() => {
+    const rows = [...document.querySelectorAll('.vault .rrow')];
+    return {
+      rows: rows.length,
+      settled: rows.filter(r => r.classList.contains('on')).length,
+      order: rows.map(r => r.querySelector('.num').textContent.trim()).join(','),
+      named: (document.querySelector('.vault .revealed-name') || {}).textContent || '',
+      noBadge: document.querySelectorAll('.vault .badge-wrap, .vault #l-ribbon').length,
+    };
   });
-  check(struck.all > 0 && struck.on === struck.all && struck.ribbonOn,
-    `every letter lands on the badge's ribbon (${struck.on}/${struck.all}, ribbon shown: ${struck.ribbonOn})`);
-  check(await page.locator('.vault .revealed-name').count() === 1,
-    'and the line under it names the list you just finished');
+  check(landed.rows === 10 && landed.settled === 10,
+    `the reveal lands on the ten itself (${landed.settled} of ${landed.rows} rows settled)`);
+  check(landed.order === '1,2,3,4,5,6,7,8,9,10',
+    `in rank order (${landed.order})`);
+  check(/^Top 10 /.test(landed.named.trim()),
+    `and names the list you just finished ("${landed.named.trim()}")`);
+  check(landed.noBadge === 0,
+    'with no composed badge anywhere on it — that system is retired');
   await page.screenshot({ path: SHOTS + '/5-reveal.png' });
   await page.waitForSelector('.after.on', { timeout: 5000 });
   await page.locator('[data-act="done"]').click();
@@ -2200,7 +2209,7 @@ const DOMAIN_SPEECH = `(() => {
   const shareable = await page.evaluate(() => {
     const url = Share.link({
       title: window.S.topic.title, author: 'you', topicId: window.S.topic.id,
-      items: window.S.ranked, badge: window.S.badge, unlocked: true,
+      items: window.S.ranked, unlocked: true,
     }, 'https://example.test');
     const parsed = Share.fromLocation(new URL(url));
     return {
@@ -2215,8 +2224,8 @@ const DOMAIN_SPEECH = `(() => {
   check(await page.locator('[data-act="share"]').count() === 1,
     'the finished screen offers a share action');
   check(/\/ten\?/.test(shareable.url), `and it builds a link to the public page (${shareable.url.slice(0, 60)}…)`);
-  check(shareable.title && shareable.items && shareable.unlocked,
-    'that round-trips the list, its name and its badge state');
+  check(shareable.title && shareable.items,
+    'that round-trips the list and its name');
   check(shareable.noSenderPicks,
     'and does not carry the sender\'s own ten — the comparison is the reader\'s');
   check(/coming next/i.test(finishedText), 'and the unbuilt domains are named rather than hidden');
@@ -2641,14 +2650,25 @@ const DOMAIN_SPEECH = `(() => {
       `${Math.round(Math.min(...dt.map(d => d.h)))}pt)`);
   }
 
-  // ── Locked, and saying what unlocks it ──────────────────────────────────
-  const lockedOnList = await page.locator('.lockedbadge').count();
-  check(lockedOnList === cardCount, `every badge starts locked (${lockedOnList} of ${cardCount})`);
-  const gate = (await page.locator('.other-ten .badgecell').first().innerText()).replace(/\s+/g, ' ').trim();
-  check(/locked/i.test(gate) && /make your/i.test(gate),
-    `a locked card reads as locked and says what opens it ("${gate}")`);
-  // Both agents' checks survive: the gate's own assertions, and the copy
-  // sweep that must also hold on this screen.
+  /* ── Nothing is locked (2026-11-18) ──────────────────────────────────────
+     The reveal gate is retired. What used to be here asserted that every
+     badge started locked, that a card said what opened it, and that finishing
+     one list opened every badge on that topic at once, retroactively.
+
+     All of it is gone, and the checks that replace it are the inverse: prove
+     that a reader is shown everything, and that the thing which now turns
+     browsing into creating - the remix offer - is present and names the topic
+     it would start. */
+  const nothingLocked = await page.evaluate(() => ({
+    lockedBadges: document.querySelectorAll('.lockedbadge').length,
+    gateCells: document.querySelectorAll('.badgecell').length,
+    lockWords: (document.body.innerText.match(/\block(ed)?\b/gi) || []).length,
+  }));
+  check(nothingLocked.lockedBadges === 0 && nothingLocked.gateCells === 0,
+    `nothing on discovery is locked (${nothingLocked.lockedBadges} locked badges, `
+    + `${nothingLocked.gateCells} gate cells)`);
+  check(nothingLocked.lockWords === 0,
+    `and the word does not appear either (${nothingLocked.lockWords} times)`);
   await noBritishSpelling('other people\'s Top 10 lists');
   await page.screenshot({ path: SHOTS + '/14-discover.png', fullPage: true });
 
@@ -2656,48 +2676,23 @@ const DOMAIN_SPEECH = `(() => {
   await page.waitForTimeout(250);
   check((await page.locator('h1').innerText()) === type[0].name,
     'the card opens the list it named — the page leads with the same name');
-  check(/locked/i.test(await page.locator('body').innerText()), 'their Ten is fully readable, only the badge is gated');
-  check(await page.locator('.tenrow').count() === 10, 'and the list itself is never hidden');
+  check(await page.locator('.tenrow').count() === 10,
+    'their whole ten is readable, every row of it');
 
-  // ── The gate: per topic, and retroactive across every list on it ─────────
-  const shared = await page.evaluate(() => {
-    const byTopic = {};
-    /* Identify a card by its source ID, never by its label. Since the seed
-       sources became kinds rather than people (2026-11-18) a label is shared
-       - "Best known" heads a crime list and an animation list - so matching
-       on labels would mark the wrong cards as opened and still, by luck of
-       the count, sometimes pass. The id is what the card carries in the DOM. */
-    for (const p of window.SOURCES) (byTopic[p.topic.id] = byTopic[p.topic.id] || []).push(p.id);
-    const id = Object.keys(byTopic).sort((a, b) => byTopic[b].length - byTopic[a].length)[0];
-    const on = window.SOURCES.filter(p => p.topic.id === id);
-    return { topic: on[0].topic, ids: byTopic[id], labels: on.map(p => p.label) };
+  /* THE ENGINE. With no gate, the only thing converting a reader into a maker
+     is this offer, so it has to be here and it has to name the topic - "Make
+     your own" with no object is an invitation to nothing. */
+  const offer = (await page.locator('.endbar .btn').first().innerText()).trim();
+  const theirTopic = await page.evaluate(() => {
+    const p = window.SOURCES.find(x => x.id === window.S.other);
+    return p ? p.topic.title : '';
   });
-  check(shared.ids.length >= 2,
-    `more than one source has taken on the same topic (${shared.labels.join(' and ')} on ${shared.topic.title})`);
-  await page.evaluate(t => {
-    window.S.done.push({ topicId: t.id, title: t.title, domain: t.domain,
-      ranked: window.S.done[0].ranked, badge: window.S.done[0].badge });
-  }, shared.topic);
-  // We are on a person's page; its Back returns to Discover and re-renders.
-  await page.locator('[data-act="discover"]').click();
-  await page.waitForTimeout(300);
-  const lockedAfter = await page.locator('.lockedbadge').count();
-  check(lockedAfter === lockedOnList - shared.ids.length,
-    `one take opens every badge on that topic at once, and no others ` +
-    `(${lockedOnList} locked → ${lockedAfter}, ${shared.ids.length} opened)`);
-  const opened = await page.evaluate(() => [...document.querySelectorAll('.other-ten')]
-    .filter(c => c.querySelector('.badgecell.open')).map(c => c.dataset.who));
-  check(opened.slice().sort().join(',') === shared.ids.slice().sort().join(','),
-    `and exactly the lists on that topic opened, retroactively, without visiting them (${opened.join(', ')})`);
-  check(await page.locator('.other-ten .badgecell.open svg').count() === shared.ids.length,
-    'each opened card shows the real badge where the lock was');
-  const openGate = (await page.locator('.other-ten .badgecell.open').first().innerText()).replace(/\s+/g, ' ').trim();
-  check(/unlocked/i.test(openGate), `and says so ("${openGate}")`);
-  const stillLocked = await page.evaluate(() => [...document.querySelectorAll('.other-ten')]
-    .filter(c => c.querySelector('.badgecell.locked')).map(c => c.dataset.who));
-  check(stillLocked.length === cardCount - shared.ids.length,
-    `every other topic stays shut (${stillLocked.join(', ')})`);
-  await page.screenshot({ path: SHOTS + '/15-discover-unlocked.png', fullPage: true });
+  check(/^Make your own /.test(offer),
+    `their list offers you the obvious next move ("${offer}")`);
+  check(offer.includes(theirTopic),
+    `and it names the topic it would start ("${theirTopic}")`);
+  check(await page.locator('.endbar [data-topic]').count() === 1,
+    'and carries the criteria, so the build screen opens scoped to it');
 
   // ── A draft saved by an earlier build must survive a rebuilt shelf ──────
   // The catalog is regenerated from TMDB, so ids can vanish between builds.
@@ -2896,7 +2891,7 @@ const DOMAIN_SPEECH = `(() => {
       const made = crit => { const t = makeTopic(crit);
         const ten = CAT.filter(f => inTopic(f, t)).sort((a, b) => (b.vc || 0) - (a.vc || 0))
           .slice(0, 10).map(f => f.id);
-        return { topicId: t.id, title: t.title, domain: t.domain, ranked: ten, badge: compose(ten, t) }; };
+        return { topicId: t.id, title: t.title, domain: t.domain, ranked: ten }; };
       S.done = [made({ genre: 'Crime', decade: 1990 }), made({ domain: 'tv', genre: 'Drama' })];
       S.tray = []; S.scene = 'you'; S.youBack = 'done'; save(); render();
     }],
@@ -2962,7 +2957,7 @@ const DOMAIN_SPEECH = `(() => {
       const made = crit => { const t = makeTopic(crit);
         const ten = CAT.filter(f => inTopic(f, t)).sort((a, b) => (b.vc || 0) - (a.vc || 0))
           .slice(0, 10).map(f => f.id);
-        return { topicId: t.id, title: t.title, domain: t.domain, ranked: ten, badge: compose(ten, t) }; };
+        return { topicId: t.id, title: t.title, domain: t.domain, ranked: ten }; };
       S.done = [made({ genre: 'Crime', decade: 1990 }), made({ domain: 'tv', genre: 'Drama' })];
       S.tray = []; S.scene = 'you'; S.youBack = 'done'; save(); render();
     }],
@@ -3234,7 +3229,7 @@ const DOMAIN_SPEECH = `(() => {
     const crowd = window.consensusTen(t).ranked.map(f => f.id);
     const outside = CAT.filter(f => window.inTopic(f, t) && !crowd.includes(f.id)).map(f => f.id);
     const ten = [...crowd.slice(0, 5), ...outside.slice(0, 5)];
-    S.done = [{ topicId: t.id, title: t.title, domain: t.domain, ranked: ten, badge: compose(ten, t) }];
+    S.done = [{ topicId: t.id, title: t.title, domain: t.domain, ranked: ten }];
     S.topicPage = { genre: 'Crime', decade: 1990 }; S.topicBack = 'discover';
     S.scene = 'topic'; save(); render();
   });
@@ -3273,7 +3268,7 @@ const DOMAIN_SPEECH = `(() => {
     const t = window.makeTopic({ genre: 'Crime', decade: 1990 });
     const crowd = new Set(window.consensusTen(t).ranked.map(f => f.id));
     const ten = CAT.filter(f => window.inTopic(f, t) && !crowd.has(f.id)).slice(0, 10).map(f => f.id);
-    S.done = [{ topicId: t.id, title: t.title, domain: t.domain, ranked: ten, badge: compose(ten, t) }];
+    S.done = [{ topicId: t.id, title: t.title, domain: t.domain, ranked: ten }];
     save(); render();
   });
   await page.waitForTimeout(300);
@@ -3282,146 +3277,135 @@ const DOMAIN_SPEECH = `(() => {
   check(/You share 0 of 10/.test(noOverlap) && /Incredible/.test(noOverlap),
     `nought out of ten is a designed line, not an empty state ("${noOverlap.slice(-70)}")`);
 
-  /* ── Your Top 10s — the Badge Case (PRD Req 11) ────────────────────────
-     The hole this closes: a finished Ten used to be unreachable the moment
-     you left the screen that announced it. `S.done` existed to gate other
-     people's badges and to aim the daily pick, and for nothing else — so an
-     app about being seen for your favourites had nowhere to see them.
+  /* ── You: the achievement set, and your lists ──────────────────────────
+     Replaces the Badge Case. Badges stopped being per-list on 2026-11-18
+     (specs/badges.md): there is one fixed set of ten, about what you have
+     done across the app, and a LOCKED one is fully visible with its
+     condition stated - the exact inverse of what the old gate asserted.
 
-     Checked as a round trip rather than as a render: the case is only worth
-     anything if you can get to it, open one, and get back. */
-  console.log('\n── Your Top 10s, the badge case ─────────────────');
-  const seedDone = n => page.evaluate(k => {
-    localStorage.clear();
-    document.querySelectorAll('.sheet, .scrim, .coach, .coachscrim, .vault').forEach(x => x.remove());
-    S.seen = true; S.tipDone = true;
+     Three things this has to hold, because each was a real failure mode:
+       * all ten are always on screen, earned or not, or the set cannot ask
+         you for anything;
+       * an unearned one says what it wants, in words, not just dimmed;
+       * the glyph is actually PAINTED. Several in the kit are drawn as
+         strokes, and the first version of the mark set `fill` only, so the
+         sun, the compass and the planet rendered as dots. */
+  console.log('\n── You: achievements and your lists ──────────────');
+
+  await page.evaluate(() => {
+    localStorage.clear(); S.seen = true; S.tipDone = true;
     const make = crit => {
       const t = window.makeTopic(crit);
       const ten = CAT.filter(f => window.inTopic(f, t))
         .sort((a, b) => (b.vc || 0) - (a.vc || 0)).slice(0, 10);
-      return { topicId: t.id, title: t.title, domain: t.domain,
-        ranked: ten.map(f => f.id), badge: compose(ten.map(f => f.id), t) };
+      return { topicId: t.id, title: window.listName(ten, t), domain: t.domain,
+               ranked: ten.map(f => f.id) };
     };
     S.done = [{ genre: 'Crime', decade: 1990 }, { genre: 'Animation', decade: 2000 },
-      { domain: 'tv', genre: 'Drama' }].slice(0, k).map(make);
-    S.scene = 'done'; save(); render();
-  }, n);
-
-  // Reachable from the screen that just gave you a badge.
-  await seedDone(3);
-  await page.waitForTimeout(250);
-  check(await page.locator('[data-act="opencase"]').count() >= 1,
-    'the screen that hands you a badge says where the badges live');
-  await page.locator('[data-act="opencase"]').first().click();
+              { domain: 'tv', genre: 'Drama' }].map(make);
+    S.scene = 'you'; save(); render();
+  });
   await page.waitForTimeout(250);
 
-  const kase = await page.evaluate(() => {
-    const items = [...document.querySelectorAll('.case-item')];
+  const you = await page.evaluate(() => {
+    const marks = [...document.querySelectorAll('.ach')];
+    const painted = [...document.querySelectorAll('.ach-mark .g')].map(g => {
+      const cs = getComputedStyle(g);
+      return cs.fill !== 'none' && cs.stroke !== 'none';
+    });
     return {
       heading: (document.querySelector('.topbar h1') || {}).textContent.trim(),
-      n: items.length,
-      names: items.map(i => (i.querySelector('.case-name') || {}).textContent.trim()),
-      labels: items.map(i => i.getAttribute('aria-label') || ''),
-      // Every badge in your own case is REVEALED. The lock in Req 12 is
-      // about other people's; gating a reader from their own badge would be
-      // the mechanic pointed the wrong way.
-      locked: items.filter(i => i.querySelector('.lockedbadge')).length,
-      drawn: items.filter(i => i.querySelector('svg .layer.on')).length,
-      // The badge is the item, per Req 11 — "the badge case is the profile's
-      // hero". A 20px glyph beside a title would be a list with decoration.
-      badgeW: items.map(i => Math.round(i.querySelector('.case-badge').getBoundingClientRect().width)),
+      total: marks.length,
+      earned: marks.filter(m => m.classList.contains('on')).length,
+      unearned: marks.filter(m => m.classList.contains('off')).length,
+      allNamed: marks.every(m => (m.querySelector('.ach-name') || {}).textContent.trim().length > 2),
+      unearnedSayWhy: marks.filter(m => m.classList.contains('off')).every(m => {
+        const n = (m.querySelector('.ach-note') || {}).textContent.trim();
+        return n.length > 8 && n !== 'Earned';
+      }),
+      painted: painted.filter(Boolean).length,
+      paintedOf: painted.length,
+      lists: document.querySelectorAll('.mylist').length,
+      listNames: [...document.querySelectorAll('.mylist .t')].map(x => x.textContent.trim()),
+      noOldBadges: document.querySelectorAll('.case-item, .lockedbadge, .badge-wrap').length,
       over: Math.round(document.documentElement.scrollWidth - document.documentElement.clientWidth),
     };
   });
-  check(kase.heading === 'Your Top 10s', `the case is called Your Top 10s ("${kase.heading}")`);
-  check(kase.n === 3, `one badge for each finished Top 10 (${kase.n} of 3)`);
-  check(kase.drawn === 3 && kase.locked === 0,
-    `and every one of them is revealed — your own badge is never gated `
-    + `(${kase.drawn} drawn, ${kase.locked} locked)`);
-  check(kase.names.every(n => /^Top 10 /.test(n)),
-    `each says which list it is, in full (${kase.names.join(' · ')})`);
-  check(kase.labels.every(l => /^Open your Top 10 /.test(l)),
-    `and each is a named control, not a bare image (${kase.labels[0]})`);
-  check(kase.badgeW.every(w => w >= 100), `the badge is the item, not a glyph beside one (${kase.badgeW.join(', ')}px)`);
-  check(kase.over <= 1, 'the shelf fits its column');
 
-  // Newest first. A case that grows downward buries the thing you just made.
-  check(kase.names[0] === 'Top 10 Drama Shows',
-    `newest first — the one you just finished is at the top ("${kase.names[0]}")`);
+  check(you.heading === 'You', `the screen is called You ("${you.heading}")`);
+  check(you.total === 10, `all ten badges are on screen at once (${you.total})`);
+  check(you.earned >= 1 && you.unearned >= 1,
+    `with some earned and some not (${you.earned} earned, ${you.unearned} not)`);
+  check(you.allNamed, 'every one of them is named, earned or not');
+  check(you.unearnedSayWhy,
+    'and an unearned badge says what it wants — a locked one that hides its condition asks for nothing');
+  check(you.painted === you.paintedOf && you.paintedOf === 10,
+    `every glyph is painted, fill AND stroke (${you.painted} of ${you.paintedOf})`);
+  check(you.noOldBadges === 0,
+    'no per-list badge survives on this screen — that system is retired');
+  check(you.lists === 3 && you.listNames.every(n => /^Top 10 /.test(n)),
+    `your finished lists are listed by name (${you.listNames.length}: ${you.listNames.join(' / ')})`);
+  check(you.listNames[0] === 'Top 10 Drama Shows',
+    `newest first, so the one you just made is at the top ("${you.listNames[0]}")`);
+  check(you.over <= 1, 'and the screen fits its column');
+  await noBritishSpelling('the You screen');
+  await page.screenshot({ path: SHOTS + '/19-you.png', fullPage: true });
 
-  // Open one of your own.
-  await page.locator('.case-item').first().click();
+  /* The set has to MOVE. A screen of ten achievements that never changes is
+     a poster; this proves the predicates actually read the app's state. */
+  await page.evaluate(() => {
+    const t = window.makeTopic({ genre: 'Western' });
+    const ten = CAT.filter(f => window.inTopic(f, t)).slice(0, 10);
+    S.done = [...S.done, { topicId: t.id, title: window.listName(ten, t),
+      domain: t.domain, ranked: ten.map(f => f.id) }];
+    save(); render();
+  });
+  await page.waitForTimeout(200);
+  const progressed = await page.evaluate(() => {
+    const bar = document.querySelector('.ach.off .ach-bar span');
+    return { lists: document.querySelectorAll('.mylist').length,
+             width: bar ? bar.style.width : '' };
+  });
+  check(progressed.lists === 4, `finishing another list lands on the screen (${progressed.lists})`);
+  check(/^\d+%$/.test(progressed.width) && progressed.width !== '0%',
+    `and an unearned badge shows how far in you are ("${progressed.width}")`);
+
+  /* Opening one of your own. The badge used to be the item you tapped; the
+     list's own name is. */
+  await page.locator('.mylist').first().click();
   await page.waitForTimeout(250);
   const mine = await page.evaluate(() => ({
     heading: (document.querySelector('.topbar h1') || {}).textContent.trim(),
     rows: document.querySelectorAll('.tenrow').length,
     ranks: [...document.querySelectorAll('.tenrow .num')].map(n => n.textContent.trim()).join(','),
-    insc: (document.querySelector('.insc') || {}).textContent.trim(),
-    badgeDrawn: !!document.querySelector('.badge-inline svg .layer.on'),
     share: document.querySelectorAll('[data-sharemine]').length,
-    others: document.querySelectorAll('[data-other]').length,
+    noBadge: document.querySelectorAll('.badge-inline, .lockedbadge').length,
   }));
-  check(mine.heading === 'Top 10 Drama Shows', `tapping a badge opens that list ("${mine.heading}")`);
+  check(/^Top 10 /.test(mine.heading), `tapping one opens that list ("${mine.heading}")`);
   check(mine.rows === 10 && mine.ranks === '1,2,3,4,5,6,7,8,9,10',
-    `all ten of it, in order (${mine.rows} rows)`);
-  check(mine.badgeDrawn && mine.insc.length > 3,
-    `with the badge drawn and its inscription readable ("${mine.insc}")`);
+    `with the whole ten in order (${mine.rows} rows)`);
   check(mine.share === 1, 'and one way to send it to somebody');
-  /* The case is a hub, not a trophy shelf. A list of your own that does not
-     lead back to the argument it is part of is the product with its engine
-     removed. */
-  check(mine.others >= 1,
-    `and it leads to the other takes on the same topic (${mine.others})`);
+  check(mine.noBadge === 0, 'and no badge on it');
 
-  // Back out, both steps.
-  await page.locator('.topbar .link').click();
-  await page.waitForTimeout(250);
-  check((await page.evaluate(() => (document.querySelector('.topbar h1') || {}).textContent.trim()))
-    === 'Your Top 10s', 'Back from one of your own returns to the case');
-  await page.locator('.topbar .link').click();
-  await page.waitForTimeout(250);
-  check(await page.locator('.finished-head').count() === 1,
-    'and Done returns to where you opened it from');
-
-  /* Reachable from discovery too, which is the other place you are between
-     lists. */
-  await page.evaluate(() => { S.scene = 'discover'; save(); render(); });
-  await page.waitForTimeout(250);
-  check(await page.locator('.other-ten').count() > 0 && await page.locator('[data-act="opencase"]').count() === 1,
-    'discovery ends with the way to your own');
-  await page.locator('[data-act="opencase"]').click();
-  await page.waitForTimeout(250);
-  check(await page.locator('.case-item').count() === 3, 'which opens the same case');
-  await page.locator('.topbar .link').click();
-  await page.waitForTimeout(250);
-  check(await page.locator('.other-ten').count() > 0,
-    'and Done goes back to discovery, not to wherever it went last time');
-
-  /* The empty state is a screen somebody will actually see — it is what the
-     case looks like before the first list, and "no items" is not a design. */
+  /* The empty state: ten unearned badges and one way out. It is what the
+     screen looks like before the first list, and "no items" is not a design. */
   await page.evaluate(() => {
     localStorage.clear(); S.done = []; S.tray = []; S.seen = true; S.tipDone = true;
     S.scene = 'you'; save(); render();
   });
   await page.waitForTimeout(250);
   const empty = await page.evaluate(() => ({
-    items: document.querySelectorAll('.case-item').length,
-    locked: !!document.querySelector('.case-empty .lockedbadge'),
-    cta: (document.querySelector('.case-empty .btn') || {}).textContent.trim(),
-    // Whitespace-normalised: the copy wraps in the source, so `textContent`
-    // carries the indentation and a phrase match on it fails for a reason
-    // that has nothing to do with the words.
-    says: ((document.querySelector('.case-empty .prompt') || {}).textContent || '')
-      .replace(/\s+/g, ' ').trim(),
+    marks: document.querySelectorAll('.ach').length,
+    earned: document.querySelectorAll('.ach.on').length,
+    lists: document.querySelectorAll('.mylist').length,
+    cta: ((document.querySelector('.case-empty .btn') || {}).textContent || '').trim(),
   }));
-  check(empty.items === 0 && empty.locked,
-    'before the first list the case shows a locked badge rather than nothing');
-  check(/opens every other Top 10 on that topic/i.test(empty.says),
-    `and says what a badge is for ("${empty.says.slice(0, 60)}…")`);
-  check(empty.cta === 'Make your first list', `with one way out ("${empty.cta}")`);
+  check(empty.marks === 10 && empty.earned === 0,
+    `before the first list all ten are shown and none earned (${empty.earned} of ${empty.marks})`);
+  check(empty.lists === 0, 'with no lists yet');
+  check(empty.cta === 'Make your first list', `and one way out ("${empty.cta}")`);
 
-  /* Drafts, per Req 11: "Own profile shows drafts." The only thing on this
-     screen without a badge, which is the honest way to say unfinished. */
+  /* Drafts, per Req 11: "Own profile shows drafts." */
   await page.evaluate(() => {
     localStorage.clear(); S.done = []; S.seen = true; S.tipDone = true;
     S.topic = window.makeTopic({ genre: 'Crime', decade: 1990 });
@@ -3432,12 +3416,11 @@ const DOMAIN_SPEECH = `(() => {
   const drafted = await page.evaluate(() => {
     const b = document.querySelector('[data-act="resume"]');
     return { shown: !!b, text: b ? b.innerText.replace(/\n/g, ' / ') : '',
-      badges: document.querySelectorAll('.case-item').length };
+      lists: document.querySelectorAll('.mylist').length };
   });
-  check(drafted.shown && drafted.badges === 0,
-    `an unfinished list shows as a draft and carries no badge ("${drafted.text}")`);
-  // Case-insensitive: the level line is uppercased in CSS, so `innerText`
-  // reports it as the reader sees it, not as the template wrote it.
+  check(drafted.shown && drafted.lists === 0,
+    `an unfinished list shows as a draft, not as a finished one ("${drafted.text}")`);
+  // Case-insensitive: the level line is uppercased in CSS.
   check(/4 of 10/i.test(drafted.text), `and says how far in you are ("${drafted.text}")`);
   await page.locator('[data-act="resume"]').click();
   await page.waitForTimeout(300);
@@ -3605,7 +3588,7 @@ const DOMAIN_SPEECH = `(() => {
       .sort((a, b) => (b.vc || 0) - (a.vc || 0)).slice(0, 10);
     const t = makeTopic({ genre: 'Crime', decade: 1990 });
     S.done = [{ topicId: t.id, title: t.title, domain: 'movie',
-      ranked: crime.map(f => f.id), badge: compose(crime.map(f => f.id), t) }];
+      ranked: crime.map(f => f.id) }];
     S.scene = 'discover'; save(); render();
   });
   await page.waitForTimeout(300);

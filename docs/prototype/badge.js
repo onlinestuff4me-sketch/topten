@@ -402,6 +402,10 @@ if (typeof window !== 'undefined') {
   window.lockedBadge = lockedBadge;
   window.fieldTones = fieldTones;
   window.badgeHash = badgeHash;
+  /* The glyph kit, exported for achievements.js. They were drawn as badge
+     decoration that meant nothing in particular; as achievement marks each
+     one means exactly one thing, which suits them better. */
+  window.MOTIF_PATHS = MOTIFS;
 }
 if (typeof module !== 'undefined') module.exports = { badgeSVG, lockedBadge, fieldTones, badgeHash, ENAMELS };
 })();
