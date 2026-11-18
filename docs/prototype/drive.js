@@ -432,8 +432,16 @@ const DOMAIN_SPEECH = `(() => {
   });
 
   const errors = [];
+  /* One section of this suite breaks artwork ON PURPOSE to prove the fallback
+     (Req 6), and a 404 on an <img> is a console error. `mutedConsole` covers
+     exactly that window: a deliberate failure is not a defect, and leaving the
+     gate strict everywhere else is the whole point of having it. `pageerror`
+     is never muted - a thrown exception is a defect wherever it happens. */
+  let mutedConsole = false;
   page.on('pageerror', e => errors.push('pageerror: ' + e.message));
-  page.on('console', m => { if (m.type() === 'error') errors.push('console: ' + m.text()); });
+  page.on('console', m => {
+    if (m.type() === 'error' && !mutedConsole) errors.push('console: ' + m.text());
+  });
   const check = (cond, msg) => { if (!cond) throw new Error('FAILED: ' + msg); console.log('  ok — ' + msg); };
 
   /* US spelling is a standing rule (specs/design.md, "Voice and spelling",
@@ -689,6 +697,45 @@ const DOMAIN_SPEECH = `(() => {
   check(names.avg >= 1.5,
     `and more than one of them, so the wall reads as a wall of lists `
     + `(${names.avg.toFixed(2)} average)`);
+
+  /* ── The wall with no artwork at all ────────────────────────────────────
+     Req 6: "missing-artwork items render a designed fallback, never a broken
+     image." The splash is where this matters most - every other screen shows
+     a handful of posters, the wall shows fifty - and it is also where this
+     harness was least likely to notice, because the mirror answers 204 for a
+     poster it does not hold, which is a broken image wearing a success code.
+     Measured 2026-11-18: before the listener in share.js, every one of them
+     drew Chromium's torn-photo glyph. */
+  mutedConsole = true;
+  await page.unroute('**://image.tmdb.org/t/p/**');
+  await page.route('**://image.tmdb.org/t/p/**', r => r.fulfill({ status: 404, body: '' }));
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForTimeout(600);
+  const artless = await page.evaluate(() => ({
+    broken: [...document.images].filter(i => i.complete && i.naturalWidth === 0).length,
+    cels: document.querySelectorAll('.wallrow .cel').length,
+    plates: document.querySelectorAll('.wallrow .cel.no-art').length,
+    ranks: document.querySelectorAll('.wallrow .rank').length,
+    names: [...document.querySelectorAll('.wallrow .plate .n')]
+      .filter(n => n.innerText.trim().length > 3).length,
+  }));
+  check(artless.broken === 0,
+    `with every poster answering 404 the wall shows no broken image (${artless.broken} of ${artless.cels})`);
+  check(artless.cels > 0 && artless.plates === artless.cels,
+    `every cell falls back to its plate instead (${artless.plates} of ${artless.cels})`);
+  check(artless.ranks === artless.cels && artless.names >= 4,
+    `and the wall still reads as ranked lists — ${artless.ranks} numerals, ${artless.names} names`);
+  // Back to the mirror for everything after this.
+  await page.unroute('**://image.tmdb.org/t/p/**');
+  await page.route('**://image.tmdb.org/t/p/**', route => {
+    const m = route.request().url().match(/\/t\/p\/(w\d+)(\/.+)$/);
+    const file = m && `${MIRROR}/${m[1]}${m[2]}`;
+    if (file && fs.existsSync(file)) return route.fulfill({ path: file, contentType: 'image/jpeg' });
+    return route.fulfill({ status: 204, body: '' });
+  });
+  await page.reload({ waitUntil: 'load' });
+  await page.waitForTimeout(400);
+  mutedConsole = false;
 
   /* ── The copy over it ───────────────────────────────────────────────────*/
   const introText = await page.locator('.intro').innerText();

@@ -256,6 +256,33 @@ const Share = (() => {
     <section><a class="cta" href="./">Make your own Top 10</a></section>
     ${footer()}`;
 
+  /* ── A poster that does not load ──────────────────────────────────────────
+     The comment above `art()` has claimed since August that "a missing poster
+     is a grey plate, never a broken image icon". It was not true: measured
+     2026-11-18, ten of ten posters on the Ten page drew Chromium's torn-photo
+     glyph, over the plate rather than instead of it. An empty `alt` does not
+     suppress it and no background can cover it, because the glyph is painted
+     by the browser on top of the element's own box.
+
+     So the broken <img> is REMOVED and the plate it was sitting on is marked
+     `.no-art`, which each page styles for itself the way it already styles
+     `.thumb`, `.art` and `.cel`.
+
+     One capture-phase listener covers every image on every page that loads
+     this file - including ones rendered later, which is most of them.
+     `error` does not bubble, so a handler on `document` would never fire;
+     capture is not a preference here, it is the only thing that works.
+
+     PRD Req 6: "missing-artwork items render a designed fallback, never a
+     broken image." */
+  addEventListener('error', (e) => {
+    const img = e.target;
+    if (!(img instanceof HTMLImageElement)) return;
+    const plate = img.parentElement;
+    if (plate) plate.classList.add('no-art');
+    img.remove();
+  }, true);
+
   return { fromLocation, link, tenPage, topicPage, card, cardFallback, consensus,
            previewTags, applyPreviewTags, missing, esc, art, byId };
 })();

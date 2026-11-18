@@ -2153,3 +2153,82 @@ It does not render the list. It cannot — in the prototype the ten travel in
 the query string and a static file server never sees one. PRD Req 8's
 "renders well with no JS" is owed against the server-rendered page and is
 still open.
+
+## A poster that does not load: `.no-art` (2026-11-18)
+
+Artwork comes from TMDB, TMDB paths rotate, and readers have bad networks —
+so a poster failing is an ordinary state, not an error state, and it gets a
+designed one.
+
+| | |
+|---|---|
+| **what it is** | the recessed plate the artwork sits on, with a hairline inset |
+| **how** | `.no-art { background: var(--bg-recessed); box-shadow: inset 0 0 0 1px var(--border-subtle); }` |
+| **where it is defined** | in each page's own `<style>`, beside that page's `.thumb` / `.art` / `.cel` sizing |
+| **what applies it** | one capture-phase `error` listener in `share.js`, which all four pages load |
+| **what it never shows** | the browser's broken-image glyph |
+
+### The plate keeps the poster's box
+
+The failed `<img>` is removed, not hidden — but the box is the *parent's*, so
+nothing moves. Measured at 56×84 on the Ten page with artwork 404ing, which
+is the same 56×84 it occupies with artwork. A fallback that collapses the
+layout would be a second bug wearing the first one's clothes.
+
+### No letter, no icon, no "image unavailable"
+
+Considered and rejected for now:
+
+- **The title's initial, set in the serif.** More informative, and it would
+  keep the splash wall from reading as a grid of blanks if TMDB were ever
+  unreachable. It needs the title plumbed to the `<img>` as a data attribute
+  at every render site, and it is a visible design decision — so it is
+  Mischa's to take, not one to make at 09:40 while he is asleep.
+- **An icon or the words "no artwork".** Both label the absence. Laurel's
+  rule is that the app does not narrate its own failures to a reader who can
+  see them; the plate is the honest shape of "nothing here".
+
+The plate is what ships until that is decided.
+
+### Why the behaviour is shared and the appearance is not
+
+`error` does not bubble, so a listener on `document` never fires — capture is
+the only thing that works, and one listener covers every image on the page
+including the ones rendered later, which is most of them. That belongs in the
+one file every page loads. The *look* belongs with the sizes it has to match,
+which are already per-page: `ten.html` and `topic.html` each define their own
+`.thumb` today.
+
+## The comparison says two different things, on purpose (2026-11-18)
+
+The same number — how many of their ten are also yours — appears on two
+surfaces, and they are not the same sentence, because they are not the same
+argument.
+
+| | **in the app** (topic page, other-person page) | **on the web page** (a shared link) |
+|---|---|---|
+| who you are compared with | **the crowd** — the Borda consensus of every take | **a person** — whoever sent you the link |
+| the line | *"You share 6 of 10 with them."* | *"You agree on 6, and disagree on 4."* |
+| at zero | *"Not one movie in common. Incredible."* | *"Not one pick in common. Someone is wrong."* |
+| at ten | — | *"The same ten. Different order, maybe."* |
+| the noun | the domain's: movie / show / book | **"pick"** — the page may not know the domain |
+
+**"Incredible." is for the crowd; "Someone is wrong." is for a person.**
+Sharing nothing with a thousand people is a statistical marvel and the app
+says so. Sharing nothing with *one* person is an argument, and the web page
+says that instead. A single string across both would have to be the weaker
+of the two.
+
+**The web page says "pick" because it may not know better.** `topic` is an
+optional parameter on a shared link; the app always has the domain in hand.
+A page that says "film" about a book list is worse than one that says "pick"
+about either.
+
+### `your #n` is the reader's rank, never the row's
+
+Each shared row that the reader also picked carries *their* position, not the
+position it occupies in the list they are reading. The distinction is
+invisible whenever the two happen to agree, which is why the test's fixture
+gives the reader the sender's top five **in reverse** — the sender's #1 is
+the reader's #5. A renderer printing the row's own rank back passes every
+other spelling of that test.

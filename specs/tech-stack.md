@@ -720,3 +720,52 @@ is *true of an empty string* — so on the blank page it was meant to catch, it
 passed. It now asserts a non-empty body as part of the same check. That is
 three vacuous gates caught in this project by the habit of breaking a check
 before trusting it.
+
+## A broken image is not suppressed by an empty `alt`, and 204 is a broken image (2026-11-18, Claude)
+
+Two beliefs, both wrong, kept a missing poster drawing Chromium's torn-photo
+glyph for three months behind a green suite.
+
+**1. "An empty `alt` means the browser draws nothing."** It does not. An
+`<img alt="">` whose source fails still gets the glyph, painted *over* the
+element's own box — so the designed plate was behind it the entire time,
+doing nothing. There is no CSS that covers it, because it is not part of the
+element's background. The only fix is to remove the element.
+
+**2. "The harness would have caught it."** The harness is what hid it. Both
+suites stub TMDB:
+
+```js
+// drive_share.js
+await page.route('**image.tmdb.org/**', r => r.abort());
+
+// drive.js — serve from the local mirror, and for anything not mirrored:
+return route.fulfill({ status: 204, body: '' });
+```
+
+`abort()` is a broken image. **204 is a broken image wearing a success code**
+— the request succeeds, the body is empty, `naturalWidth` is 0, the glyph
+appears. So every screenshot either suite has ever taken was of broken
+images, and no check ever looked at one. The gap was not that the condition
+was rare; it was that the condition was *universal in the harness* and
+unexamined.
+
+### The listener, and why it is capture-phase
+
+```js
+addEventListener('error', (e) => { … }, true);   // ← the `true` is load-bearing
+```
+
+`error` on an element **does not bubble**. A handler on `document` or `body`
+never fires for a failed image; only capture reaches it. One such listener
+covers every image on the page, including every one rendered after it was
+installed — which, in a prototype that rebuilds screens with `innerHTML`, is
+nearly all of them.
+
+### The check that proves it, and the control beside it
+
+The gate asserts four things; three fail when the listener is deleted and the
+fourth — *"and the list itself is untouched — ten rows, every one of them
+readable"* — stays green either way **on purpose**. It is the control: it
+says the fix removed the glyph and not the content. A suite of assertions
+that all fail together cannot tell you which of them was measuring.

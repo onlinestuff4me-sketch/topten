@@ -300,6 +300,114 @@ const q = (o) => {
     `a link survives being rebuilt and re-read (${JSON.stringify(round)})`);
   await p.close();
 
+  console.log('\n── The comparison, on the web page ──────────────────────────');
+  // Req 10: "comparison renders in-app AND ON THE WEB PAGE (when the viewer
+  // arrived from a link with their own published take)". The in-app half got
+  // its screen on 2026-11-18; this half has been built since August and had
+  // NO check at all - `compareBlock` and the `your #n` rows were running on
+  // every shared link and nothing asserted either of them.
+  //
+  // The overlaps are CONSTRUCTED rather than taken from two real shelves,
+  // because "whatever the fixtures happen to share" is a number this suite
+  // cannot state, and a comparison test whose expected value is whatever the
+  // code produced is the vacuous gate this project has already hit twice.
+  const ids = F.crime90s.map(f => f.id);
+  // Not F.crimeAny - the best crime films of all time ARE mostly the best
+  // crime films of the 90s, so it left four spare. Drawn from the catalog at
+  // large, which is what "a different ten" means anyway.
+  const other = CAT.filter(f => (f.dm || 'movie') === 'movie' && !ids.includes(f.id))
+    .sort((a, b) => b.v - a.v).slice(0, 10).map(f => f.id);
+  if (other.length < 10) throw new Error('fixture: need ten films outside the 90s ten');
+  // The reader's five are the sender's top five IN REVERSE, so "your #n" can
+  // never be read off the row it sits on: the sender's #1 is the reader's #5.
+  // Built the obvious way first - same five, same order - and the check passed
+  // against a renderer printing the row's own rank back at you.
+  const flipped = [...ids.slice(0, 5)].reverse();
+  const overlaps = [
+    ['five of ten', [...flipped, ...other.slice(0, 5)], 5, /agree on 5.*disagree on 5/i,
+      ['your #5', 'your #4', 'your #3', 'your #2', 'your #1']],
+    ['none of ten', other.slice(0, 10), 0, /Not one pick in common/i, []],
+    ['all ten', [...ids], 10, /The same ten/i, null],
+  ];
+  for (const [label, mineIds, want, line, order] of overlaps) {
+    const pg = await open(`${BASE}/ten.html?${q({
+      t: 'Top 10 Crime Movies of the 90s', by: 'Sam',
+      topic: 'movie:genre:Crime:decade:1990',
+      items: ids.join(','), unlocked: '1', mine: mineIds.join(','),
+    })}`);
+    const cmp = await pg.evaluate(() => ({
+      present: !!document.querySelector('.compare'),
+      n: document.querySelector('.compare .n')?.innerText.trim(),
+      text: document.querySelector('.compare')?.innerText.trim() || '',
+      marked: document.querySelectorAll('.ten .row .mine').length,
+      ranks: [...document.querySelectorAll('.ten .row .mine')].map(e => e.innerText.trim()),
+    }));
+    check(cmp.present, `a link carrying the reader's own ten shows the comparison (${label})`);
+    check(cmp.n === `${want}/10`,
+      `and counts the overlap right — ${label} reads "${cmp.n}"`);
+    check(line.test(cmp.text),
+      `with the sentence that overlap earns ("${cmp.text.replace(/\n/g, ' ')}")`);
+    check(cmp.marked === want,
+      `and marks exactly the rows you also picked (${cmp.marked} of ${want})`);
+    // `[].every()` is true, so the zero case would pass this vacuously - it is
+    // the count above that carries that case, and this only runs where there
+    // is something to carry.
+    if (want > 0) {
+      check(cmp.ranks.length === want && cmp.ranks.every(r => /^your #([1-9]|10)$/.test(r)),
+        `each one carrying a position of your own (${cmp.ranks.length} of ${want})`);
+    }
+    if (order) {
+      check(JSON.stringify(cmp.ranks) === JSON.stringify(order),
+        `and it is YOUR position rather than the row's — ${label} reads `
+        + `${JSON.stringify(cmp.ranks)} down a list ranked 1..10`);
+    }
+    await pg.close();
+  }
+
+  // And the other direction: no `mine` means no comparison at all, rather than
+  // a zero-state. A reader who has not made this topic is not in an argument.
+  const alone = await open(`${BASE}/ten.html?${q({
+    t: 'Top 10 Crime Movies of the 90s', by: 'Sam', items: ids.join(','), unlocked: '1' })}`);
+  check(await alone.locator('.compare').count() === 0,
+    'a reader with no take of their own is shown no comparison, not an empty one');
+  check(await alone.locator('.ten .row').count() === 10,
+    'and still gets the whole ten');
+  await alone.close();
+
+  console.log('\n── Artwork that does not load ───────────────────────────────');
+  // Req 6: "missing-artwork items render a designed fallback, never a broken
+  // image." Measured 2026-11-18: ten of ten posters drew Chromium's torn-photo
+  // glyph. An empty alt does not suppress it and no background covers it - the
+  // browser paints it on top of the element's own box - so the <img> has to go.
+  //
+  // Worth saying plainly: this suite ABORTS every TMDB request, so it had been
+  // looking at those glyphs in every screenshot it took since August.
+  for (const [label, how] of [['404', (r) => r.fulfill({ status: 404, body: '' })],
+                              ['a dead connection', (r) => r.abort()]]) {
+    const ctx = await browser.newContext({ viewport: { width: 393, height: 852 } });
+    const pg = await ctx.newPage();
+    await pg.route('**image.tmdb.org/**', how);
+    await pg.goto(`${BASE}/ten.html?${shared}`, { waitUntil: 'load' });
+    await pg.waitForTimeout(500);
+    const art = await pg.evaluate(() => ({
+      rows: document.querySelectorAll('.ten .row').length,
+      brokenImgs: [...document.images].filter(i => i.complete && i.naturalWidth === 0).length,
+      plates: document.querySelectorAll('.no-art').length,
+      plateBox: (b => b && { w: Math.round(b.width), h: Math.round(b.height) })(
+        document.querySelector('.no-art')?.getBoundingClientRect()),
+      titles: [...document.querySelectorAll('.ten .row')].every(r => r.innerText.trim().length > 3),
+    }));
+    check(art.brokenImgs === 0,
+      `artwork answering ${label} leaves no broken image on the page (${art.brokenImgs})`);
+    check(art.plates === 10,
+      `and all ten plates are marked as artless (${art.plates})`);
+    check(art.plateBox && art.plateBox.w > 40 && art.plateBox.h > 60,
+      `the plate keeps the poster's box rather than collapsing (${JSON.stringify(art.plateBox)})`);
+    check(art.rows === 10 && art.titles,
+      'and the list itself is untouched — ten rows, every one of them readable');
+    await ctx.close();
+  }
+
   console.log('\n── A browser with JavaScript off ────────────────────────────');
   // Req 8's first acceptance line is "page renders well with no JS", and on
   // 2026-11-18 this measured ZERO characters: no heading, the generic title,

@@ -433,6 +433,25 @@ collection) so suggestion rails can be auto-populated.
 - Acceptance: search + artwork for movies and TV; attribution present;
   missing-artwork items render a designed fallback, never a broken image.
 
+**Measured 2026-11-18 (Claude, overnight) — there was no fallback, designed
+or otherwise.** With every poster answering 404, all ten on a shared Ten drew
+**Chromium's torn-photo glyph**, and so did all fifty on the splash wall.
+`share.js` had carried a comment since August saying "a missing poster is a
+grey plate, never a broken image icon — this page is somebody's first
+impression"; the comment described an intention nobody had implemented.
+
+Two reasons it survived three months of a green suite:
+
+- An **empty `alt` does not suppress the glyph**, and no background can cover
+  it: the browser paints it on top of the element's own box. The plate was
+  there the whole time, behind the glyph.
+- The harness **aborts or 204s every TMDB request**, so every screenshot it
+  has ever taken was of broken images, and nothing in it ever asked.
+
+Fixed by removing the failed `<img>` and marking the plate `.no-art` — one
+capture-phase listener in `share.js`, which all four pages load. Twelve
+checks across the two suites, falsified by deleting the listener.
+
 **Amendment 2026-08-15 (Claude, books) — the third catalog, and why it is not
 the one you would expect.**
 
@@ -588,7 +607,29 @@ your #7"), a headline stat ("You share 6 of 10"). This is the payoff for
 remixing and the hook in every share.
 - Acceptance: comparison renders in-app and on the web page (when the viewer
   arrived from a link with their own published take); zero-overlap states get
-  a designed treatment ("Not one film in common. Incredible.").
+  a designed treatment.
+
+  *Amended 2026-11-18 (Claude): the example line used to read "Not one film
+  in common. Incredible." Two things were wrong with it. The noun is stale —
+  books arrived on 2026-08-15 and the app has read the noun from the domain
+  (`domainMeta(topic).one`) ever since, so it says "movie", "show" or "book".
+  And it implied one string across both surfaces, which is not what shipped
+  and should not be: the app compares you with **the crowd** ("Not one movie
+  in common. Incredible.") and the web page compares you with **a person**
+  ("Not one pick in common. Someone is wrong."). Two jokes, because they are
+  two different arguments. The requirement is a designed treatment, which
+  both have; the exact wording lives in `specs/design.md`.*
+
+**Tested 2026-11-18 (Claude, overnight) — the web half had never been
+checked.** `compareBlock` and the `your #n` rows have run on every shared
+link since August with **no assertion of any kind** over them. Seventeen
+checks now cover five of ten, none of ten, all ten, and no-take-at-all.
+
+The fixture is built so it can fail: the reader's five are the sender's top
+five **in reverse**, so `your #n` cannot be read off the row it sits on. The
+obvious fixture — same five, same order — passed against a renderer printing
+the row's own rank straight back, which is what the falsification pass
+proved by making exactly that change.
 
 **11. Profile — the Badge Case.** A user's profile is their shelf of
 completed Tens shown as badges (the Badge Case), plus their takes. Own

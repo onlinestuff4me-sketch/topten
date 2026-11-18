@@ -1016,6 +1016,13 @@ footer.notes .build { color: var(--text-secondary); margin-top: var(--s2); }
    scrollbar for it. It is clipped to nothing either way; this is only about
    where the nothing sits. */
 .sr { position: absolute; top: 0; left: 0; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+
+  /* A poster whose artwork did not load. The broken <img> is removed by the
+     listener in share.js; this is what is left - the recessed plate it sat
+     on, with a hairline inset so it reads as a deliberate blank rather than
+     a gap in the layout. PRD Req 6. */
+  .no-art { background: var(--bg-recessed);
+    box-shadow: inset 0 0 0 1px var(--border-subtle); }
 </style>
 </head>
 <body>
