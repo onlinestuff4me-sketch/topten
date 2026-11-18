@@ -470,3 +470,54 @@ Two fixes, both kept:
    read the tail: `node drive.js > run.log 2>&1; echo $?`. The exit status is
    then the suite's own, and nothing that was not anticipated by the pattern
    is thrown away. If a filter is wanted, `set -o pipefail` first.
+
+## Two ways a custom pointer drag dies (2026-11-18, Claude)
+
+Both cost a debugging round on the dock's hold-and-drag, and neither is
+visible in the code that breaks.
+
+**1. An `<img>` is natively draggable, and the browser's own drag CANCELS the
+pointer stream.** The hold was recognised, `drag` was set, and the first
+`pointermove` arrived with `drag` already back to `null` — because Chromium had
+started its own image drag and fired `pointercancel`, which the drag's own
+cleanup handled. The instrumentation that found it logged `pointerdown` and
+`pointermove` and no `pointerup`, which looks impossible until you notice
+`pointercancel` was never being logged.
+
+Fix it at the source — `draggable="false"` on the image plus
+`-webkit-user-drag: none; user-select: none` — and **not** with
+`preventDefault()` on `pointerdown`, which in the same breath suppresses the
+click, and the click is the other half of this control (tap opens the list).
+
+**2. A one-shot listener armed on an event that may never arrive stays armed.**
+A drag must not also read as a tap, so the first version added
+`addEventListener('click', suppress, {once: true})` when a drag ended. A drag
+that ends on a *different* element than it began on fires **no click at all** —
+so the suppressor was never consumed, sat there, and swallowed the next
+genuine tap instead. The symptom appeared one interaction later than the cause,
+in a test that looked unrelated.
+
+A timestamp cannot be left armed:
+
+```js
+dockEl.addEventListener('click', e => {
+  if (performance.now() - dragEndedAt < 400) { e.stopPropagation(); e.preventDefault(); }
+}, true);
+```
+
+It expires whether the event comes or not. Prefer it to `{once: true}` for
+anything conditioned on a gesture that may not produce the event you are
+waiting for.
+
+## `node --check` before a long suite run (2026-11-18, Claude)
+
+A duplicate `const` at module scope is a **parse**-time `SyntaxError`, so the
+top-level `catch` that now prints `FAILED:` never gets installed — the crash
+reporting added earlier the same day does not cover it. The run printed a bare
+V8 stack, `grep -c '^FAILED'` returned 0, and five minutes went by before the
+log was read.
+
+`node --check drive.js` is instant and catches the whole class. Run it first
+whenever a block has been inserted into a suite, especially one that declares
+its own locals: a 2,500-line file has no shortage of names like `before`,
+`after` and `box` already taken.

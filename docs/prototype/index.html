@@ -342,6 +342,23 @@ section { margin-top: var(--s8); }
 .dock-top .n.over { color: var(--error); }
 .slots { display: flex; gap: 6px; justify-content: flex-start; overflow-x: auto; padding: var(--s2) var(--margin) 0; scrollbar-width: none; }
 .slots::-webkit-scrollbar { display: none; }
+/* `touch-action: none` only AFTER the hold has been recognised. Set on the
+   row from the start it would kill every ordinary scroll and swipe that
+   begins on the dock; set at the moment a slot is picked up, it stops the
+   browser panning the row out from under a drag already in progress. */
+.slots.dragmode { touch-action: none; }
+.slots.dragmode .slotmini { transition: transform var(--m-settle) var(--ease-out); }
+.slotmini.dragging { z-index: 2; transition: none;
+  box-shadow: 0 2px 4px rgba(0,0,0,.25), 0 10px 22px -6px rgba(0,0,0,.45);
+  outline: 2px solid var(--accent); outline-offset: 0; }
+@media (prefers-reduced-motion: reduce) { .slots.dragmode .slotmini { transition: none; } }
+/* An <img> is natively draggable, and the browser's own image drag CANCELS
+   the pointer stream the moment it starts - the hold was recognised, the
+   first move fired `pointercancel`, and the reorder was over before it
+   began. Nothing here is a native drag, so turn it off at the source rather
+   than calling preventDefault on pointerdown, which would also swallow the
+   tap that opens the vertical list. */
+.slotmini, .slotmini img { -webkit-user-drag: none; user-select: none; -webkit-user-select: none; }
 .slotmini { position: relative; flex: 0 0 var(--mini-w); width: var(--mini-w); height: calc(var(--mini-w) * 1.5); border-radius: 4px; background: var(--bg-recessed); border: 1px solid var(--border-subtle); overflow: hidden; display: grid; place-items: center; }
 .slotmini img { width: 100%; height: 100%; object-fit: cover; }
 .slotmini .gh { font-family: var(--serif); font-weight: 700; color: var(--text-disabled); font-size: 0.875rem; }
@@ -627,15 +644,48 @@ footer.notes .build { color: var(--text-disabled); margin-top: var(--s2); }
    breakpoint would have worked for one phone; a clamp against `svh` fits
    every height between, which is what the rest of this screen already does
    with its type. */
-.mini-ten { flex: 0 0 clamp(54px, 9.5svh, 84px); margin: 0; display: grid; gap: 6px; }
-.mini-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 3px;
+/* The tile is a button, and has to look like one (Mischa, 2026-11-18). It
+   was a bare figure: four posters and a caption, with nothing to say it
+   could be touched. It carries a surface, a border and a press state now,
+   and its own width is already well past 44pt in both directions. */
+/* THREE tiles sharing the row, not six at a fixed width. Six tiles on a
+   393px phone are 63px wide, which leaves about 53px of text - eight
+   characters - so every label either clipped or broke mid-word ("Hitch-
+   cock"). Measured: at three the text column is ~102px and every label in
+   INTRO_TOPICS wraps to two lines on a word boundary.
+
+   Three of five visible is not a loss, because tapping one swaps it with the
+   hero and the rest shuffle up: the set cycles by use. */
+.mini-ten { flex: 1 1 0; min-width: 0; margin: 0; display: grid; gap: 6px;
+  appearance: none; -webkit-appearance: none; text-align: left; color: inherit; cursor: pointer;
+  background: var(--bg-surface); border: 1px solid var(--border-subtle);
+  border-radius: var(--r-card); padding: 5px;
+  transition: transform var(--m-press) var(--ease-out), border-color var(--m-press) var(--ease-out); }
+.mini-ten:hover { border-color: var(--accent-muted); }
+.mini-ten:active { transform: scale(0.96); border-color: var(--accent); }
+.mini-ten:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+@media (prefers-reduced-motion: reduce) { .mini-ten { transition: none; } }
+/* The mosaic's height is a constant, not a consequence of the tile's width.
+   It was a 2x2 grid of 2/3 posters, so widening the tile from 63px to 112px
+   took it from 37px tall to 153px and the splash overflowed its own screen
+   by up to 40px - the one failure this screen is not allowed to have. Three
+   posters in a row inside a clamped band says "a list" just as well and
+   costs a fixed slice of the budget whatever the tile does. */
+.mini-grid { display: grid; grid-auto-flow: column; grid-auto-columns: 1fr; gap: 3px;
+  height: clamp(38px, 6.6svh, 58px);
   border-radius: var(--r-art); overflow: hidden; background: var(--bg-recessed); }
-.mini-grid img { width: 100%; aspect-ratio: 2/3; object-fit: cover; display: block; }
-.mini-ten figcaption { display: grid; gap: 1px; min-width: 0; }
-.mini-ten .who { font-size: 0.6875rem; font-weight: 700; letter-spacing: .04em;
-  text-transform: uppercase; color: var(--accent); }
-.mini-ten .what { font-size: 0.75rem; line-height: 1.25; color: var(--text-secondary);
-  display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+.mini-grid img { width: 100%; height: 100%; object-fit: cover; display: block; }
+/* No line-clamp. A category the reader cannot finish reading is the one
+   thing on this screen that is supposed to say what else is here, and
+   `introLabel` is what keeps it short enough to wrap rather than clip. */
+/* The label is accent ink, the same colour as every other thing on this app
+   that does something when you touch it (Map, Start over, the fact links on
+   a title page). A bordered panel alone was not saying "tappable" loudly
+   enough, and this is the signal the rest of the app already uses rather
+   than a new one invented for the splash. `--accent-ink` is the AA-contrast
+   member of the accent family, which plain `--accent` is not at 12px. */
+.mini-ten .what { display: block; min-width: 0; font-size: 0.75rem; line-height: 1.25;
+  font-weight: 700; color: var(--accent-ink); overflow-wrap: break-word; }
 
 .intro-copy { flex: 0 0 auto; display: flex; flex-direction: column; justify-content: center; gap: var(--s2); }
 /* No `nowrap`. The clamp's floor is 2rem, which is the right thing for
@@ -681,6 +731,7 @@ footer.notes .build { color: var(--text-disabled); margin-top: var(--s2); }
   .intro-strip { display: none; }
   .intro { --frame: 12px; }
 }
+
 
 @media (min-height: 800px) {
   .intro { --frame: 28px; gap: var(--s4); }
@@ -1674,15 +1725,21 @@ function renderDock() {
   // there are no posters in reach. The dock is the same component on both,
   // so the empty-state hint has to know which screen it is standing on.
   const onTitle = S.scene === 'title';
+  /* The hint carries the DRAG TIP once there are two things to swap, and it
+     carries it permanently (Mischa, 2026-11-18: "need to have a persistent
+     'drag to rearrange' tip"). It replaces "n to go", which was arithmetic
+     the line above it had already done - "4 of 10" says six to go - so the
+     tip costs no height. The artwork noun comes from the domain, or a books
+     shelf would ask you to hold a poster. */
   const hint = over ? `${n - 10} too many — make the cut`
-    : n === 10 ? 'Arrange them, then you are done'
+    : n >= 2 ? `Hold a ${artNounFor()} to reorder`
     : n === 0 ? (onTitle ? 'Add this one to start' : `Tap a ${artNounFor()} to start`)
     : `${10 - n} to go`;
   const slots = [];
   for (let i = 0; i < Math.max(10, n); i++) {
     const f = byId.get(S.tray[i]);
     slots.push(`<div class="slotmini ${i === 0 ? 'one' : ''}" data-slot="${i}">${
-      f ? `<img src="${art(f)}" alt="${esc(f.t)}">` : `<span class="gh">${i + 1}</span>`}</div>`);
+      f ? `<img src="${art(f)}" alt="${esc(f.t)}" draggable="false">` : `<span class="gh">${i + 1}</span>`}</div>`);
   }
   dockEl.innerHTML = `<div class="dock"><div class="dock-in">
     <div class="dock-top">
@@ -1690,12 +1747,138 @@ function renderDock() {
         <div class="n ${over ? 'over' : ''}">${n} of 10</div>
         <div class="hint">${esc(hint)}</div>
       </div>
-      <button class="btn" data-act="${over ? 'cut' : 'arrange'}" ${n === 10 || over ? '' : 'disabled'}>${over ? 'Make the cut' : 'Arrange'}</button>
+      <!-- Arrange opens the vertical list, and it opens from TWO (Mischa,
+           2026-11-18: "an easy way to enter a vertical arranging mode"). It
+           used to be disabled until ten, which left the sheet reachable only
+           by tapping the unlabelled strip of slots - the one gesture now
+           spoken for by the drag. The vertical list is also the non-drag way
+           to reorder, which WCAG 2.5.7 requires and a drag alone cannot be. -->
+      <button class="btn" data-act="${over ? 'cut' : 'arrange'}" ${n >= 2 || over ? '' : 'disabled'}>${over ? 'Make the cut' : 'Arrange'}</button>
     </div>
     <button class="slots" data-act="openten" aria-label="Open your Top 10 to reorder">${slots.join('')}</button>
   </div></div>`;
   measureDock();
 }
+
+/* ── Hold a slot and drag it along the dock ────────────────────────────────
+   Mischa, 2026-11-18: "rearranging your order should be done by holding and
+   dragging the mini posters around."
+
+   Three things make this simpler than a general drag-and-drop:
+
+     - every slot is exactly the same width, so the step between two slots is
+       a constant and the target index is arithmetic, not hit-testing;
+     - the dragged node never leaves the row, so nothing has to be cloned
+       into a layer and positioned against the page;
+     - the row holds ten things at most, so moving the others is ten
+       transforms, not a virtualised list.
+
+   The press has to be HELD. A short press on the row still opens the
+   vertical list, which is the same gesture it has always been, and a drag
+   that began on the first pixel of movement would steal every one of those
+   taps. 220ms, and more than 8px of movement before that cancels the hold -
+   that movement is a scroll or a swipe, not a grab.
+
+   Pointer events rather than touch events: one path for finger, pen and
+   mouse, with capture so the drag survives the pointer leaving the slot. */
+const DRAG_HOLD = 220, DRAG_SLOP = 8;
+let drag = null, dragEndedAt = 0;
+
+/* A drag must not also read as a tap on the row, which would open the
+   vertical list on top of the reorder just made. This was a one-shot click
+   listener armed at the end of a drag - and a drag that ends on a different
+   slot than it began on produces NO click at all, so the one-shot stayed
+   armed and swallowed the NEXT tap instead. A timestamp cannot be left
+   armed: it expires whether a click arrives or not. */
+dockEl.addEventListener('click', e => {
+  if (performance.now() - dragEndedAt < 400) { e.stopPropagation(); e.preventDefault(); }
+}, true);
+
+function dockStep() {
+  const a = $('.slotmini[data-slot="0"]'), b = $('.slotmini[data-slot="1"]');
+  if (!a || !b) return 0;
+  const ra = a.getBoundingClientRect(), rb = b.getBoundingClientRect();
+  return Math.round(rb.left - ra.left);
+}
+
+function dragShift(from, to, step) {
+  for (const el of $$('.slotmini')) {
+    const i = +el.dataset.slot;
+    if (i === from) continue;
+    const moved = from < to ? (i > from && i <= to ? -step : 0)
+                            : (i >= to && i < from ? step : 0);
+    el.style.transform = moved ? `translateX(${moved}px)` : '';
+  }
+}
+
+function beginDrag(ev, el) {
+  const from = +el.dataset.slot;
+  const step = dockStep();
+  if (!step) return;
+  drag = { el, from, to: from, step, x0: ev.clientX, id: ev.pointerId, moved: false };
+  try { el.setPointerCapture(ev.pointerId); } catch (e) { /* pointer already gone */ }
+  el.classList.add('dragging');
+  $('.slots').classList.add('dragmode');
+  const f = byId.get(S.tray[from]);
+  if (f) announce(`${f.t}, held. Drag to move it.`);
+}
+
+function moveDrag(ev) {
+  if (!drag) return;
+  const dx = ev.clientX - drag.x0;
+  drag.el.style.transform = `translateX(${dx}px)`;
+  const last = Math.min(S.tray.length, 10) - 1;
+  const to = Math.max(0, Math.min(last, drag.from + Math.round(dx / drag.step)));
+  if (to !== drag.to) { drag.to = to; drag.moved = true; dragShift(drag.from, to, drag.step); }
+}
+
+function endDrag() {
+  if (!drag) return false;
+  const { el, from, to, moved } = drag;
+  drag = null;
+  el.classList.toggle('dragging', false);
+  const slots = $('.slots');
+  if (slots) slots.classList.toggle('dragmode', false);
+  for (const n of $$('.slotmini')) n.style.transform = '';
+  if (!moved || from === to) { renderDock(); return false; }
+  const id = S.tray[from];
+  S.tray.splice(to, 0, S.tray.splice(from, 1)[0]);
+  save();
+  renderDock();
+  refreshTenSheet();
+  const f = byId.get(id);
+  if (f) announce(`${f.t} moved to ${to + 1}`);
+  dragEndedAt = performance.now();
+  return true;
+}
+
+/* Delegated from the dock, so a re-render never has to re-wire anything. */
+dockEl.addEventListener('pointerdown', ev => {
+  const el = ev.target.closest('.slotmini');
+  if (!el || !el.querySelector('img') || drag) return;
+  const startX = ev.clientX, startY = ev.clientY;
+  let held = setTimeout(() => { held = null; beginDrag(ev, el); }, DRAG_HOLD);
+  const cancelHold = () => { if (held) { clearTimeout(held); held = null; } };
+  const onMove = e => {
+    if (held) {
+      if (Math.abs(e.clientX - startX) > DRAG_SLOP || Math.abs(e.clientY - startY) > DRAG_SLOP) cancelHold();
+      return;
+    }
+    moveDrag(e);
+  };
+  const onUp = () => {
+    cancelHold();
+    // A drag that actually moved something must not also count as a tap on
+    // the row, which would open the sheet on top of the reorder just made.
+    endDrag();
+    for (const [type, fn] of [['pointermove', onMove], ['pointerup', onUp], ['pointercancel', onUp]]) {
+      dockEl.removeEventListener(type, fn);
+    }
+  };
+  dockEl.addEventListener('pointermove', onMove);
+  dockEl.addEventListener('pointerup', onUp);
+  dockEl.addEventListener('pointercancel', onUp);
+});
 
 /* The page must clear the dock exactly, whatever the dock currently is —
    the count row grows a line, the safe-area inset differs per device. */
@@ -2266,13 +2449,52 @@ const INTRO_TOPICS = [
   { domain: 'tv', genre: 'Drama' },
 ];
 
+/* The order the intro topics are in: [0] is the hero, the rest are the strip
+   left to right. Null until the splash first renders, when it takes the
+   per-visit rotation.
+
+   A tap SWAPS - the tapped tile and the hero exchange places - rather than
+   rotating the list. Rotating was the first version and it loses the list
+   you just left: with three tiles visible of five, the old hero landed in
+   fourth place and off the end of the strip, so tapping away from a topic
+   made it disappear. A swap means the thing you replaced is exactly where
+   you just tapped, which is also the only model of this that can be guessed
+   without being told.
+
+   Deliberately NOT in `S`: which list you were last looking at on the splash
+   is not worth persisting, and writing it to storage on every tap would turn
+   a browse gesture into a save. */
+let introOrder = null;
+
+/* A tile is about a third the width of a phone, so the full list name does
+   not fit in it however it is wrapped, and clamping it is what produced
+   "Animated Movies o…". The name of a topic with a decade carries its domain
+   noun twice over - the hero above already says Movies, and the posters say
+   it a third time - so the tile drops the noun and keeps both facts that
+   distinguish one tile from the next:
+
+     Crime Movies of the 90s        ->  Crime \u00b7 90s
+     Animated Movies of the 2000s   ->  Animated \u00b7 2000s
+
+   A name with no decade is already short enough to wrap honestly, and keeps
+   its noun, which is the one that still carries the domain: "Drama Shows"
+   must not become "Drama" on a shelf that also holds films. The full name
+   stays on the button's accessible name, so nothing is lost to a reader. */
+const introLabel = name => name.replace(/^Top 10 /, '').replace(/ \S+ of the (\d+s)$/, ' \u00b7 $1');
+
 function introTens() {
   const all = INTRO_TOPICS.map(c => consensusTen(makeTopic(c))).filter(Boolean);
-  if (!all.length) return { hero: null, rest: [] };
+  if (!all.length) return { hero: null, rest: [], all: [], at: 0 };
   // Rotates on each visit rather than randomly per render — a splash that
   // reshuffles under a re-render is a splash that flickers.
-  const n = (S.introSeen || 0) % all.length;
-  return { hero: all[n], rest: all.slice(n + 1).concat(all.slice(0, n)) };
+  if (!introOrder || introOrder.length !== all.length) {
+    const n = (S.introSeen || 0) % all.length;
+    introOrder = [n, ...all.map((_, i) => i).filter(i => i !== n)];
+  }
+  // `rest` carries each tile's index in `all`, so a tap knows what it means
+  // without matching on the name.
+  const rest = introOrder.slice(1).map(i => ({ ten: all[i], at: i }));
+  return { hero: all[introOrder[0]], rest, all, at: introOrder[0] };
 }
 
 function renderIntro() {
@@ -2302,13 +2524,26 @@ function renderIntro() {
       <div class="hero-badge" aria-hidden="true">${lockedBadge(false, badgeHash(t.topic.title))}</div>
     </figure>`;
 
+  /* Each tile is a BUTTON that swaps itself into the hero above (Mischa,
+     2026-11-18: "it should be clear those are tappable to expand them into
+     the space above"). It was a `figure`, which is why it did not look like
+     one - and `figure` is not phrasing content, so it cannot live inside a
+     button at all; the tile is spans now.
+
+     The label is no longer clamped to two lines. "Animated Movies of the
+     2000s" came out as "Animated Movies o…", on the one part of the splash
+     whose whole job is to say what else is in here. */
   const strip = !rest.length ? '' : `
-    <div class="intro-strip" aria-label="Other lists you could argue with">
-      ${rest.slice(0, 6).map(o => `<figure class="mini-ten">
-        <div class="mini-grid">${o.ranked.slice(0, 4).map(f =>
-          `<img src="${art(f, 'w185')}" alt="" loading="lazy" decoding="async">`).join('')}</div>
-        <figcaption><span class="what">${esc(listName(o.ranked, o.topic).replace(/^Top 10 /, ''))}</span></figcaption>
-      </figure>`).join('')}
+    <div class="intro-strip" role="group" aria-label="Other lists you could argue with">
+      ${rest.slice(0, 3).map(o => {
+        const name = listName(o.ten.ranked, o.ten.topic);
+        return `<button type="button" class="mini-ten" data-intro="${o.at}"
+          aria-label="Show ${esc(name)}">
+          <span class="mini-grid" aria-hidden="true">${o.ten.ranked.slice(0, 3).map(f =>
+            `<img src="${art(f, 'w185')}" alt="" loading="lazy" decoding="async">`).join('')}</span>
+          <span class="what">${esc(introLabel(name))}</span>
+        </button>`;
+      }).join('')}
     </div>`;
 
   app.innerHTML = `<div class="intro">
@@ -2545,7 +2780,6 @@ for (const d of DOMAINS) if (d.topic) {
 // here rather than at the declaration because the namer's tables are consts
 // further down the file, and a const is not readable before it is written.
 for (const p of SOURCES) p.topic = makeTopic(p.crit);
-
 
 // Their ten is drawn from the criteria their list is named for, so the name is
 // true of all ten of them — the same guarantee a real user gets, because the
@@ -3253,7 +3487,7 @@ function render() {
 }
 
 document.addEventListener('click', e => {
-  const t = e.target.closest('[data-title],[data-add],[data-deeper],[data-remove],[data-move],[data-toggle],[data-toggle-service],[data-facet],[data-facetjump],[data-higher],[data-sheet],[data-clear],[data-act],[data-topic],[data-focusnode],[data-dropfocus],[data-mapnode],[data-other]');
+  const t = e.target.closest('[data-title],[data-add],[data-deeper],[data-remove],[data-move],[data-toggle],[data-toggle-service],[data-facet],[data-facetjump],[data-higher],[data-sheet],[data-clear],[data-act],[data-topic],[data-focusnode],[data-dropfocus],[data-mapnode],[data-other],[data-intro]');
   if (!t) return;
 
   if (t.dataset.clear) { e.stopPropagation(); const k = t.dataset.clear; S.filters[k] = k === 'services' ? [] : null; save(); renderBuild(); return; }
@@ -3261,6 +3495,17 @@ document.addEventListener('click', e => {
     S.title = +t.dataset.title; S.back = S.scene; S.scene = 'title'; save(); render(); return;
   }
   if (t.dataset.add) { addFilm(+t.dataset.add, t); return; }
+  if (t.dataset.intro) {
+    // Swap this list with the hero: the old hero lands in the slot just
+    // tapped. The set cycles by tapping rather than by moving on its own -
+    // see the note on introOrder for why it does not auto-advance.
+    const k = (introOrder || []).indexOf(+t.dataset.intro);
+    if (k > 0) { const h = introOrder[0]; introOrder[0] = introOrder[k]; introOrder[k] = h; }
+    renderIntro();
+    const h = $('.hero-ten .what');
+    if (h) announce(h.textContent.trim());
+    return;
+  }
   if (t.dataset.deeper) {
     const id = +t.dataset.deeper;
     follow(id); S.q = ''; renderBuild();
@@ -3407,6 +3652,12 @@ document.addEventListener('click', e => {
 // assert against a state the app has already left.
 Object.defineProperty(window, 'S', { get: () => S });
 window.byId = byId; window.SOURCES = SOURCES;
+/* `introOrder` is a top-level `let`, so it is a lexical binding and never a
+   property of `window` - the trap already written up in tech-stack.md. The
+   harness needs to put the splash back to a known hero, so it gets a setter
+   rather than being told to assign a bare identifier and hope. */
+window.setIntroAt = v => { introOrder = v; };
+window.dockStep = dockStep;
 window.theirTen = theirTen; window.listName = listName;
 window.topicTitle = topicTitle; window.topicPrompt = topicPrompt; window.makeTopic = makeTopic;
 window.supply = supply; window.offerable = offerable; window.inTopic = inTopic; window.KEY = KEY;

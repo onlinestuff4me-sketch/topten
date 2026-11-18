@@ -547,7 +547,11 @@ const DOMAIN_SPEECH = `(() => {
       people: document.querySelectorAll('.mini-ten .who').length };
   });
   check(strip.n >= 3, `other lists are on screen too (${strip.n} of them)`);
-  check(strip.posters.every(n => n === 4), `four posters each (${[...new Set(strip.posters)].join(',')})`);
+  /* Three, not four. The mosaic was a 2x2 grid of 2/3 posters, so it scaled
+     with the tile - and widening the tile to fit its own label took it from
+     37px tall to 153px and overflowed the splash. A row of three inside a
+     clamped band says "a list" just as well at a fixed cost. */
+  check(strip.posters.every(n => n === 3), `three posters each (${[...new Set(strip.posters)].join(',')})`);
   check(strip.people === 0, 'and not one of them is attributed to an invented person');
   /* Every list name begins "Top 10 ", which is identical on every card and
      eats the half of an 84px line that says WHICH list this is. With the
@@ -2638,6 +2642,161 @@ const DOMAIN_SPEECH = `(() => {
       `${where}: every control named and every rank spoken`
       + (faults.length ? ` \u2014 ${faults.length}: ${faults.slice(0, 3).join('; ')}` : ''));
   }
+
+  /* ── The splash's other categories read in full, and are tappable ───────
+     Mischa, 2026-11-18: "the other categories below should never have text
+     cut off, it should be clear those are tappable to expand them into the
+     space above."
+
+     The label used to be `-webkit-line-clamp: 2` in a 63px tile, which is
+     about eight characters a line, so "Animated Movies of the 2000s" came
+     out "Animated Movies o…" - on the one part of the splash whose job is to
+     say what else is in here.
+
+     Every topic is put in the hero in turn, so every label is measured in a
+     tile at least once; a rule that happens to fit five of six is not a rule.
+     Clipping is measured on the element, not inferred from the string: a
+     clamp, an ellipsis and a plain overflow all read the same to a reader
+     and only `scrollHeight` catches all three. */
+  console.log('\n── The splash says what else is in here ──────────────');
+  const stripAt = i => page.evaluate(n => {
+    localStorage.clear();
+    window.setIntroAt(null);
+    S.scene = 'intro'; S.seen = false; S.introSeen = n; save(); render();
+  }, i);
+  const stripState = () => page.evaluate(() => {
+    const hero = document.querySelector('.hero-ten .what');
+    return {
+      hero: hero ? hero.textContent.trim() : null,
+      over: Math.round(document.documentElement.scrollHeight - window.innerHeight),
+      tiles: [...document.querySelectorAll('.mini-ten')].map(b => {
+        const w = b.querySelector('.what'), r = b.getBoundingClientRect();
+        return { label: w ? w.textContent.trim() : '', aria: b.getAttribute('aria-label') || '',
+          tag: b.tagName, at: b.dataset.intro,
+          clippedLabels: !!w && w.scrollHeight > w.clientHeight + 1,
+          w: Math.round(r.width), h: Math.round(r.height) };
+      }),
+    };
+  });
+
+  let seenLabels = 0, clippedLabels = [], smallTiles = [], unnamedTiles = [];
+  for (let i = 0; i < 6; i++) {
+    await stripAt(i);
+    await page.waitForTimeout(220);
+    const st = await stripState();
+    for (const t of st.tiles) {
+      seenLabels++;
+      if (t.clippedLabels) clippedLabels.push(t.label);
+      if (t.w < 44 || t.h < 44) smallTiles.push(`${t.label} ${t.w}x${t.h}`);
+      // The tile is a button, and its accessible name is the FULL list name -
+      // the shortening is for the eye, and a reader loses nothing to it.
+      if (t.tag !== 'BUTTON' || !/^Show Top 10 /.test(t.aria)) unnamedTiles.push(t.label + ' / ' + t.aria);
+    }
+  }
+  check(seenLabels >= 12, `every intro topic was shown as a tile (${seenLabels} measured)`);
+  check(clippedLabels.length === 0,
+    'no category label is cut off' + (clippedLabels.length ? ` — ${clippedLabels.join(', ')}` : ''));
+  check(smallTiles.length === 0,
+    'every category tile is at least 44x44' + (smallTiles.length ? ` — ${smallTiles.join(', ')}` : ''));
+  check(unnamedTiles.length === 0,
+    'every tile is a button carrying the full list name'
+    + (unnamedTiles.length ? ` — ${unnamedTiles.slice(0, 2).join('; ')}` : ''));
+
+  // Tapping one swaps it into the hero and the old hero rejoins the strip,
+  // which is how the set cycles without moving on its own.
+  await stripAt(0);
+  await page.waitForTimeout(220);
+  const stripWas = await stripState();
+  const pickAria = stripWas.tiles[1].aria.replace(/^Show /, '');
+  await page.locator('.mini-ten').nth(1).click();
+  await page.waitForTimeout(300);
+  const stripNow = await stripState();
+  check(stripNow.hero === pickAria,
+    `tapping a category puts it in the hero above ("${stripNow.hero}" wanted "${pickAria}")`);
+  // A SWAP, not a rotation: the list that was in the hero lands in the slot
+  // just tapped. Rotating put it in fourth place, off the end of a strip
+  // three tiles wide, so tapping away from a topic made it vanish.
+  check(stripNow.tiles[1] && stripNow.tiles[1].aria === 'Show ' + stripWas.hero,
+    `and the list it replaced takes the slot just tapped (${stripNow.tiles.map(t => t.label).join(', ')})`);
+  check(stripNow.tiles.every(t => t.aria !== 'Show ' + stripNow.hero),
+    'the hero is never also offered as a tile below itself');
+
+  /* ── Hold a poster to reorder, tap to open the list ─────────────────────
+     Mischa, 2026-11-18: "rearranging your order should be done by holding and
+     dragging the mini posters around... need a persistent 'drag to
+     rearrange' tip while also having an easy way to enter a vertical
+     arranging mode."
+
+     Three separate promises, so three separate checks: the tip is there and
+     says the domain's own word, the drag moves the thing it was given, and
+     the two gestures do not collide - a drag must not also open the sheet,
+     and a tap must still open it. The collision is the one that actually
+     broke in development: the first implementation armed a one-shot click
+     suppressor at the end of a drag, and because a drag that ends on another
+     slot fires no click at all, the suppressor stayed armed and ate the next
+     tap instead. */
+  console.log('\n── Hold a poster to reorder ────────────────────');
+  const dockSetup = async () => {
+    await page.evaluate(() => {
+      localStorage.clear();
+      document.querySelectorAll('.sheet, .scrim, .coach, .coachscrim, .vault').forEach(n => n.remove());
+      S.scene = 'build'; S.seen = true; S.tipDone = true;
+      S.tray = [680, 155, 13, 550, 27205]; save(); render();
+    });
+    await page.waitForTimeout(350);
+    await page.evaluate(() => document.querySelectorAll('.coach, .coachscrim').forEach(n => n.remove()));
+  };
+  const trayNames = () => page.evaluate(() => window.S.tray.map(id => window.byId.get(id).t));
+  const holdDrag = async (from, slots) => {
+    const box = await page.locator(`.slotmini[data-slot="${from}"]`).boundingBox();
+    const step = await page.evaluate(() => window.dockStep());
+    const y = box.y + box.height / 2, x0 = box.x + box.width / 2;
+    await page.mouse.move(x0, y);
+    await page.mouse.down();
+    await page.waitForTimeout(300);                  // past the hold threshold
+    for (let k = 1; k <= 10; k++) { await page.mouse.move(x0 + step * slots * k / 10, y); await page.waitForTimeout(16); }
+    await page.mouse.up();
+    await page.waitForTimeout(260);
+  };
+
+  await dockSetup();
+  check(/hold a poster to reorder/i.test(await page.locator('.dock-top .hint').innerText()),
+    `the drag tip is on screen and stays there ("${await page.locator('.dock-top .hint').innerText()}")`);
+  check(!(await page.locator('.dock-top .btn').isDisabled()),
+    'Arrange opens from two picks, not only from ten');
+
+  const dragWas = await trayNames();
+  await holdDrag(0, 2);
+  const dragNow = await trayNames();
+  check(dragNow[2] === dragWas[0] && dragNow[0] === dragWas[1],
+    `holding the first poster and dragging it two along moves it there `
+    + `(${dragWas[0]} → position ${dragNow.indexOf(dragWas[0]) + 1})`);
+  check(await page.locator('#tenlist').count() === 0,
+    'and a drag does not also open the vertical list on top of it');
+
+  await holdDrag(4, -3);
+  const dragBack = await trayNames();
+  check(dragBack[1] === dragNow[4],
+    `and it drags the other way too (${dragNow[4]} → position ${dragBack.indexOf(dragNow[4]) + 1})`);
+
+  await dockSetup();
+  // Read the order BEFORE the tap. Reading it twice afterwards and comparing
+  // the two compares a value with itself, which is a check that cannot fail.
+  const tapWas = await trayNames();
+  await page.locator('.slotmini[data-slot="1"]').click();
+  await page.waitForTimeout(350);
+  check(await page.locator('#tenlist').count() === 1,
+    'a tap on a poster still opens the vertical list');
+  check((await trayNames()).join('|') === tapWas.join('|'),
+    'and a tap never reorders anything by itself');
+  await page.evaluate(() => document.querySelectorAll('.sheet, .scrim').forEach(n => n.remove()));
+
+  await dockSetup();
+  await page.locator('.dock-top .btn').click();
+  await page.waitForTimeout(350);
+  check(await page.locator('#tenlist').count() === 1,
+    'the Arrange button opens the same vertical list — the non-drag way to reorder');
+  await page.evaluate(() => document.querySelectorAll('.sheet, .scrim').forEach(n => n.remove()));
 
   console.log('\n\u2500\u2500 A books shelf speaks like one \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500');
   const BOOK_SCREENS = [

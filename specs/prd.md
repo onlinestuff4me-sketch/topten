@@ -211,6 +211,27 @@ disagree for a reason that is visible on the card. The two takes on a topic
 are no longer adjacent in the list: identical headings stacked read as a
 rendering fault rather than as the point being made.
 
+**Amendment 2026-11-18 (Mischa, reviewing the build) — reordering is direct
+manipulation, and the splash is navigable.**
+
+*Req 2/3 (the build screen).* Your order is changed by **holding a poster in
+the dock and dragging it**, not only by opening a list. The dock carries a
+permanent tip saying so from the second pick, and **Arrange** — the labelled
+way into the vertical list — is enabled from the second pick rather than the
+tenth. The vertical list is not optional: WCAG 2.5.7 requires a single-pointer
+alternative to any drag, so it is the accessible path and has to be easy to
+find. Acceptance: a held drag moves the poster it was given and does not also
+open the list; a tap opens the list and reorders nothing; the tip names the
+domain's own artwork word.
+
+*Req 1 (the first screen).* The other topics under the hero are **tappable**
+and swap themselves into the hero, so the set cycles by use rather than by
+moving on its own. No label on them is ever truncated — see `design.md` for the
+naming rule and the measurements, including why there are now three tiles
+rather than six. Acceptance: every intro topic, shown as a tile, renders its
+label in full on every phone viewport; tapping one promotes it and the one it
+replaced returns to the strip.
+
 **2. Gather.** Building a Ten is two phases; phase one is *gathering* — an
 unordered tray of up to 10 candidates. Sources: search (catalog-backed with
 artwork) and a suggestion rail (popular/classic/acclaimed for the topic,

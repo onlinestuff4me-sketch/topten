@@ -1434,3 +1434,133 @@ target behind a media query.
    while the title sits underneath the badge at full size. Measure ink against
    the thing it must not touch (a `Range`'s bounding box against the badge),
    never `scrollWidth`, and put `min-width: 0` on the children.
+
+
+## The splash's other categories: readable, and tappable (2026-11-18)
+
+**Mischa, reviewing the build:** *"the other categories below should never have
+text cut off, it should be clear those are tappable to expand them into the
+space above. Maybe they cycle thru?"*
+
+**Three failures, one cause: the tile was too narrow for a name.** Six tiles
+across a 393pt phone are 63pt wide, which leaves about eight characters a
+line. The caption was `-webkit-line-clamp: 2`, so *"Animated Movies of the
+2000s"* rendered as *"Animated Movies o…"* — on the one element of the splash
+whose entire job is to say what else is in here. Removing the clamp alone made
+it worse: at 63pt the words broke mid-letter (*"Hitch-cock"*).
+
+| | was | is |
+|---|---|---|
+| Tiles | 6 at a fixed 54–84pt | **3 sharing the row**, ~112pt each |
+| Label | 2 lines, clamped, `text.secondary` | **unclamped**, `accent.ink`, 700 |
+| Mosaic | 2×2 of 2/3 posters | **3 in a row**, height `clamp(38px, 6.6svh, 58px)` |
+| Element | `<figure>` | **`<button>`** with a press state |
+
+**The mosaic's height is now a constant, not a consequence of the width.** A
+2×2 grid of 2/3 posters scales with the tile, so widening the tile from 63 to
+112pt took the mosaic from 37pt tall to 153pt and the splash overflowed its own
+screen by up to 40pt — the single failure this screen is not allowed to have.
+Three posters in a row inside a clamped band says *"a list"* just as well and
+costs a fixed slice of the budget whatever the tile does. Swept across five
+phone viewports × six hero positions: overflow 1px everywhere (the pre-existing
+rounding the splash sweep already tolerates), nothing clipped, two lines at
+most.
+
+**`introLabel` is what makes the label short enough to wrap rather than clip.**
+A topic name with a decade says its domain noun three times over — the hero
+above, the posters, and the tile — so the tile drops it and keeps the two facts
+that tell one tile from the next:
+
+```
+Crime Movies of the 90s       ->  Crime · 90s
+Animated Movies of the 2000s  ->  Animated · 2000s
+Hitchcock Movies              ->  Hitchcock Movies   (no decade, keeps its noun)
+Drama Shows                   ->  Drama Shows        (ditto - and "Shows" is
+                                                      the domain word, which
+                                                      must not be dropped)
+```
+
+The **full** name stays on the button's accessible name (`Show Top 10 Animated
+Movies of the 2000s`), so the shortening is for the eye only and a screen
+reader loses nothing.
+
+**At accessibility text sizes the label breaks mid-word rather than spilling.**
+`overflow-wrap: break-word`, which fires only when a word cannot fit a line of
+its own: at every size from 12px to 32px, in the system face and both CI
+fallbacks, no label overflows its box. It never triggers at ordinary sizes —
+"Hitchcock" is 56pt in a 102pt column — and at a 32px root a broken word is the
+right trade against text running out of its tile.
+
+Found by the Dynamic Type sweep, not by looking: the first version dropped
+`overflow-wrap` entirely to stop words breaking in the old 63pt tile, and at a
+28px root in DejaVu Serif "Hitchcock Movies" then ran 19px past its box. A
+`scrollHeight` check does not see that — horizontal overflow of a text node is
+only visible to a Range over the text, which is what the sweep uses and why it
+caught what a hand check had not.
+
+*Rejected on the way: hiding the strip above a text size.* There is no media
+query for it. `em` in a media query resolves against the browser's **initial**
+font size, not `html { font-size }`, so `@media (max-height: 30em)` is a fixed
+480px and did nothing — confirmed by sweeping it, after which the dead rule was
+removed rather than left in with a comment claiming otherwise.
+
+**Tappable is said in the app's own vocabulary, not a new one.** The label is
+`accent.ink` — the same colour as Map, Start over and a title page's fact
+links, every other thing in this app that does something when you touch it.
+`--accent-ink` rather than `--accent` because at 12pt only the former clears
+AA. The tile also carries a surface, a border, a hover edge and a 0.96 press
+scale, and is well past 44pt in both directions.
+
+**They cycle by tap, and do not auto-advance.** Tapping a tile **swaps** it
+with the hero: the list that was up top lands in exactly the slot just tapped,
+so three visible of five is not a ceiling — a few taps reach everything.
+
+A swap, not a rotation. Rotating the set was the first version, and it loses
+the list you just left: with three tiles of five showing, the old hero landed
+in fourth place and off the end of the strip, so tapping away from a topic made
+it disappear. A swap is also the only model of this a person can guess without
+being told. Auto-advancing was considered and
+rejected: WCAG 2.2.2 requires a pause mechanism for anything that auto-updates
+for more than five seconds, the splash has no room for a pause control, and
+motion on the first screen competes with the one button it exists to get
+pressed. If we want it later it is a timer and a crossfade, and a visible
+pause.
+
+## Reordering is direct: hold a poster and drag it (2026-11-18)
+
+**Mischa:** *"rearranging your order should be done by holding and dragging the
+mini posters around. Need to have a persistent 'drag to rearrange' tip while
+also having an easy way to enter a vertical arranging mode."*
+
+**The gesture.** Press and **hold 220ms** on a filled dock slot, then drag
+along the row. The slot lifts (accent outline, raised shadow), the others slide
+by one step to open a gap, and release commits. The hold is what keeps the
+gesture from eating taps: a drag that began on the first pixel of movement
+would steal every tap on the row, and more than **8pt of movement before the
+hold completes cancels it** — that movement is a scroll or a swipe, not a grab.
+
+Three things make this smaller than a general drag-and-drop, and all three are
+properties of this dock rather than luck: every slot is the same width, so the
+target index is `round(dx / step)` and not hit-testing; the dragged node never
+leaves the row, so nothing is cloned into a layer; and the row holds ten things,
+so moving the rest is ten transforms.
+
+**`touch-action: none` goes on only once the hold is recognised.** On the row
+from the start it would kill every ordinary scroll that begins on the dock; at
+the moment a slot is picked up it stops the browser panning the row out from
+under a drag already in progress.
+
+**The tip is permanent and costs no height.** From two picks the dock's hint
+line reads **"Hold a *poster* to reorder"** — the artwork noun from `DOMAINS`,
+so a books shelf says *cover* — and it replaces *"n to go"*, which was
+arithmetic the line above had already done (*"4 of 10"* says six to go).
+
+**And the vertical list opens from two.** The **Arrange** button was disabled
+until ten, which left the sheet reachable only by tapping the unlabelled strip
+of slots — the one gesture now spoken for by the drag. It is enabled from two
+picks and opens the same list, with its own up/down buttons at 44×44.
+
+That is not a convenience. **WCAG 2.5.7 (Dragging Movements) requires a
+single-pointer alternative to any drag**, and a drag alone cannot be one. The
+vertical list is the alternative, which makes the labelled way into it a
+requirement rather than a nicety.
