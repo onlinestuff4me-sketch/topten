@@ -1792,6 +1792,35 @@ copy of each strip reuses the same URLs and costs nothing. **The lever, if
 this ever needs to be cheaper, is the row count** — not the poster size, which
 is the thing that was asked for.
 
+### The tagline wraps, and where it wraps is ours
+
+Mischa's line is two sentences and 42 characters. In SF Pro on a 393pt phone
+it is **one line**; in DejaVu Sans — about 10% wider, and the face CI renders
+in — it is **two**. Both are right, and both ways of forcing one line are
+worse: 14px is marginal again on a 375pt phone, and a hard-coded break is a
+break the device does not need.
+
+So the one-line rule now covers the **headline** and not the tagline, and what
+is asserted instead is what matters: at most two lines, no spill, and the
+splash still fits every phone *with the tagline on two lines* — tested on all
+eight viewports by squeezing the paragraph rather than by hoping the right
+font is installed.
+
+**The break itself is not left to the font.** Filling greedily, DejaVu put
+*"Share"* at the end of the first line and *"yours."* alone on the second. A
+non-breaking space inside "Share yours." makes the second sentence one
+unbreakable unit, so the only place the paragraph can break is between the two
+sentences — and the second line is then the invitation, sitting directly above
+the button that acts on it. No `text-wrap: balance` here for the same reason:
+balancing a two-line fill splits *"other users."* across them.
+
+*The gate for this was vacuous on its first attempt.* It squeezed the
+paragraph to a typed 240px, which in this machine's font happened to land
+exactly on the sentence boundary — so it passed with the non-breaking space
+removed. The squeeze is now measured off the element's own `nowrap` width
+minus 24px, which forces exactly one unit onto the second line in whatever
+font is installed.
+
 ### Auto-scroll and WCAG 2.2.2, honestly
 
 2.2.2 wants a mechanism to pause, stop or hide motion that starts on its own,

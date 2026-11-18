@@ -776,8 +776,16 @@ footer.notes .build { color: var(--text-disabled); margin-top: var(--s2); }
    old hero, "1,200+ to choose from" on a topic card - and one unpunctuated
    number on the first screen would be the odd one out.
 
-   It is TWO SENTENCES and 42 characters, so it is two lines on a phone at any
-   size that can be read; see the note on the one-line rule in prd.md. */
+   It is two sentences and 42 characters, which is one line in SF Pro on a
+   393pt phone and two in a wider face - CI's DejaVu Sans among them. Both are
+   right, so the line is allowed to wrap; what is NOT allowed is where it
+   wrapped on its own. Filling greedily, DejaVu put "Share" at the end of the
+   first line and "yours." alone on the second. The non-breaking space in
+   "Share yours." makes the second sentence one unbreakable unit, so the only
+   place the paragraph can break is between the two sentences - and the second
+   line is then the invitation, sitting directly above the button that acts on
+   it. No `text-wrap: balance` here for the same reason: balancing a two-line
+   fill splits "other users." across them. */
 .wallcopy .pitch { margin: 0; font-size: clamp(0.9375rem, 4vw, 1.125rem);
   line-height: 1.35; font-weight: 600; color: var(--vault-text-dim); }
 /* The bright accent, not `--accent`. On an always-dark surface the light
@@ -2563,7 +2571,7 @@ function renderIntro() {
     <div class="wallveil" aria-hidden="true"></div>
     <div class="wallcopy">
       <h1>What's your Top 10?</h1>
-      <p class="pitch">${roughly(CORPUS_CLAIM)} lists from other users. Share yours.</p>
+      <p class="pitch">${roughly(CORPUS_CLAIM)} lists from other users. Share&nbsp;yours.</p>
       <button class="btn" data-act="begin">Make your first list</button>
       <p class="promise">Free. No ads. No subscription. Ever.</p>
     </div>

@@ -628,9 +628,10 @@ const DOMAIN_SPEECH = `(() => {
      out punctuated, and one bare number on the first screen would be the odd
      one out. The number itself is a claim about a corpus that does not exist
      yet; PRD Req 1 carries it as a launch blocker. */
-  check((await page.locator('.intro .pitch').innerText()).trim()
-    === '5,000+ lists from other users. Share yours.',
-    `the tagline is the one Mischa wrote ("${(await page.locator('.intro .pitch').innerText()).trim()}")`);
+  const tagline = (await page.locator('.intro .pitch').innerText())
+    .replace(/[\s\u00a0]+/g, ' ').trim();
+  check(tagline === '5,000+ lists from other users. Share yours.',
+    `the tagline is the one Mischa wrote ("${tagline}")`);
   check(/Free\. No ads\. No subscription\. Ever\./.test(introText),
     'and the promise survives the redesign, as fine print under the CTA');
   /* The sub-line "Yours will be different. See how." was asserted here from
@@ -639,11 +640,27 @@ const DOMAIN_SPEECH = `(() => {
      deliberately removed is how a suite starts arguing with the product. */
 
   /* The one-line rule, still (Mischa, 2026-08-15: the splash "breaks our
-     one-line rule twice"). It covers the two lines of copy that are a single
-     thought each. The list names on the plates are NOT in it: they are the
+     one-line rule twice") — but it covers the HEADLINE now, not the tagline.
+
+     The tagline is two sentences and 42 characters, and whether that is one
+     line or two is a property of the font. On a real iPhone, in SF Pro, it is
+     one line at 393pt. On CI, in DejaVu Sans — about 10% wider, and the face
+     that has now broken this screen three times — it is two. Both are
+     correct, and the two ways to force one line are both worse: shrink the
+     type to 14px, where it is marginal again on a 375pt phone, or hard-code a
+     break the device does not need.
+
+     So what is asserted is what actually matters — at most two lines, no
+     spill, nothing clipped, and the splash still fits the smallest phone. The
+     break falls between the sentences because the paragraph fills greedily
+     and carries no `text-wrap: balance`; balancing it would split "other
+     users." across the two lines, which is the one break that would read as a
+     mistake.
+
+     The list names on the plates are not in this rule either: they are the
      titles of other people's lists, they wrap inside their plate by design,
      and the plate check above is what holds them. */
-  const headLines = () => page.evaluate(() => ['h1', '.pitch'].map(sel => {
+  const headLines = () => page.evaluate(() => ['h1'].map(sel => {
     const el = document.querySelector('.intro ' + sel);
     if (!el) return null;
     const lh = parseFloat(getComputedStyle(el).lineHeight);
@@ -663,10 +680,77 @@ const DOMAIN_SPEECH = `(() => {
         `${h.spill}px spill: "${h.text}"`);
     }
   };
+  /* The tagline: at most two lines, and if two, broken in the right place.
+
+     The second half is the one that needed building. Where the line breaks
+     depends on the font, so on this machine it never breaks and on CI it
+     always does - a gate that only fires in CI is a gate that cannot be
+     falsified where it is written. So the paragraph is SQUEEZED on purpose
+     after the honest measurement, which forces the wrap on any font, and the
+     break is read off the rendered line boxes rather than off the string.
+     `innerText` is no help: the paragraph is one text node and comes back as
+     one line however it was laid out. */
+  const taglineLines = () => page.evaluate(() => {
+    const el = document.querySelector('.intro .pitch');
+    const lh = parseFloat(getComputedStyle(el).lineHeight);
+    const r = document.createRange(); r.selectNodeContents(el);
+    const ink = r.getBoundingClientRect(), box = el.getBoundingClientRect();
+    const node = el.firstChild, str = node.textContent;
+    const probe = document.createRange();
+    probe.setStart(node, 0); probe.setEnd(node, 1);
+    const top0 = probe.getBoundingClientRect().top;
+    let cut = str.length;
+    for (let i = 1; i <= str.length; i++) {
+      probe.setStart(node, i - 1); probe.setEnd(node, i);
+      if (probe.getBoundingClientRect().top > top0 + 1) { cut = i - 1; break; }
+    }
+    return { lines: Math.round(box.height / lh),
+      fs: Math.round(parseFloat(getComputedStyle(el).fontSize) * 10) / 10,
+      spill: Math.round(Math.max(0, ink.right - box.right, box.left - ink.left)),
+      first: str.slice(0, cut).replace(/\u00a0/g, ' ').trim(),
+      rest: str.slice(cut).replace(/\u00a0/g, ' ').trim() };
+  });
+  const taglineAt = async label => {
+    const t = await taglineLines();
+    check(t.lines <= 2 && t.spill <= 1,
+      `the tagline holds at ${label} — ${t.lines} line${t.lines === 1 ? '' : 's'} ` +
+      `at ${t.fs}px, ${t.spill}px spill`);
+    /* The squeeze is measured, not typed. A fixed 240px happened to land ON
+       the sentence boundary in this machine's font, so the check passed with
+       the non-breaking space REMOVED - a vacuous gate, caught by removing it.
+       The width that actually tests anything is just under the line's own
+       single-line width: narrow enough that something must move to line two,
+       wide enough that only the last unit does. Read off the element with
+       `nowrap`, so it is right in whatever font is installed. */
+    const squeezed = await (async () => {
+      const w = await page.evaluate(() => {
+        const el = document.querySelector('.intro .pitch');
+        el.style.whiteSpace = 'nowrap';
+        const r = document.createRange(); r.selectNodeContents(el);
+        const width = r.getBoundingClientRect().width;
+        el.style.whiteSpace = '';
+        return width;
+      });
+      await page.evaluate(px => { document.querySelector('.intro .pitch').style.maxWidth = px + 'px'; },
+        Math.round(w) - 24);
+      const r = await taglineLines();
+      await page.evaluate(() => { document.querySelector('.intro .pitch').style.maxWidth = ''; });
+      return { ...r, at: Math.round(w) - 24 };
+    })();
+    /* Filling greedily, DejaVu put "Share" at the end of the first line and
+       "yours." alone on the second. The non-breaking space in the markup is
+       what moves the break to the sentence boundary; this is what holds it
+       there on every font, including the ones this machine does not have. */
+    check(/users\.$/.test(squeezed.first) && /^Share yours\.$/.test(squeezed.rest),
+      `and when it has to break, it breaks between the two sentences at ${label} ` +
+      `— squeezed to ${squeezed.at}px: "${squeezed.first}" / "${squeezed.rest}"`);
+  };
   await headOneLineAt('iPhone 15 Pro width (393px)');
+  await taglineAt('iPhone 15 Pro width (393px)');
   await page.setViewportSize(SMALL);
   await page.waitForTimeout(140);
   await headOneLineAt('the narrowest supported iPhone (375px)');
+  await taglineAt('the narrowest supported iPhone (375px)');
   const fitsSE = await page.evaluate(() => ({
     over: document.documentElement.scrollHeight > window.innerHeight + 1,
     wide: document.documentElement.scrollWidth > window.innerWidth + 1,
@@ -2470,11 +2554,13 @@ const DOMAIN_SPEECH = `(() => {
   console.log('\n\u2500\u2500 The splash fits on every phone \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500');
   const PHONES = [
     ['iPhone SE', 375, 553],
-    // The three that actually broke, kept as regression cases: a 20px band
-    // where the strip was shown but there was no room for it, and a narrow
-    // Android width where the hero grid's own height did the overflowing.
-    ['narrow, just under the strip', 360, 610],
-    ['narrow, just over it', 360, 630],
+    /* The three that actually broke, kept as regression cases even though the
+       layout that broke on them is gone: a 20px band where the old splash
+       showed a strip it had no room for, and a narrow Android width where the
+       hero grid's own height did the overflowing. A viewport that has caught
+       something once is worth keeping forever — it costs a second. */
+    ['narrow, 360 wide', 360, 610],
+    ['narrow and a little taller', 360, 630],
     ['iPhone 13 mini', 375, 629],
     ['iPhone 15 Pro', 393, 659],
     ['iPhone 15 Pro Max', 430, 745],
@@ -2490,7 +2576,7 @@ const DOMAIN_SPEECH = `(() => {
     await page.waitForTimeout(260);
     await page.evaluate(() => window.scrollTo(0, 0));
     await page.waitForTimeout(80);
-    const fit = await page.evaluate(() => {
+    const FIT = () => page.evaluate(() => {
       const q = sel => document.querySelector(sel);
       const box = el => { const r = el.getBoundingClientRect();
         return { top: Math.round(r.top), bottom: Math.round(r.bottom), w: Math.round(r.width) }; };
@@ -2506,14 +2592,39 @@ const DOMAIN_SPEECH = `(() => {
         over: Math.round(document.documentElement.scrollHeight - document.documentElement.clientHeight),
       };
     });
-    const ok = fit && fit.over <= 2 && fit.spill <= 1
-      && fit.cta.bottom <= fit.vh && fit.promise.bottom <= fit.vh
-      && fit.h1.top >= 0 && fit.cta.top >= 0;
-    check(ok,
-      `${label} (${w}x${h}): the headline, the button and the promise are all on screen `
-      + `without scrolling` + (fit ? ` \u2014 headline ${fit.h1.top}..${fit.h1.bottom}, button ${fit.cta.top}..${fit.cta.bottom}, `
-                                   + `promise ends ${fit.promise.bottom}, of ${fit.vh}; scrollable ${fit.over}px; spill ${fit.spill}`
-                                   : ' \u2014 splash did not render'));
+    const fits = f => f && f.over <= 2 && f.spill <= 1
+      && f.cta.bottom <= f.vh && f.promise.bottom <= f.vh
+      && f.h1.top >= 0 && f.cta.top >= 0;
+    const say = (f, how) => `${label} (${w}x${h})${how}: the headline, the button and the `
+      + `promise are all on screen without scrolling`
+      + (f ? ` \u2014 headline ${f.h1.top}..${f.h1.bottom}, button ${f.cta.top}..${f.cta.bottom}, `
+           + `promise ends ${f.promise.bottom}, of ${f.vh}; scrollable ${f.over}px; spill ${f.spill}`
+          : ' \u2014 splash did not render');
+    const fit = await FIT();
+    check(fits(fit), say(fit, ''));
+    /* And again with the tagline on TWO lines, which is what a wider face
+       gives it — CI's DejaVu Sans does, this machine's default does not. The
+       vertical budget has to survive the worse of the two wherever the suite
+       happens to run, or the splash is only measured in the font that was
+       installed on the day. Forced by width rather than by font, so it is the
+       same test everywhere. */
+    const wide = await page.evaluate(() => {
+      const el = document.querySelector('.intro .pitch');
+      el.style.whiteSpace = 'nowrap';
+      const r = document.createRange(); r.selectNodeContents(el);
+      const width = Math.round(r.getBoundingClientRect().width);
+      el.style.whiteSpace = '';
+      el.style.maxWidth = (width - 24) + 'px';
+      return width - 24;
+    });
+    await page.waitForTimeout(60);
+    const fit2 = await FIT();
+    const lines2 = await page.evaluate(() => {
+      const el = document.querySelector('.intro .pitch');
+      return Math.round(el.getBoundingClientRect().height / parseFloat(getComputedStyle(el).lineHeight));
+    });
+    await page.evaluate(() => { document.querySelector('.intro .pitch').style.maxWidth = ''; });
+    check(lines2 === 2 && fits(fit2), say(fit2, `, tagline on two lines (${wide}px)`));
   }
   await page.setViewportSize(PHONE);
   await page.waitForTimeout(150);
