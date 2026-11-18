@@ -138,6 +138,27 @@ The repo is structured so that logic and UI verify in different places — see
   test suite on every PR, so cloud-written Swift gets compiler + test feedback
   without waiting for a Mac session.
 
+**When CI runs (decided 2026-11-18, Mischa — "Main only, skip docs-only
+changes").** On a push to `main` with `paths-ignore: ['**.md']`, on a pull
+request into `main`, and on `workflow_dispatch`. **Not on a push to any other
+branch**, so a branch push gets no run of its own — work is pushed to both the
+branch and `main`, and 6 of the 13 runs that day were the second run of an
+identical tree. Reason: fewer runs, and fewer "run failed" emails; the minutes
+themselves are free while this repo is public.
+
+**The ignore list is `'**.md'`, never `docs/**`.** In this repo `docs/` is not
+documentation — `docs/prototype/` **is** the web prototype and the thing the
+browser job tests. Ignoring `docs/**` would switch CI off for every prototype
+change and leave it running on spec edits, which is exactly backwards.
+Markdown is the only thing here that cannot break a build.
+
+**A branch with no CI run of its own raises the bar on local verification.**
+Run all three suites before pushing, and run the browser one the way CI does:
+
+```sh
+POSTER_MIRROR=$(mktemp -d) node drive.js    # CI has no poster mirror
+```
+
 **Pushed is not shipped.** For the web pages, confirm a Vercel deploy actually
 ran before telling anyone a change is live — and remember the committer-email
 trap in `specs/tech-stack.md`, which has already cost two full sessions on

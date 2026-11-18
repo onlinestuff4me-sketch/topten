@@ -12,9 +12,27 @@ name: CI
 #   * Chromium — the prototype's own two suites, served from the same static
 #              directory Vercel publishes.
 
+# WHEN THIS RUNS (2026-11-18, Mischa: "Main only, skip docs-only changes").
+#
+# `push` is main only. Work is developed on a branch and pushed to both, so a
+# run per branch push was a second run of the identical tree - 6 of this
+# session's 13 runs on main were that duplicate.
+#
+# `paths-ignore` is `'**.md'` and NOT `docs/**`. In this repo `docs/` is not
+# documentation: `docs/prototype/` IS the web prototype and the thing the
+# browser job tests. Ignoring `docs/**` would switch CI off for every
+# prototype change and leave it running on spec edits - exactly backwards.
+# Markdown is the only thing here that cannot break a build: AGENTS.md,
+# specs/*.md, docs/resuming.md. A push touching any non-markdown file still
+# runs, including a push that touches both.
+#
+# Reason: fewer runs, and fewer "run failed" emails. Raised by the GitHub
+# Actions budget session; the minutes themselves are free while this repo is
+# public.
 on:
   push:
-    branches: ['**']
+    branches: [main]
+    paths-ignore: ['**.md']
   pull_request:
     branches: [main]
   workflow_dispatch:
