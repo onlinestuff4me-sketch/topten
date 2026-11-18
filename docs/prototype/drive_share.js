@@ -300,6 +300,53 @@ const q = (o) => {
     `a link survives being rebuilt and re-read (${JSON.stringify(round)})`);
   await p.close();
 
+  console.log('\n── A browser with JavaScript off ────────────────────────────');
+  // Req 8's first acceptance line is "page renders well with no JS", and on
+  // 2026-11-18 this measured ZERO characters: no heading, the generic title,
+  // a white screen. The prototype cannot render the list without JS - the ten
+  // travel in the query string and a static file server never sees it - but a
+  // white screen is the one outcome worse than a generic page, and that part
+  // is fixable here. The requirement itself is owed against the server-rendered
+  // page, not this one.
+  const openNoJS = async (url) => {
+    const ctx = await browser.newContext({ javaScriptEnabled: false,
+      viewport: { width: 393, height: 852 }, deviceScaleFactor: 2 });
+    const pg = await ctx.newPage();
+    await pg.route('**image.tmdb.org/**', r => r.abort());
+    await pg.goto(url, { waitUntil: 'load' });
+    return { pg, ctx };
+  };
+
+  for (const [name, url] of [['the Ten page', `${BASE}/ten.html?${shared}`],
+                             ['the topic page', `${BASE}/topic.html?${q({ t: 'Top 10 Crime Movies of the 90s', tens })}`]]) {
+    const { pg, ctx } = await openNoJS(url);
+    const seen = await pg.evaluate(() => ({
+      text: document.body.innerText.trim(),
+      h1: document.querySelector('h1')?.innerText.trim() || '',
+      mast: document.querySelector('.masthead')?.innerText.trim() || '',
+    }));
+    check(seen.text.length > 200,
+      `${name} with JavaScript off is a page, not a blank screen (${seen.text.length} characters)`);
+    check(/top ten/i.test(seen.mast),
+      `${name} still says whose product it is`);
+    check(/JavaScript/.test(seen.h1) && /Turn JavaScript on/.test(seen.text),
+      `${name} says what to do about it, in the heading and in the body`);
+    // `seen.text` being empty would satisfy a bare "no angle brackets", so the
+    // length is part of the assertion - a vacuous check is the failure mode
+    // this suite has already hit twice.
+    check(seen.text.length > 0 && !/<[a-z]/i.test(seen.text),
+      `${name} renders its fallback as markup rather than printing it`);
+    await ctx.close();
+  }
+
+  // And the other direction: the fallback must never reach a browser that CAN
+  // run the page. A <noscript> inside the element the script overwrites is
+  // invisible twice over, and this is the check that keeps it that way.
+  const withJS = await open(`${BASE}/ten.html?${shared}`);
+  check(!/needs JavaScript/.test(await withJS.evaluate(() => document.body.innerText)),
+    'and none of that copy reaches a browser that runs the page');
+  await withJS.close();
+
   console.log('\n── One badge renderer, not three ────────────────────────────');
   // The reason badge.js was extracted. If the app screen and the share page
   // ever draw different badges from the same composition, the surface where it

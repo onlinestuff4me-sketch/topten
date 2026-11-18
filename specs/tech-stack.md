@@ -683,3 +683,40 @@ published history to remove 3.8MB of PNG is the more expensive mistake.
 as `--text-disabled` being used for text — a thing that is safe everywhere it
 was designed for, and silently wrong in the one place that reached past the
 design.
+
+## A suite that never turns JavaScript off cannot test "works without JavaScript" (2026-11-18, Claude)
+
+`drive_share.js` had 45 checks over the public pages and every one of them
+ran in a browser with JavaScript on, so the page that PRD Req 8 requires to
+"render well with no JS" had never once been loaded the way the requirement
+describes. It rendered **zero characters**.
+
+The fix in the harness is one line of Playwright —
+`browser.newContext({ javaScriptEnabled: false })` — and it is worth noting
+how *cheap* the missing coverage was, because that is the pattern:
+
+| gate | what it was missing | cost to add |
+|---|---|---|
+| contrast sweep | everything below the fold | delete one filter clause |
+| no-JS render | the whole requirement | one context option |
+| plate overflow | upward overflow | measure children, not `scrollHeight` |
+
+None of these needed a new tool, a new fixture or a new screen. Each was a
+default — the viewport, a browser with JS, `scrollHeight` — that nobody had
+asked to be different.
+
+**And the falsification found something better than the check.** Moving the
+fallback out of `<noscript>` so it would leak into a JavaScript-enabled page
+did not merely fail the new check: it crashed the suite at its *first*
+assertion, `locator('h1')` hitting a strict-mode violation with two `h1`
+elements. Playwright's strict locators are a structural gate nobody wrote,
+and they are the reason the fallback lives inside `#page` — the element the
+script overwrites — rather than beside it. Two independent reasons it cannot
+leak, which is the right number for something a reader never sees.
+
+**The vacuous-check trap, again.** The first spelling of "renders its
+fallback as markup rather than printing it" was `!/<[a-z]/.test(text)`, which
+is *true of an empty string* — so on the blank page it was meant to catch, it
+passed. It now asserts a non-empty body as part of the same check. That is
+three vacuous gates caught in this project by the habit of breaking a check
+before trusting it.

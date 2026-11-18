@@ -135,7 +135,38 @@
 </style>
 </head>
 <body>
-<div class="page" id="page"></div>
+<div class="page" id="page">
+  <noscript>
+    <!-- WITHOUT JAVASCRIPT THIS PAGE WAS BLANK. Not degraded - zero
+         characters, no heading, the generic title. Measured 2026-11-18.
+
+         It cannot render the list: the ten travel in the query string and a
+         static file server never sees it. That is a property of the PROTOTYPE,
+         not of the product - the shipping page renders server-side from the
+         Supabase row, which is why the schema stores `title_at_publish`. PRD
+         Req 8 is owed against that page, not this one.
+
+         What this fixes is the white screen, which is the one outcome worse
+         than a generic page. Deliberately duplicated markup rather than
+         shared with share.js, because share.js is the thing that is not
+         running. No button: every destination Top Ten could offer here also
+         needs JavaScript, and a key that opens onto another blank page is
+         not a key. The instruction IS the way out. -->
+    <div class="masthead"><span class="dot"></span><span>Top Ten</span></div>
+    <h1>This Top 10 is in the link, and the link needs JavaScript</h1>
+    <p class="byline">
+      Every pick, its artwork and the badge are carried inside the address you
+      followed rather than fetched from a server, so the page has to unpack
+      them in your browser. Turn JavaScript on for this page and the ten
+      appear.
+    </p>
+    <footer>
+      Structure prototype. Data travels in the link rather than from a
+      database, so this page is real and shareable without a backend to stand
+      up. Artwork and metadata from TMDB.
+    </footer>
+  </noscript>
+</div>
 
 <script src="catalog.js"></script>
 <script src="badge.js"></script>

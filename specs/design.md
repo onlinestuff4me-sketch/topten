@@ -2106,3 +2106,50 @@ first version used the ten least-rated films on the shelf, which overlapped by
 screen that printed *nought* whatever you had picked. Third time this project
 has caught a gate of its own shaped that way, and the tell is the same every
 time: a test whose expected value is whatever the code happens to produce.
+
+## The page a reader gets with JavaScript off (2026-11-18)
+
+Both public pages — `ten.html` and `topic.html` — carried **nothing** without
+JavaScript until this was measured: zero characters, a white screen. They now
+render a designed fallback instead.
+
+### Anatomy
+
+| part | what it is | why |
+|---|---|---|
+| masthead | the same `.masthead` the real page uses | a stranger who hit a wall should still know whose wall it is |
+| `h1` | *"This Top 10 is in the link, and the link needs JavaScript"* | the serif display face, so the page reads as made rather than errored |
+| `.byline` | one sentence on *why*, one on what to do | the lock says what opens it — the rule the badge gate already follows |
+| `footer` | the standard prototype footer | unchanged, so the page ends the way every other one does |
+| **no CTA** | — | see below |
+
+### No button, on purpose
+
+Every destination this page could offer — the app, a topic, another Ten —
+also needs JavaScript. A button here would be a key that opens onto a second
+blank page, which is worse than no key, because it spends the reader's one
+remaining action. **The instruction is the way out**, and it is in the body
+copy where a reader is already looking.
+
+This is the same principle as the badge gate's *"a lock with no key on it is
+just a wall"*, applied to a case where the key is a sentence rather than a
+control.
+
+### It reuses the page's own classes, and is duplicated on purpose
+
+The fallback is plain markup inside `#page` — the element the script
+overwrites — using `.masthead`, `h1`, `.byline` and `footer` from the page's
+own `<style>`. It is **not** shared with `share.js`, because `share.js` is
+precisely the thing that is not running. Two short blocks that can drift are
+the right trade against a shared helper that cannot execute.
+
+Sitting inside `#page` is also what stops it reaching a browser that *can*
+run the page: `<noscript>` already does that, and the overwrite does it
+again. Removing either leaves the other.
+
+### What it does not do
+
+It does not render the list. It cannot — in the prototype the ten travel in
+the query string and a static file server never sees one. PRD Req 8's
+"renders well with no JS" is owed against the server-rendered page and is
+still open.

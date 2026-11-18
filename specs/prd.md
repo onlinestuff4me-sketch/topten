@@ -516,6 +516,35 @@ a designed card) for stories/messages.
 - Acceptance: page renders well with no JS; OG image is the designed card;
   page loads <1.5s p75; the CTA deep-links topic context into the app.
 
+**Measured 2026-11-18 (Claude, overnight) — "renders well with no JS" was
+rendering nothing at all.** With JavaScript disabled, `ten.html` produced
+**zero characters**: no heading, no list, the generic `<title>`, a white
+screen. `topic.html` the same. Nothing reported it because nothing asked —
+the share suite had 45 checks and not one of them turned JavaScript off.
+
+**The prototype cannot satisfy this requirement, and that is a property of
+the prototype rather than of the product.** A shared Ten travels in the query
+string (`?t=…&items=…`), and a static file server never sees a query string.
+The shipping page renders server-side from the `published_tens` row — which
+is exactly why the schema stores `title_at_publish` — so the requirement is
+owed against *that* page and is still open.
+
+What was fixable here was the white screen, which is the one outcome worse
+than a generic page: both public pages now carry a `<noscript>` that renders
+the masthead, says the list is inside the link, and says to turn JavaScript
+on. 458 characters on the Ten page, 440 on the topic page, in the page's own
+type. No button — every destination Top Ten could offer also needs
+JavaScript, and a key that opens onto another blank page is not a key.
+
+**Open decision for Mischa.** Making the *prototype* truly no-JS means
+rendering it on Vercel — an edge function reading the query string and
+emitting the markup. That buys a real test of this requirement before the
+backend exists, and costs a second renderer to keep in step with `share.js`;
+`share.js`'s own comment is that "two renderers agree only for as long as
+somebody checks". Recommendation: **don't**, until the Supabase read is being
+built anyway, and then do it once, server-side, from the row. The nine new
+checks in `drive_share.js` hold the floor in the meantime.
+
 **9. Discovery.** A browse surface of topics and published Tens: trending
 topics, new takes on topics you've done, and the **Consensus Ten** per topic
 (computed per the object model) presented as its own artifact ("The people's
