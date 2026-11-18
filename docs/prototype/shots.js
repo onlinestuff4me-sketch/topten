@@ -172,6 +172,36 @@ const SCREENS = {
     },
   },
 
+  badges: {
+    what: 'a sheet of badges across topics — the system, not one screen',
+    dark: true,
+    seed: (h) => {
+      eval(h.prep);
+      const topics = [
+        { genre: 'Crime', decade: 1990 }, { genre: 'Animation', decade: 2000 },
+        { director: 'Alfred Hitchcock' }, { domain: 'tv', genre: 'Drama' },
+        { genre: 'Science Fiction' }, { genre: 'Western' },
+        { genre: 'Horror' }, { genre: 'Romance' },
+        { genre: 'Documentary' }, { genre: 'Comedy', decade: 1980 },
+        { genre: 'Thriller', decade: 1970 }, { genre: 'War' },
+      ];
+      const cells = topics.map(crit => {
+        const t = window.makeTopic(crit);
+        const ten = CAT.filter(f => window.inTopic(f, t))
+          .sort((a, b) => (b.vc || 0) - (a.vc || 0)).slice(0, 10);
+        if (ten.length < 10) return '';
+        const c = compose(ten.map(f => f.id), t);
+        return `<figure style="margin:0;text-align:center">
+          ${window.badgeSVG(c, 150).replace(/class="layer"/g, 'class="layer on"')}
+          <figcaption style="font:600 11px/1.3 -apple-system,system-ui,sans-serif;
+            color:#A79F92;margin-top:6px">${t.title.replace(/^Top 10 /, '')}</figcaption>
+        </figure>`;
+      }).join('');
+      document.body.innerHTML = `<div style="background:#121110;min-height:100vh;padding:20px;
+        display:grid;grid-template-columns:repeat(3,1fr);gap:18px 10px">${cells}</div>`;
+    },
+  },
+
   noart: {
     what: 'every screen\'s fallback when artwork will not load',
     dark: true, artless: true,
