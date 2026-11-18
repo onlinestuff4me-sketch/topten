@@ -1794,11 +1794,25 @@ is the thing that was asked for.
 
 ### The tagline wraps, and where it wraps is ours
 
-Mischa's line is two sentences and 42 characters. In SF Pro on a 393pt phone
-it is **one line**; in DejaVu Sans — about 10% wider, and the face CI renders
-in — it is **two**. Both are right, and both ways of forcing one line are
-worse: 14px is marginal again on a 375pt phone, and a hard-coded break is a
-break the device does not need.
+Mischa's line is two sentences and 44 characters. Measured as rendered, in a
+353pt column at 15.7px:
+
+| | 393pt phone | 375pt phone |
+|---|---|---|
+| SF Pro (system) | **one line**, by 1pt | **two lines** |
+| Liberation Sans | one line | one line |
+| DejaVu Sans (what CI renders in, ~10% wider) | **two lines** | **two lines** |
+
+So it is one line or two depending on the phone and the face, and **that is
+the design** rather than a defect to chase. Both ways of forcing one line are
+worse: dropping to 14px is marginal again on a 375pt phone — a pixel or two of
+slack, which is what this screen has already been caught by twice — and a
+hard-coded break is a break the device does not need.
+
+*(The line was "5,000+ lists from other users." until Mischa revised it to
+"from the community" on 2026-11-18. Two characters longer, and it moved the
+375pt phone from one line to two. The layout did not need changing, because it
+was already measured with the tagline on two lines on all eight viewports.)*
 
 So the one-line rule now covers the **headline** and not the tagline, and what
 is asserted instead is what matters: at most two lines, no spill, and the

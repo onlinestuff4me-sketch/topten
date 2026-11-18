@@ -120,7 +120,7 @@ user subscribes to, purely to seed relevant suggestions in the Gather tray.
   without typing a search query (suggestion taps alone suffice); services
   question is skippable; no sign-in wall before the first badge reveal.
 - **Launch blocker (2026-11-18).** The splash tagline claims a corpus size —
-  "5,000+ lists from other users" — and that figure is a fixture held in one
+  "5,000+ lists from the community" — and that figure is a fixture held in one
   constant, `CORPUS_CLAIM`. Before the app is in front of anybody outside this
   project it is read from the published-Tens count, or the sentence loses its
   number. Every other invented figure in the prototype is a fixture a reader
@@ -791,11 +791,21 @@ strip rather than being pinned to the row, so a name arrives, its ten drift
 past, and the next name arrives behind them.
 
 **The tagline is Mischa's, and its number is a placeholder with a condition
-on it.** *"The tag line should be '5000+ lists from other users. Share
-yours.'"* It renders as **"5,000+ lists from other users. Share yours."** —
+on it.** *"The tag line should be '5000+ lists from the community. Share
+yours.'"* It renders as **"5,000+ lists from the community. Share yours."** —
 the separator is ours, because every other round figure in the app goes
 through `roughly()` and comes out punctuated, and one bare number on the first
 screen would be the odd one out.
+
+*He wrote "from other users" first and revised it to "from the community" the
+same day.* That is not the reversal it looks like against the seed-source
+decision above, which weighed "From the community" as an **attribution** and
+rejected it for being unarguable — you cannot disagree with an average, only
+sit above or below it. This is an **aggregate**, not an attribution: it says
+how much is here, and no list on the screen claims to have been made by a
+crowd. Every row still names a real topic and the discover cards still say
+what each list is. The other objection raised there — "a lie at zero users" —
+is the launch blocker below, and it binds either wording.
 
 The figure itself is a claim about a corpus that does not exist. It is the
 single invented number on the screen and it is held in one named constant,

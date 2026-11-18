@@ -770,7 +770,9 @@ footer.notes .build { color: var(--text-disabled); margin-top: var(--s2); }
   font-size: clamp(2rem, 10vw, 2.75rem); line-height: 1.05; text-wrap: balance;
   color: var(--vault-text); }
 /* The tagline is Mischa's, dictated with the direction (2026-11-18): "The tag
-   line should be '5000+ lists from other users. Share yours.'" Rendered with
+   line should be '5000+ lists from the community. Share yours.'" ("other
+   users" was the first wording, the same day; "the community" is his
+   revision of it.) Rendered with
    the thousands separator, because every other round figure in the app goes
    through `roughly()` and comes out punctuated - "From 2,400+ Top 10s" on the
    old hero, "1,200+ to choose from" on a topic card - and one unpunctuated
@@ -2571,7 +2573,7 @@ function renderIntro() {
     <div class="wallveil" aria-hidden="true"></div>
     <div class="wallcopy">
       <h1>What's your Top 10?</h1>
-      <p class="pitch">${roughly(CORPUS_CLAIM)} lists from other users. Share&nbsp;yours.</p>
+      <p class="pitch">${roughly(CORPUS_CLAIM)} lists from the community. Share&nbsp;yours.</p>
       <button class="btn" data-act="begin">Make your first list</button>
       <p class="promise">Free. No ads. No subscription. Ever.</p>
     </div>

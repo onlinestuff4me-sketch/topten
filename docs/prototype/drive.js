@@ -623,14 +623,15 @@ const DOMAIN_SPEECH = `(() => {
   check((await page.locator('.intro h1').innerText()).trim() === "What's your Top 10?",
     'the headline is still "What\'s your Top 10?" — the locked product voice');
   /* Mischa dictated this line with the direction (2026-11-18): "The tag line
-     should be '5000+ lists from other users. Share yours.'" The separator is
+     should be '5000+ lists from the community. Share yours.'" ("other users"
+     was his first wording, revised the same day.) The separator is
      ours - every round figure in the app goes through `roughly()` and comes
      out punctuated, and one bare number on the first screen would be the odd
      one out. The number itself is a claim about a corpus that does not exist
      yet; PRD Req 1 carries it as a launch blocker. */
   const tagline = (await page.locator('.intro .pitch').innerText())
     .replace(/[\s\u00a0]+/g, ' ').trim();
-  check(tagline === '5,000+ lists from other users. Share yours.',
+  check(tagline === '5,000+ lists from the community. Share yours.',
     `the tagline is the one Mischa wrote ("${tagline}")`);
   check(/Free\. No ads\. No subscription\. Ever\./.test(introText),
     'and the promise survives the redesign, as fine print under the CTA');
@@ -741,7 +742,15 @@ const DOMAIN_SPEECH = `(() => {
        "yours." alone on the second. The non-breaking space in the markup is
        what moves the break to the sentence boundary; this is what holds it
        there on every font, including the ones this machine does not have. */
-    check(/users\.$/.test(squeezed.first) && /^Share yours\.$/.test(squeezed.rest),
+    /* Asserted against the tagline itself, not against the words it happens
+       to contain today. The first version hard-coded `/users\.$/` from the
+       wording of the hour, and the check failed — correctly on its own terms,
+       wrongly as a rule — the moment Mischa changed "other users" to "the
+       community" without moving the break at all. What the rule actually says
+       is that the two pieces are the two sentences and nothing is lost
+       between them. */
+    check(/^Share yours\.$/.test(squeezed.rest)
+      && `${squeezed.first} ${squeezed.rest}` === tagline,
       `and when it has to break, it breaks between the two sentences at ${label} ` +
       `— squeezed to ${squeezed.at}px: "${squeezed.first}" / "${squeezed.rest}"`);
   };
