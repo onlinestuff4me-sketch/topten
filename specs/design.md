@@ -416,6 +416,55 @@ or Tenet. A rabbit hole into a director is worthless if their work is missing,
 so the build now pulls the fuller filmography of every director who appears
 more than once. 220 films became 620.
 
+## The words for the things (2026-11-18, Mischa — "We should be really clear on our terms")
+
+Measured before writing this, by rendering six screens and counting what a
+person actually reads. The **You** screen alone used three different words for
+one object, and two of them were words the app uses nowhere else:
+
+| word | times it reaches a reader, across six screens |
+|---|---|
+| Top 10 | **269** |
+| list / lists | 16 |
+| Ten | 8 — **all on one screen** |
+| take / takes | 3 |
+| topic | 2 |
+| crowd | 2 |
+| shelf | 2 |
+
+A word that appears twice in a whole app is not vocabulary, it is a leak.
+
+### One word per thing
+
+| the thing | the word | never |
+|---|---|---|
+| ten ranked items, made by one person | **a Top 10**, or plainly **a list** | a Ten, a take, a version, an entry |
+| what a list is about — *Crime Movies of the 90s* | **a topic** | criteria, a shelf, a kind |
+| movies / shows / books | **a category** | a domain |
+| everyone's lists on one topic, merged | **what everyone picked** | the crowd, the consensus, Borda |
+| somebody else's list on the same topic | **another list on this topic** | a take, a remix |
+
+**"Top 10" and "list" are both allowed, and that is deliberate.** "Top 10" is
+the object's name; "list" is the ordinary English noun for it. *Make your
+first list* and *Your Top 10s* are both correct, the way *book* and *novel*
+are. What is not allowed is a third word.
+
+**"Ten" is ours, not the product's.** Already settled in `AGENTS.md`: product
+copy uses digits, our own writing uses the word. The achievement set shipped
+on 2026-11-18 broke that in three names and a note before anybody read it,
+which is how a rule with no test dies.
+
+**"take" and "the crowd" are retired from copy.** Both were precise in our
+heads and opaque on screen. *"Have ten people take on a topic you made
+first"* asks a reader to know two private words in one sentence.
+
+### Why this was worth a decision rather than a tidy-up
+
+Mischa could not understand four of the ten achievements. Every one of the
+four leaned on *take*, *topic* or *the crowd* — the three rarest words in the
+product. The badges were not badly chosen; they were written in a language
+only the repository speaks.
+
 ## Voice and spelling (2026-08-15, Mischa — standing rule, applies to all future copy)
 
 **US English, everywhere a user can read it.** *Favorite, color, canceled,

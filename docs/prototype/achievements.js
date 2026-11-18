@@ -39,15 +39,15 @@
      be tested without a browser and without a rendered screen. `stats` is
      assembled by `achievementStats` below from whatever the app knows. */
   const ACHIEVEMENTS = [
-    { id: 'first', glyph: 'star', name: 'First Ten',
-      note: 'Finish your first Top 10.',
+    { id: 'first', glyph: 'star', name: 'First Top 10',
+      note: 'Finish your first list.',
       test: s => s.lists >= 1, of: s => [Math.min(s.lists, 1), 1] },
 
-    { id: 'ten', glyph: 'laurel', name: 'Ten Tens',
+    { id: 'ten', glyph: 'laurel', name: 'Double Figures',
       note: 'Finish ten lists.',
       test: s => s.lists >= 10, of: s => [Math.min(s.lists, 10), 10] },
 
-    { id: 'fifty', glyph: 'column', name: 'The Long Shelf',
+    { id: 'fifty', glyph: 'column', name: 'Fifty',
       note: 'Finish fifty lists.',
       test: s => s.lists >= 50, of: s => [Math.min(s.lists, 50), 50] },
 
@@ -60,25 +60,25 @@
       note: 'Make lists covering five different decades.',
       test: s => s.decades >= 5, of: s => [Math.min(s.decades, 5), 5] },
 
-    { id: 'pioneer', glyph: 'flame', name: 'First In',
-      note: 'Be the first person to take on a topic.',
+    { id: 'pioneer', glyph: 'flame', name: 'First Here',
+      note: 'Be the first to make a list on a topic.',
       test: s => s.pioneered >= 1, of: s => [Math.min(s.pioneered, 1), 1] },
 
     { id: 'answer', glyph: 'sword', name: 'Answered',
-      note: "Make your own version of someone else's topic.",
+      note: "Make your own list on somebody else's topic.",
       test: s => s.answered >= 1, of: s => [Math.min(s.answered, 1), 1] },
 
     { id: 'started', glyph: 'sun', name: 'Started Something',
-      note: 'Have ten people take on a topic you made first.',
+      note: 'Start a topic ten other people go on to make.',
       test: s => s.drew >= 10, of: s => [Math.min(s.drew, 10), 10] },
 
     { id: 'contrarian', glyph: 'skull', name: 'Nobody Agrees',
-      note: 'Finish a Ten sharing nothing with the crowd.',
+      note: 'Finish a list with nothing in common with what everyone picked.',
       test: s => s.loneliest === 0 && s.comparable > 0,
       of: s => [s.loneliest === 0 && s.comparable > 0 ? 1 : 0, 1] },
 
     { id: 'consensus', glyph: 'eye', name: 'Exactly Right',
-      note: 'Finish a Ten the crowd agrees with completely.',
+      note: 'Finish a list that matches what everyone picked.',
       test: s => s.closest === 10, of: s => [s.closest, 10] },
   ];
 

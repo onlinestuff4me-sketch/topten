@@ -3497,7 +3497,7 @@ function renderTopicPage(crit) {
     </section>` : ''}
 
     ${theirs.length ? `<section>
-      <div class="section-head"><h2 class="section-h">Takes on it</h2></div>
+      <div class="section-head"><h2 class="section-h">Other lists on this topic</h2></div>
       ${theirs.map(s => `<button class="sug-topic" data-other="${esc(s.id)}">
         <div class="lvl">${esc(s.role)}</div><div class="t">${esc(s.label)}</div>
         <div class="why">${esc(listName(theirTen(s).ranked, s.topic))}</div>
@@ -3586,7 +3586,11 @@ function renderYou() {
         <div class="ach ${a.unlocked ? 'on' : 'off'}">
           <span class="ach-mark" aria-hidden="true">${achMark(a)}</span>
           <span class="ach-name">${esc(a.name)}</span>
-          <span class="ach-note">${a.unlocked ? 'Earned' : esc(a.note)}</span>
+          <!-- The note shows whether or not it is earned. The first version
+               replaced it with the word "Earned", so a badge you HAD told you
+               nothing about what you did to get it - which is most of why the
+               set read as opaque. The filled disc already says earned. -->
+          <span class="ach-note">${esc(a.note)}</span>
           ${a.unlocked || a.need < 2 ? '' :
             `<span class="ach-bar" role="img" aria-label="${a.have} of ${a.need}">
                <span style="width:${Math.round(a.have / a.need * 100)}%"></span></span>`}
@@ -3639,7 +3643,7 @@ function renderMine(topicId) {
   const d = (S.done || []).find(x => x.topicId === topicId);
   if (!d) { S.scene = 'you'; save(); return renderYou(); }
   const films = (d.ranked || []).map(id => byId.get(id)).filter(Boolean);
-  // Other takes on the same topic, which is where this screen earns its
+  // Other lists on this topic on the same topic, which is where this screen earns its
   // place: a badge case that only looks inward is a trophy shelf, and the
   // product is an argument.
   const theirs = SOURCES.filter(s => s.topic.id === topicId);
@@ -3654,7 +3658,7 @@ function renderMine(topicId) {
       <span class="meta"><span class="t">${esc(f.t)}</span><span class="s">${f.y}${f.d ? ' · ' + esc(f.d) : ''}</span></span>
     </div></li>`).join('')}</ol></section>
     ${theirs.length ? `<section>
-      <div class="section-head"><h2 class="section-h">Other takes on this</h2></div>
+      <div class="section-head"><h2 class="section-h">Other lists on this topic on this</h2></div>
       <p class="prompt" style="margin:0 0 var(--s3)">Your badge opened ${
         theirs.length === 1 ? 'this one' : `all ${theirs.length}`} the moment you finished.</p>
       ${theirs.map(s => `<button class="sug-topic" data-other="${esc(s.id)}">

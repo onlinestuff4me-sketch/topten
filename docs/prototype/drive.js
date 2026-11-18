@@ -519,6 +519,43 @@ const DOMAIN_SPEECH = `(() => {
       (found === null ? '' : ` (found: …${found}…)`));
   };
 
+  /* ── The words for the things (2026-11-18) ───────────────────────────────
+     Mischa, on the achievement set: "I don't understand the last 4 badges. We
+     should be really clear on our terms."
+
+     He was right, and the cause was measurable: the You screen used THREE
+     words for one object, and the four badges he could not read were exactly
+     the four that leaned on the app's rarest words. Counted across six
+     screens — "Top 10" 269 times, "Ten" 8 (all on one screen), "take" 3,
+     "crowd" 2, "shelf" 2. A word that reaches a reader twice in a whole app
+     is not vocabulary, it is a leak.
+
+     `specs/design.md` now fixes one word per thing. This is the test that
+     keeps it, because a rule with no test dies — "Ten" and "shelf" were both
+     already settled in writing and both shipped anyway.
+
+     Catalogue titles are subtracted first, exactly as the British-spelling
+     sweep does: "The Shelf" would be a film's name, not our copy. */
+  const JARGON = /\b(a Ten|the Ten|your Ten|Tens|takes? on (a|the|this|somebody|someone)|the crowd|shelf|shelves)\b/i;
+  const noJargon = async where => {
+    const found = await page.evaluate(re => {
+      const rx = new RegExp(re, 'i');
+      let text = document.body.innerText + '\n';
+      for (const el of document.querySelectorAll('[aria-label],[placeholder],[title],[alt]'))
+        text += ['aria-label', 'placeholder', 'title', 'alt']
+          .map(a => el.getAttribute(a) || '').join(' ') + '\n';
+      for (const f of (window.byId ? window.byId.values() : []))
+        if (rx.test(f.t)) text = text.split(f.t).join(' ');
+      const q = (window.S && window.S.q || '').trim();
+      if (q && rx.test(q)) text = text.split(q).join(' ');
+      const m = text.match(rx);
+      return m ? { word: m[0], near: text.slice(Math.max(0, m.index - 45), m.index + 45) } : null;
+    }, JARGON.source);
+    check(found === null,
+      `only the agreed words reach a reader — ${where}`
+      + (found === null ? '' : ` (found "${found.word}" in …${found.near.replace(/\s+/g, ' ')}…)`));
+  };
+
   // Stack's splash rule, inherited: the first screen must be instant, so it
   // may not depend on a third party being up.
   const apiCalls = [];
@@ -1061,6 +1098,7 @@ const DOMAIN_SPEECH = `(() => {
     + (dim.length ? ` *** ${dim.map(c => c.k).join(', ')}` : ''));
 
   await noBritishSpelling('the intro');
+  await noJargon('the intro');
   await page.screenshot({ path: SHOTS + '/13-intro-copy.png' });
   check(!/\bskip\b/i.test(introText), 'and no Skip — this screen only tells, so a Skip would compete with the CTA');
   check(apiCalls.length === 0, `the intro makes no API calls (${apiCalls.length})`);
@@ -1758,6 +1796,7 @@ const DOMAIN_SPEECH = `(() => {
   // 2026-08-15: "shelf" is not a word the user ever sees.
   check(!/\bshelf\b/i.test(bodyText), 'the word "shelf" is gone from the build screen');
   await noBritishSpelling('the build screen');
+  await noJargon('the build screen');
 
   // ── One left edge: every section heading starts at the same x ────────────
   const xs = await page.evaluate(() => {
@@ -2244,6 +2283,7 @@ const DOMAIN_SPEECH = `(() => {
   check(/Your 10 favorite/.test(finishedText) || (await page.locator('.sug-topic').count()) > 0,
     'the finished screen is written in the new voice');
   await noBritishSpelling('the finished screen');
+  await noJargon('the finished screen');
   await page.screenshot({ path: SHOTS + '/6-finished.png', fullPage: true });
 
   const topicName = await page.locator('.sug-topic .t').first().innerText();
@@ -2279,6 +2319,7 @@ const DOMAIN_SPEECH = `(() => {
   check(!/\bmovies?\b/i.test(await page.locator('#q').getAttribute('placeholder')),
     'and searches "shows", not "movies"');
   await noBritishSpelling('a TV Ten');
+  await noJargon('a TV Ten');
 
   while (await page.evaluate(() => window.S.tray.length) < 10) {
     const free = page.locator('.rail .card[data-in="0"]').first();
@@ -2670,6 +2711,7 @@ const DOMAIN_SPEECH = `(() => {
   check(nothingLocked.lockWords === 0,
     `and the word does not appear either (${nothingLocked.lockWords} times)`);
   await noBritishSpelling('other people\'s Top 10 lists');
+  await noJargon('other people\'s Top 10 lists');
   await page.screenshot({ path: SHOTS + '/14-discover.png', fullPage: true });
 
   await page.locator('.other-ten .cta').first().click();
@@ -3349,6 +3391,7 @@ const DOMAIN_SPEECH = `(() => {
     `newest first, so the one you just made is at the top ("${you.listNames[0]}")`);
   check(you.over <= 1, 'and the screen fits its column');
   await noBritishSpelling('the You screen');
+  await noJargon('the You screen');
   await page.screenshot({ path: SHOTS + '/19-you.png', fullPage: true });
 
   /* The set has to MOVE. A screen of ten achievements that never changes is
