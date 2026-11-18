@@ -264,9 +264,14 @@ const Share = (() => {
      suppress it and no background can cover it, because the glyph is painted
      by the browser on top of the element's own box.
 
-     So the broken <img> is REMOVED and the plate it was sitting on is marked
-     `.no-art`, which each page styles for itself the way it already styles
-     `.thumb`, `.art` and `.cel`.
+     So the plate the image sits on is marked `.no-art`, and each page's own
+     CSS hides the image and paints the plate. The image is NOT removed: the
+     first version of this did remove it, and CI went red on an unrelated
+     check - the add animation flies a clone of the card's poster, and there
+     was no longer a poster to clone. It passed here because this machine has
+     the poster mirror and CI does not, which is the two-environments trap
+     this repo already has a section about. A listener for a missing image
+     should change how the page LOOKS, not what it contains.
 
      One capture-phase listener covers every image on every page that loads
      this file - including ones rendered later, which is most of them.
@@ -280,7 +285,6 @@ const Share = (() => {
     if (!(img instanceof HTMLImageElement)) return;
     const plate = img.parentElement;
     if (plate) plate.classList.add('no-art');
-    img.remove();
   }, true);
 
   return { fromLocation, link, tenPage, topicPage, card, cardFallback, consensus,

@@ -2168,6 +2168,13 @@ designed one.
 | **what applies it** | one capture-phase `error` listener in `share.js`, which all four pages load |
 | **what it never shows** | the browser's broken-image glyph |
 
+The image itself is **hidden, not removed**: `.no-art > img { visibility:
+hidden }`. The glyph is painted by the browser on top of the element's box,
+so hiding the element is enough to suppress it — and the element stays in the
+DOM with its box intact, so anything that measures or clones it still works.
+The first version removed it, and CI went red on the add animation, which
+flies a clone of the card's poster into the dock slot.
+
 ### The plate keeps the poster's box
 
 The failed `<img>` is removed, not hidden — but the box is the *parent's*, so

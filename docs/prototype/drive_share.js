@@ -391,7 +391,14 @@ const q = (o) => {
     await pg.waitForTimeout(500);
     const art = await pg.evaluate(() => ({
       rows: document.querySelectorAll('.ten .row').length,
-      brokenImgs: [...document.images].filter(i => i.complete && i.naturalWidth === 0).length,
+      // The requirement is that no broken image is PAINTED, which is not the
+      // same as none existing - the element stays so the page can still
+      // measure and clone it. A broken image that is visible is the defect.
+      brokenImgs: [...document.images].filter(i =>
+        i.complete && i.naturalWidth === 0
+        && getComputedStyle(i).visibility !== 'hidden').length,
+      hiddenImgs: [...document.images].filter(i =>
+        getComputedStyle(i).visibility === 'hidden').length,
       plates: document.querySelectorAll('.no-art').length,
       plateBox: (b => b && { w: Math.round(b.width), h: Math.round(b.height) })(
         document.querySelector('.no-art')?.getBoundingClientRect()),
@@ -399,8 +406,9 @@ const q = (o) => {
     }));
     check(art.brokenImgs === 0,
       `artwork answering ${label} leaves no broken image on the page (${art.brokenImgs})`);
-    check(art.plates === 10,
-      `and all ten plates are marked as artless (${art.plates})`);
+    check(art.plates === 10 && art.hiddenImgs === 10,
+      `and all ten plates are marked as artless, each still holding its `
+      + `hidden image (${art.plates} plates, ${art.hiddenImgs} images)`);
     check(art.plateBox && art.plateBox.w > 40 && art.plateBox.h > 60,
       `the plate keeps the poster's box rather than collapsing (${JSON.stringify(art.plateBox)})`);
     check(art.rows === 10 && art.titles,

@@ -19,6 +19,31 @@ const BASE = process.argv[2] || 'http://127.0.0.1:8788';
 const SHOTS = process.env.SHOTS || './shots';
 const MIRROR = process.env.POSTER_MIRROR || './posters';
 
+/* SAY WHICH WORLD THIS RUN IS IN, because the two differ and the difference
+   has already sent a green local run into a red CI one.
+
+   `posters/` is gitignored, so CI HAS NO MIRROR AT ALL: every poster answers
+   204 and every image on every screen is broken. A developer machine that has
+   run build_catalog.py has all of them. That is not a small difference - a
+   change that depends on an image existing passes here and fails there, which
+   is exactly what happened on 2026-11-18 to the add animation.
+
+   Printing the count costs nothing and makes the two runs distinguishable in
+   a log. To reproduce CI before pushing:
+
+     POSTER_MIRROR=$(mktemp -d) node drive.js
+*/
+const mirrorFiles = (() => {
+  let n = 0;
+  const walk = (d) => { for (const e of fs.readdirSync(d, { withFileTypes: true }))
+    e.isDirectory() ? walk(`${d}/${e.name}`) : n++; };
+  try { walk(MIRROR); } catch { /* no mirror at all, which is CI */ }
+  return n;
+})();
+console.log(mirrorFiles
+  ? `poster mirror: ${mirrorFiles} files — artwork will render`
+  : 'poster mirror: EMPTY — every poster is broken, which is how CI runs');
+
 
 /* The inscription, read off the badge itself.
 
@@ -712,7 +737,9 @@ const DOMAIN_SPEECH = `(() => {
   await page.reload({ waitUntil: 'load' });
   await page.waitForTimeout(600);
   const artless = await page.evaluate(() => ({
-    broken: [...document.images].filter(i => i.complete && i.naturalWidth === 0).length,
+    broken: [...document.images].filter(i =>
+      i.complete && i.naturalWidth === 0
+      && getComputedStyle(i).visibility !== 'hidden').length,
     cels: document.querySelectorAll('.wallrow .cel').length,
     plates: document.querySelectorAll('.wallrow .cel.no-art').length,
     ranks: document.querySelectorAll('.wallrow .rank').length,

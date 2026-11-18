@@ -798,3 +798,56 @@ only because the sweep happened to cover the splash; the second by *looking
 at a screenshot* of the wall with every poster 404ing. Both now have
 measurements behind them — but the thing that found them was rendering the
 screen in the state nobody renders it in, and then looking.
+
+## CI has never had any artwork, and your machine always does (2026-11-18, Claude)
+
+`docs/prototype/posters/` is gitignored — it is 228MB of TMDB's images,
+mirrored by `build_catalog.py` so a local run is fast and offline. CI clones
+the repo and never builds it, and the workflow sets no `POSTER_MIRROR`. So
+`drive.js`'s route handler falls through to:
+
+```js
+return route.fulfill({ status: 204, body: '' });   // every poster, every run
+```
+
+**Every CI run of the app suite has executed against a screen with no
+artwork at all.** Every local run has executed against a screen with all of
+it. Those are two different products, and a green run here says nothing about
+the other one for any check that touches an image.
+
+### It has already cost a red `main`
+
+The fix for the broken-image glyph (see above) *removed* the failed `<img>`.
+Locally every poster loads, so nothing was ever removed and 488 checks went
+green. In CI every poster fails, every image was removed, and the add
+animation — which flies a clone of the card's poster into the dock slot —
+had nothing to clone:
+
+```
+FAILED: a poster visibly travels from the card to its slot
+```
+
+Two lessons, and the second is the general one:
+
+1. **A listener for a missing image changes how the page LOOKS, not what it
+   contains.** `.no-art > img { visibility: hidden }` suppresses the glyph
+   and keeps the element, its box, and anything that measures or clones it.
+2. **Before pushing anything that touches an image, run the suite the way CI
+   runs it:**
+
+   ```sh
+   POSTER_MIRROR=$(mktemp -d) node drive.js
+   ```
+
+### The suite now says which world it is in
+
+`drive.js` prints one line before anything else:
+
+```
+poster mirror: 3112 files — artwork will render
+poster mirror: EMPTY — every poster is broken, which is how CI runs
+```
+
+It costs nothing and makes the two runs distinguishable in a log, which they
+were not — the whole reason this took a red `main` to find is that both runs
+printed the identical 488 lines of `ok`.
