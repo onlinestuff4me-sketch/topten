@@ -30,6 +30,12 @@ jobs:
   kit-linux:
     name: TopTenKit (Linux)
     runs-on: ubuntu-latest
+    # A job with no timeout defaults to SIX HOURS. Every cap here is an order
+    # of magnitude above what the job takes (this one: ~50s, most of it
+    # pulling the Swift container), so it can only ever catch a hang - never
+    # a slow-but-working run. Added 2026-11-18 after `web-prototype` was the
+    # only job that had one.
+    timeout-minutes: 20
     # Pinned toolchain rather than a setup action: reproducible, and no
     # third-party action in the supply chain (specs/tech-stack.md dependency
     # stance). Bump deliberately.
@@ -49,6 +55,7 @@ jobs:
   schema-rls:
     name: Schema and RLS (Postgres)
     runs-on: ubuntu-latest
+    timeout-minutes: 10        # takes ~10s
     # RLS is the part of the schema that cannot be reviewed by reading: a
     # policy that is too permissive looks exactly like one that is correct.
     # So every policy is executed here, as an anonymous visitor, as the
@@ -119,6 +126,7 @@ jobs:
   probe-app:
     name: Detect app target
     runs-on: ubuntu-latest
+    timeout-minutes: 5         # takes ~4s: a checkout and an `ls`
     outputs:
       has-app: ${{ steps.detect.outputs.has-app }}
     steps:
@@ -140,6 +148,10 @@ jobs:
     needs: probe-app
     if: needs.probe-app.outputs.has-app == 'true'
     runs-on: macos-latest
+    # Skipped until M2 scaffolds App/. The cap matters more here than
+    # anywhere else: macOS minutes bill at 10x if this repo ever goes
+    # private, so a hung build is the expensive kind.
+    timeout-minutes: 45
     env:
       # M2 owns these: set SCHEME to the app scheme it creates, and pin
       # DESTINATION to a simulator the runner's Xcode actually ships.
