@@ -1023,6 +1023,16 @@ footer.notes .build { color: var(--text-secondary); margin-top: var(--s2); }
      a gap in the layout. PRD Req 6. */
   .no-art { background: var(--bg-recessed);
     box-shadow: inset 0 0 0 1px var(--border-subtle); }
+
+  /* THE WALL IS ALWAYS DARK AND `--bg-recessed` IS NOT. In a light browser
+     the rule above paints #F1EDE6 plates onto a near-black wall, which is
+     the same mistake `--vault-accent` was introduced to fix on 2026-11-18:
+     a token that follows the colour scheme, used on a surface that does not.
+     Caught by looking at the wall with every poster 404ing - fifty white
+     rectangles - rather than by a measurement, which is what screenshots
+     are for. */
+  .wallrow .cel.no-art { background: var(--vault-surface);
+    box-shadow: inset 0 0 0 1px var(--vault-line); }
 </style>
 </head>
 <body>

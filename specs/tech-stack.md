@@ -769,3 +769,32 @@ fourth — *"and the list itself is untouched — ten rows, every one of them
 readable"* — stays green either way **on purpose**. It is the control: it
 says the fix removed the glyph and not the content. A suite of assertions
 that all fail together cannot tell you which of them was measuring.
+
+## A token that follows the colour scheme, on a surface that does not (2026-11-18, Claude)
+
+Twice in two days, and the second one was introduced by a fix for an
+unrelated bug:
+
+| date | token | surface | what a light browser drew |
+|---|---|---|---|
+| 11-17 | `--accent-bright` | the splash wall's kicker and rank badges | the darker Gallery gold on a dark card — **4.55:1**, over the bar by a rounding error |
+| 11-18 | `--bg-recessed` | the splash wall's artless poster plates | `#F1EDE6` on a near-black wall — **luminance 0.850**, fifty white rectangles |
+
+The shape is identical: a token whose whole job is to respond to
+`prefers-color-scheme`, used on a surface that is dark in both schemes. The
+token is right everywhere it was designed for; it is wrong in the one place
+that reached past the design — the same sentence this file already wrote
+about `--text-disabled` and about an unset `SHOTS`.
+
+**The rule, now written where it can be found:** anything drawn on the splash
+takes a `--vault-*` token. `--vault-rgb`, `--vault-bg`, `--vault-text`,
+`--vault-text-dim`, `--vault-surface`, `--vault-line`, `--vault-accent`,
+`--vault-plate` exist precisely so there is a complete set to reach for, and
+a `--bg-*` / `--text-*` / `--accent-*` token inside a `.wallrow` or `.intro`
+rule should be read as a bug until proven otherwise.
+
+**Neither was caught by a gate.** The first was caught by the contrast sweep
+only because the sweep happened to cover the splash; the second by *looking
+at a screenshot* of the wall with every poster 404ing. Both now have
+measurements behind them — but the thing that found them was rendering the
+screen in the state nobody renders it in, and then looking.

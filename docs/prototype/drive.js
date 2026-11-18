@@ -725,6 +725,34 @@ const DOMAIN_SPEECH = `(() => {
     `every cell falls back to its plate instead (${artless.plates} of ${artless.cels})`);
   check(artless.ranks === artless.cels && artless.names >= 4,
     `and the wall still reads as ranked lists — ${artless.ranks} numerals, ${artless.names} names`);
+
+  /* THE PLATE HAS TO BE DARK, in a light browser too. The first spelling of
+     `.no-art` used `--bg-recessed`, which follows the colour scheme - and the
+     wall does not - so in Gallery it painted #F1EDE6 onto a near-black wall:
+     fifty white rectangles. Exactly the mistake `--vault-accent` was added to
+     fix the day before. Caught by LOOKING at the screenshot, which is what
+     screenshots are for; this is the measurement that keeps it caught.
+
+     The plate is translucent, so its own colour says nothing - it is composited
+     over the wall and the result is what a reader sees. */
+  for (const scheme of ['light', 'dark']) {
+    await page.emulateMedia({ colorScheme: scheme });
+    await page.waitForTimeout(120);
+    const lum = await page.evaluate(() => {
+      const px = (s) => (s.match(/[\d.]+/g) || []).map(Number);
+      const cel = document.querySelector('.wallrow .cel.no-art');
+      const wall = px(getComputedStyle(document.querySelector('.intro')).backgroundColor);
+      const [r, g, b, a = 1] = px(getComputedStyle(cel).backgroundColor);
+      const over = [r, g, b].map((c, i) => c * a + wall[i] * (1 - a));
+      const lin = over.map(c => { c /= 255; return c <= .03928 ? c / 12.92 : ((c + .055) / 1.055) ** 2.4; });
+      return { L: .2126 * lin[0] + .7152 * lin[1] + .0722 * lin[2],
+               over: over.map(Math.round) };
+    });
+    check(lum.L < 0.08,
+      `an artless cell stays part of the wall in ${scheme === 'light' ? 'Gallery' : 'Vault'} `
+      + `— luminance ${lum.L.toFixed(3)} at rgb(${lum.over})`);
+  }
+  await page.emulateMedia({ colorScheme: 'light' });
   // Back to the mirror for everything after this.
   await page.unroute('**://image.tmdb.org/t/p/**');
   await page.route('**://image.tmdb.org/t/p/**', route => {

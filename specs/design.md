@@ -2190,6 +2190,31 @@ Considered and rejected for now:
 
 The plate is what ships until that is decided.
 
+### On the wall it is a vault colour, not a scheme colour
+
+`--bg-recessed` follows the colour scheme. **The splash wall does not** — it
+is the Vault in both. So the first spelling of `.no-art` painted `#F1EDE6`
+plates onto a near-black wall whenever the browser was in light mode: fifty
+white rectangles where the artwork should be.
+
+```css
+.wallrow .cel.no-art { background: var(--vault-surface);
+  box-shadow: inset 0 0 0 1px var(--vault-line); }
+```
+
+Measured, composited over the wall: **luminance 0.021 in both schemes**,
+against **0.850** for the scheme-following version in Gallery.
+
+This is the second time a scheme-following token has been used on an
+always-dark surface — `--vault-accent` exists because of the first, one day
+earlier. **The rule: a surface that ignores the colour scheme takes `--vault-*`
+tokens, never the `--bg-*` / `--text-*` / `--accent-*` ones.** Anything drawn
+on the splash is such a surface.
+
+It was caught by *looking at the screenshot*, not by a gate — which is the
+division this project already states: screenshots judge layout and colour,
+tests judge behaviour. The gate exists now so it stays caught.
+
 ### Why the behaviour is shared and the appearance is not
 
 `error` does not bubble, so a listener on `document` never fires — capture is
