@@ -2671,7 +2671,12 @@ const DOMAIN_SPEECH = `(() => {
       over: Math.round(document.documentElement.scrollHeight - window.innerHeight),
       tiles: [...document.querySelectorAll('.mini-ten')].map(b => {
         const w = b.querySelector('.what'), r = b.getBoundingClientRect();
-        return { label: w ? w.textContent.trim() : '', aria: b.getAttribute('aria-label') || '',
+        // The label is two spans; textContent would glue them into
+        // "Animated2000s" and a failure message has to be readable.
+        const lead = b.querySelector('.lead'), sub = b.querySelector('.sub');
+        const label = [lead && lead.textContent.trim(), sub && sub.textContent.trim()]
+          .filter(Boolean).join(' \u00b7 ');
+        return { label, aria: b.getAttribute('aria-label') || '',
           tag: b.tagName, at: b.dataset.intro,
           clippedLabels: !!w && w.scrollHeight > w.clientHeight + 1,
           w: Math.round(r.width), h: Math.round(r.height) };
@@ -2680,7 +2685,8 @@ const DOMAIN_SPEECH = `(() => {
   });
 
   let seenLabels = 0, clippedLabels = [], smallTiles = [], unnamedTiles = [];
-  for (let i = 0; i < 6; i++) {
+  const introN = await page.evaluate(() => INTRO_TOPICS.length);
+  for (let i = 0; i < introN; i++) {
     await stripAt(i);
     await page.waitForTimeout(220);
     const st = await stripState();
@@ -2693,7 +2699,11 @@ const DOMAIN_SPEECH = `(() => {
       if (t.tag !== 'BUTTON' || !/^Show Top 10 /.test(t.aria)) unnamedTiles.push(t.label + ' / ' + t.aria);
     }
   }
-  check(seenLabels >= 12, `every intro topic was shown as a tile (${seenLabels} measured)`);
+  /* Every topic must be on screen at once - hero plus tiles - or a swap can
+     never reach the ones past the window. Checked as an identity, not a
+     count: the tiles plus the hero are exactly the set of intro topics. */
+  check(seenLabels === introN * (introN - 1),
+    `every intro topic was shown as a tile (${seenLabels} measured over ${introN} topics)`);
   check(clippedLabels.length === 0,
     'no category label is cut off' + (clippedLabels.length ? ` — ${clippedLabels.join(', ')}` : ''));
   check(smallTiles.length === 0,

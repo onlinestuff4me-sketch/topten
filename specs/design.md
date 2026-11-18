@@ -1451,8 +1451,9 @@ it worse: at 63pt the words broke mid-letter (*"Hitch-cock"*).
 
 | | was | is |
 |---|---|---|
+| Topics | 6, three of them ever visible | **4**, all of them visible |
 | Tiles | 6 at a fixed 54–84pt | **3 sharing the row**, ~112pt each |
-| Label | 2 lines, clamped, `text.secondary` | **unclamped**, `accent.ink`, 700 |
+| Label | 2 lines, clamped, `text.secondary` | **two rows by construction**, lead + sub |
 | Mosaic | 2×2 of 2/3 posters | **3 in a row**, height `clamp(38px, 6.6svh, 58px)` |
 | Element | `<figure>` | **`<button>`** with a press state |
 
@@ -1466,29 +1467,52 @@ phone viewports × six hero positions: overflow 1px everywhere (the pre-existing
 rounding the splash sweep already tolerates), nothing clipped, two lines at
 most.
 
-**`introLabel` is what makes the label short enough to wrap rather than clip.**
-A topic name with a decade says its domain noun three times over — the hero
-above, the posters, and the tile — so the tile drops it and keeps the two facts
-that tell one tile from the next:
+**Every label is two lines, by construction** *(amended 2026-11-18 after
+Mischa: "I don't like that some are two lines, others are just one line")*.
+One line is not available at this width — "Animated · 2000s" measures 126pt in
+a 100pt column at 12pt/700, and dropping the type to 10pt only gets it to
+105pt — and letting it wrap gave a row where one label ran to two lines and its
+neighbour to one. The tiles were already equal height; it was the **text** that
+was ragged.
+
+So `introLabel` returns a pair, and the label is a two-row grid:
+
+| row | what it holds |
+|---|---|
+| `lead` | the subject — everything before the domain noun — 12pt/700 `accent.ink` |
+| `sub` | the **decade** if the name has one, else the **domain noun** — 11pt/600 `text.secondary` |
 
 ```
-Crime Movies of the 90s       ->  Crime · 90s
-Animated Movies of the 2000s  ->  Animated · 2000s
-Hitchcock Movies              ->  Hitchcock Movies   (no decade, keeps its noun)
-Drama Shows                   ->  Drama Shows        (ditto - and "Shows" is
-                                                      the domain word, which
-                                                      must not be dropped)
+Crime Movies of the 90s       ->  Crime      / 90s
+Animated Movies of the 2000s  ->  Animated   / 2000s
+Hitchcock Movies              ->  Hitchcock  / Movies
+Drama Shows                   ->  Drama      / Shows
 ```
 
-The **full** name stays on the button's accessible name (`Show Top 10 Animated
-Movies of the 2000s`), so the shortening is for the eye only and a screen
-reader loses nothing.
+Measured: the widest `lead` is "Hitchcock" at 72pt and the widest `sub` is
+"Movies" at 48pt, both inside the 100pt column, so **neither row can wrap** and
+every tile is 91pt tall whatever topic is in the hero — which also gave the
+hero back about 90pt of the budget the first version had taken. The domain noun
+survives wherever it is the only qualifier (*Drama / Shows*), and the **full**
+name stays on the button's accessible name (`Show Top 10 Animated Movies of the
+2000s`), so the shortening is for the eye only and a screen reader loses
+nothing.
 
-**At accessibility text sizes the label breaks mid-word rather than spilling.**
+**Four topics, not six — a correctness fix rather than a trim.** A tap is a
+*swap*, and a swap only ever exchanges the hero with one of the three visible
+tiles, so with six topics whatever sat in fifth and sixth place could never
+reach the strip and nobody would ever see it. Six topics, four reachable. The
+splash now holds exactly as many topics as fit on screen at once: a genre with
+a decade, a style with a decade, a person, and a medium that is not film —
+between them, what the topic engine can narrow by. `drive.js` asserts the
+identity rather than a count (tiles plus hero **are** the set of intro topics),
+so adding a fifth topic fails the suite rather than quietly hiding it.
+
+**At accessibility text sizes a row breaks mid-word rather than spilling.**
 `overflow-wrap: break-word`, which fires only when a word cannot fit a line of
 its own: at every size from 12px to 32px, in the system face and both CI
 fallbacks, no label overflows its box. It never triggers at ordinary sizes —
-"Hitchcock" is 56pt in a 102pt column — and at a 32px root a broken word is the
+"Hitchcock" is 72pt in a 100pt column — and at a 32px root a broken word is the
 right trade against text running out of its tile.
 
 Found by the Dynamic Type sweep, not by looking: the first version dropped

@@ -684,8 +684,13 @@ footer.notes .build { color: var(--text-disabled); margin-top: var(--s2); }
    enough, and this is the signal the rest of the app already uses rather
    than a new one invented for the splash. `--accent-ink` is the AA-contrast
    member of the accent family, which plain `--accent` is not at 12px. */
-.mini-ten .what { display: block; min-width: 0; font-size: 0.75rem; line-height: 1.25;
-  font-weight: 700; color: var(--accent-ink); overflow-wrap: break-word; }
+/* Two rows, always, so the text is as even as the tiles are. `grid` rather
+   than two blocks because the rows are then exactly two whatever is in them,
+   and an empty `sub` still holds its line. */
+.mini-ten .what { display: grid; min-width: 0; overflow-wrap: break-word; }
+.mini-ten .lead { font-size: 0.75rem; line-height: 1.25; font-weight: 700; color: var(--accent-ink); }
+.mini-ten .sub { font-size: 0.6875rem; line-height: 1.3; font-weight: 600; color: var(--text-secondary);
+  min-height: 1.3em; }
 
 .intro-copy { flex: 0 0 auto; display: flex; flex-direction: column; justify-content: center; gap: var(--s2); }
 /* No `nowrap`. The clamp's floor is 2rem, which is the right thing for
@@ -2440,12 +2445,23 @@ function consensusTen(topic) {
 
 /* The topics worth opening on: ones the catalog can actually fill, named the
    way every list in the product is named. */
+/* FOUR, so that the hero plus the three tiles below it is all of them.
+
+   It was six, and that was a bug the moment a tap became a SWAP rather than
+   a rotation: a swap only ever exchanges the hero with one of the three
+   visible tiles, so whatever sat in fifth and sixth place could never reach
+   the strip and nobody would ever see it. Six topics, four reachable. The
+   honest fix is to show every topic there is, not to hide two of them behind
+   an interaction that cannot reveal them.
+
+   These four between them demonstrate what the topic engine can narrow by -
+   a genre and a decade, a style, a person, and a medium that is not film -
+   and their labels give four different second lines rather than four
+   "Movies". */
 const INTRO_TOPICS = [
   { genre: 'Crime', decade: 1990 },
-  { genre: 'Science Fiction' },
   { genre: 'Animation', decade: 2000 },
   { director: 'Alfred Hitchcock' },
-  { genre: 'Horror', decade: 1980 },
   { domain: 'tv', genre: 'Drama' },
 ];
 
@@ -2466,21 +2482,39 @@ const INTRO_TOPICS = [
    a browse gesture into a save. */
 let introOrder = null;
 
-/* A tile is about a third the width of a phone, so the full list name does
-   not fit in it however it is wrapped, and clamping it is what produced
-   "Animated Movies o…". The name of a topic with a decade carries its domain
-   noun twice over - the hero above already says Movies, and the posters say
-   it a third time - so the tile drops the noun and keeps both facts that
-   distinguish one tile from the next:
+/* A tile is about a third the width of a phone - 100px of text column - and
+   that is not enough for a list name on one line however it is shortened:
+   "Animated · 2000s" measures 126px at 12px/700, and dropping to 10px only
+   gets it to 105. So one line is not available, and leaving it to wrap gave
+   a row where some labels ran to two lines and others to one (Mischa,
+   2026-11-18: "I don't like that some are two lines, others are just one
+   line") - the tiles were already equal height, it was the text that was
+   ragged.
 
-     Crime Movies of the 90s        ->  Crime \u00b7 90s
-     Animated Movies of the 2000s   ->  Animated \u00b7 2000s
+   So every label is TWO lines by construction, each a line of its own:
 
-   A name with no decade is already short enough to wrap honestly, and keeps
-   its noun, which is the one that still carries the domain: "Drama Shows"
-   must not become "Drama" on a shelf that also holds films. The full name
-   stays on the button's accessible name, so nothing is lost to a reader. */
-const introLabel = name => name.replace(/^Top 10 /, '').replace(/ \S+ of the (\d+s)$/, ' \u00b7 $1');
+     lead | the subject, everything before the domain noun
+     sub  | the decade if the name carries one, else the domain noun
+
+     Crime Movies of the 90s       ->  Crime      / 90s
+     Sci-Fi Movies                 ->  Sci-Fi     / Movies
+     Animated Movies of the 2000s  ->  Animated   / 2000s
+     Hitchcock Movies              ->  Hitchcock  / Movies
+     Horror Movies of the 80s      ->  Horror     / 80s
+     Drama Shows                   ->  Drama      / Shows
+
+   Measured: the widest lead is "Hitchcock" at 72px and the widest sub is
+   "Movies" at 48px, both inside 100px, so neither line can wrap and the row
+   is even whatever topic is in the hero. The domain noun survives wherever
+   it is the only qualifier ("Drama / Shows"), and the FULL name is on the
+   button's accessible name, so nothing is lost to a reader. */
+const introLabel = name => {
+  const full = name.replace(/^Top 10 /, '');
+  const decade = full.match(/ \S+ of the (\d+s)$/);
+  if (decade) return { lead: full.slice(0, decade.index), sub: decade[1] };
+  const noun = full.match(/ (\S+)$/);
+  return noun ? { lead: full.slice(0, noun.index), sub: noun[1] } : { lead: full, sub: '' };
+};
 
 function introTens() {
   const all = INTRO_TOPICS.map(c => consensusTen(makeTopic(c))).filter(Boolean);
@@ -2541,7 +2575,8 @@ function renderIntro() {
           aria-label="Show ${esc(name)}">
           <span class="mini-grid" aria-hidden="true">${o.ten.ranked.slice(0, 3).map(f =>
             `<img src="${art(f, 'w185')}" alt="" loading="lazy" decoding="async">`).join('')}</span>
-          <span class="what">${esc(introLabel(name))}</span>
+          <span class="what">${(l => `<span class="lead">${esc(l.lead)}</span>`
+            + `<span class="sub">${esc(l.sub)}</span>`)(introLabel(name))}</span>
         </button>`;
       }).join('')}
     </div>`;
