@@ -324,8 +324,10 @@ async function capture(browser, name, { light, motion }) {
   const have = mirrorFileCount(MIRROR);
   if (wantsArt && have === 0) {
     console.error(`\nNo poster mirror at ${MIRROR} — refusing to take review images of an\n`
-      + `app with no artwork. Build it with build_catalog.py, or point POSTER_MIRROR\n`
-      + `at one. (\`node shots.js noart\` is how you ask for the artless screen.)\n`);
+      + `app with no artwork, because an artless screenshot reads as a design\n`
+      + `decision rather than a missing file. Build it:\n\n`
+      + `    node mirror.js\n\n`
+      + `(\`node shots.js noart\` is how you ask for the artless screen on purpose.)\n`);
     process.exit(1);
   }
   console.log(`poster mirror: ${have} files`);

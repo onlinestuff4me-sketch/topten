@@ -178,7 +178,21 @@ node docs/prototype/shots.js review     # the whole set, ~30s
 
 It always runs with the poster mirror, refuses to run without one, and
 reports poster coverage and sideways spill on every capture — so a review
-image is never quietly artless. **`drive.js` proves it works; `shots.js`
+image is never quietly artless.
+
+**Real poster art in every review image is a standing requirement (Mischa,
+2026-11-18): "We need to maintain that moving forward."** The mirror is
+gitignored — 228MB of TMDB's artwork is not ours to carry — so a fresh
+container has none. Rebuild it before taking any picture:
+
+```sh
+node docs/prototype/mirror.js     # 6,938 files, under 30 seconds
+```
+
+That command is committed for exactly this reason. Until 2026-11-18 the only
+thing that could build the mirror was a throwaway in a session scratchpad,
+which meant the guarantee was one container restart from "`shots.js` refuses
+to run and nobody remembers why". **`drive.js` proves it works; `shots.js`
 shows what it looks like.** Keeping them separate is why the suite is one run
 instead of two and why review images stopped depending on whichever
 throwaway script was written that day.
