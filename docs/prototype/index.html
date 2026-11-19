@@ -1127,6 +1127,18 @@ footer.notes .build { color: var(--text-secondary); margin-top: var(--s2); }
   margin: var(--s4) 0 0; }
 .pickshort b { color: var(--text-primary); }
 .sug-topic .why { font-size: 0.8125rem; color: var(--text-secondary); margin-top: 2px; }
+
+/* The film a root is being chosen from. */
+.filmhead { display: flex; gap: var(--s4); align-items: flex-start; margin-top: var(--s4); }
+.filmhead .art { flex: 0 0 76px; width: 76px; aspect-ratio: 2/3; overflow: hidden;
+  border-radius: var(--r-art); background: var(--bg-recessed); display: block; }
+.filmhead .art img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.filmhead .lvl { font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.04em;
+  font-weight: 700; color: var(--text-secondary); }
+.filmhead .pickname { margin-top: 2px; }
+.filmhead .link { margin-top: var(--s2); }
+.cardname { display: block; font-size: 0.8125rem; line-height: 1.2; margin-top: var(--s2);
+  color: var(--text-secondary); }
 </style>
 </head>
 <body>
@@ -3306,6 +3318,137 @@ function pickerSuggest(query, selected, domain = domainOf(S.topic)) {
   return { phrase, candidates: candidates.slice(0, 12) };
 }
 
+/* ── Starting from a film (2026-11-18, Mischa) ────────────────────────────
+   "...or starting with a single title (either by searching for it or
+   browsing and selecting it)."
+
+   The third way into a root, and the one that asks least of somebody. Naming
+   a subject from nothing is work; naming a film you love is not, and every
+   film is already standing in a dozen rooms.
+
+   So: pick a film, and the app offers the lists it is in. The tags are the
+   film's own, which is why this cannot suggest a room the film is not
+   actually in - and every offer is supply-checked like any other. */
+function titleHits(q, domain = domainOf(S.topic), n = 4) {
+  const s = _norm(q);
+  if (s.length < 2) return [];
+  return CAT.filter(f => (f.dm || 'movie') === domain && _norm(f.t).includes(s))
+    .sort((a, b) => (b.vc || 0) - (a.vc || 0))
+    .slice(0, n);
+}
+
+/* Which films to put in front of somebody who has typed nothing. The most
+   voted-for, which is the nearest thing the catalogue has to "films everyone
+   would recognise" - a browse list has to be obvious or it is just a wall. */
+const browsableTitles = (domain = domainOf(S.topic), n = 8) =>
+  CAT.filter(f => (f.dm || 'movie') === domain)
+    .sort((a, b) => (b.vc || 0) - (a.vc || 0)).slice(0, n);
+
+/* Every tag in the space that this film carries. */
+function tagsOnFilm(f, domain = domainOf(S.topic)) {
+  const keys = new Set();
+  for (const g of (f.g || [])) keys.add(`genre:${g}`);
+  for (const k of keywordsFor(f)) keys.add(`keyword:${k}`);
+  keys.add(`decade:${Math.floor(f.y / 10) * 10}`);
+  for (const b of (f.br || [])) keys.add(`studio:${b}`);
+  if (f.d) keys.add(`director:${f.d}`);
+  return tagSpace(domain).filter(t => keys.has(t.key));
+}
+
+/* The lists a film is in, best first.
+
+   "Best" is the most specific root that still fills, because that is the one
+   worth making: "Top 10 Movies of All Time" is true of every film and tells
+   you nothing, while a root of eleven is a real argument. So they are sorted
+   by supply ASCENDING above the floor of ten, pairs before singles at the
+   same tightness - a pair says more about why this film is in the room.
+
+   Pairs are built from the film's own tags, so a film with fifteen tags
+   yields about a hundred candidates. That is one set-intersection each and
+   it runs on a tap, not a keystroke. */
+/* WHICH PAIRS ARE LISTS, AND WHICH ARE COINCIDENCES.
+
+   The first version offered the TIGHTEST roots a film was in, on the reasoning
+   that the most specific room is the most interesting one. What it actually
+   produced, for The Godfather:
+
+       Top 10 Religion Based on Novel or Book Movies    (11)
+       Top 10 Love at First Sight Dramas                (12)
+       Top 10 Crime Loss of Loved One Movies            (12)
+
+   Every one of those is statistically true and none is a list. Two keywords
+   are both SUBJECTS, and two subjects in one name read as a collision rather
+   than a refinement - the intersection is a coincidence of tagging, not a
+   thing anybody would set out to rank.
+
+   So pairs are built from named SHAPES instead of from every combination:
+
+       genre + genre      Crime Dramas
+       genre + decade     Crime Movies of the 70s
+       genre + keyword    Gangster Dramas
+       keyword + decade   Mafia Movies of the 70s
+       studio + genre     Disney Animated Movies
+       director alone     Hitchcock Movies
+       keyword alone      Heist Movies
+
+   keyword + keyword is excluded by construction. */
+const PAIR_SHAPES = [
+  ['genre', 'genre'], ['genre', 'decade'], ['genre', 'keyword'],
+  ['keyword', 'decade'], ['studio', 'genre'], ['studio', 'keyword'],
+  ['director', 'genre'], ['director', 'keyword'],
+];
+
+/* Two tags that mean nearly the same thing make a name that stutters -
+   "Mafia Gangster Movies", "Animated Anime Movies". If four fifths of the
+   smaller tag sits inside the larger, it is saying it twice. */
+function saysItTwice(a, b) {
+  const [small, big] = a.ids.size <= b.ids.size ? [a, b] : [b, a];
+  let shared = 0;
+  for (const id of small.ids) if (big.ids.has(id)) shared++;
+  return shared / small.ids.size >= 0.8;
+}
+
+function rootsForTitle(f, domain = domainOf(S.topic), limit = 8) {
+  const own = tagsOnFilm(f, domain);
+  const byKind = k => own.filter(t => t.kind === k);
+  const out = [], seen = new Set();
+
+  const offer = (tags) => {
+    const key = tags.map(t => t.key).sort().join('|');
+    if (seen.has(key)) return;
+    if (tags.length === 2 && saysItTwice(tags[0], tags[1])) return;
+    const n = tagSupply(tags);
+    if (n < TEN) return;
+    seen.add(key);
+    out.push({ tags, n, size: tags.length });
+  };
+
+  // Singles worth offering on their own: the people and the subjects. A bare
+  // genre or decade is true of too much to be a list somebody chose.
+  for (const t of [...byKind('director'), ...byKind('studio'), ...byKind('keyword')]) offer([t]);
+  for (const [ka, kb] of PAIR_SHAPES)
+    for (const a of byKind(ka))
+      for (const b of byKind(kb)) if (a.key !== b.key) offer([a, b]);
+
+  /* A root holding half the domain is not a list anybody argues about, and a
+     root of exactly ten is one bad tagging decision from not existing. Sorted
+     by supply DESCENDING inside the shapes, so the most recognisable room
+     comes first - the tightest is rarely the most interesting. */
+  /* SPECIFIC FIRST, now that shapes keep the specific ones sane. Sorted
+     descending it led with "Based on Novel or Book Dramas" for The Godfather
+     and "Action Adventure Movies" for Mad Max - true of hundreds of films and
+     therefore about none of them. The point of starting from a film is to
+     find the room that film is REMARKABLE in.
+
+     Floored at fifteen rather than ten: a root of exactly ten is one tagging
+     decision away from not existing, and this path is supposed to hand
+     somebody a list they can actually fill. */
+  const broad = CAT.filter(x => (x.dm || 'movie') === domain).length / 3;
+  return out.filter(r => r.n >= 15 && r.n <= broad)
+    .sort((a, b) => (b.size - a.size) || (a.n - b.n))
+    .slice(0, limit);
+}
+
 /* A list nobody can fill is not a list. A criteria name promises ten entries
    that all satisfy it, so the criteria have to have ten to give. This gate is
    what keeps that promise honest — "Top 10 Hitchcock Thrillers" is a fine name
@@ -3409,7 +3552,7 @@ const finishedTopics = () => new Set((S.done || []).map(d => d.topicId));
 /* The picker's own state. `tags` holds KEYS rather than tag objects: the tag
    space is rebuilt from the catalogue on load and an object stored in
    localStorage would be a stale copy of one. */
-const pickState = () => (S.pick = S.pick || { q: '', tags: [] });
+const pickState = () => (S.pick = S.pick || { q: '', tags: [], film: null });
 
 /* What a stranger's list is FOR (Mischa, 2026-11-17: "Who is Sam, why do I
    care about his top 10, why would that make me want to make my own? We need
@@ -4153,6 +4296,14 @@ function pickerResults() {
     ? pickerSuggest('', offered)
     : pickerSuggest(q, chosen);
 
+  /* A FILM CHOSEN replaces everything else on the screen: you asked "what is
+     this film in", and a type-ahead for the letters of its title underneath
+     would be answering a question nobody asked. */
+  if (S.pick && S.pick.film) {
+    const f = byId.get(S.pick.film);
+    if (f) return filmRoots(f);
+  }
+
   const chips = chosen.length ? `<div class="chips picked">${chosen.map(t =>
     `<button class="chip on" data-pickx="${esc(t.key)}">${esc(t.label)}
        <span class="x" aria-hidden="true">&times;</span>
@@ -4172,7 +4323,44 @@ function pickerResults() {
     : (offered ? '' : `<section><p class="prompt">Nothing with ten behind it
         matches that. Try fewer words.</p></section>`);
 
-  return chips + shortBlock + card + narrow;
+  /* Films, as a way in rather than an answer. They sit UNDER the tag
+     suggestions when something is typed - somebody typing "crime" wants the
+     genre first - and above nothing when the field is empty, where they are
+     the browse path. */
+  const films = (q ? titleHits(q) : browsableTitles())
+    .filter(f => rootsForTitle(f).length);
+  const filmBlock = (!chosen.length && films.length) ? `<section>
+    <div class="section-head"><h2 class="section-h">${
+      q ? 'Or start from one of these' : 'Or start from a film you love'}</h2></div>
+    <div class="rail">${films.map(f => `
+      <button class="card" data-pickfilm="${f.id}" aria-label="Lists ${esc(f.t)} is in">
+        <span class="art"><img src="${art(f, 'w342')}" alt="" loading="lazy"></span>
+        <span class="cardname">${esc(f.t)}</span>
+      </button>`).join('')}</div>
+  </section>` : '';
+
+  return chips + shortBlock + card + narrow + filmBlock;
+}
+
+/* The lists one film is in. */
+function filmRoots(f) {
+  const roots = rootsForTitle(f);
+  return `<section class="filmhead">
+      <span class="art"><img src="${art(f, 'w342')}" alt="" loading="eager"></span>
+      <div>
+        <div class="lvl">Lists it is in</div>
+        <div class="pickname">${esc(f.t)}</div>
+        <button class="link" data-act="pickfilmback">Choose another</button>
+      </div>
+    </section>
+    ${roots.length ? roots.map(r => {
+      const topic = tagsTopic(r.tags);
+      return `<button class="sug-topic" data-pickgo='${esc(JSON.stringify(critFromTags(r.tags)))}'>
+        <div class="t">${esc(topic.title)}</div>
+        <div class="why">${r.n} ${countWord(r.n)}</div>
+      </button>`;
+    }).join('')
+    : `<p class="prompt">Nothing this film is in reaches ten yet. Pick another.</p>`}`;
 }
 
 const KIND_WORD = { genre: 'Genre', keyword: 'Subject', decade: 'Decade',
@@ -4589,7 +4777,7 @@ function render() {
 }
 
 document.addEventListener('click', e => {
-  const t = e.target.closest('[data-title],[data-add],[data-deeper],[data-remove],[data-move],[data-toggle],[data-toggle-service],[data-facet],[data-facetjump],[data-higher],[data-sheet],[data-clear],[data-act],[data-topic],[data-focusnode],[data-dropfocus],[data-mapnode],[data-other],[data-mine],[data-sharemine],[data-topicpage],[data-pick],[data-pickx],[data-pickgo]');
+  const t = e.target.closest('[data-title],[data-add],[data-deeper],[data-remove],[data-move],[data-toggle],[data-toggle-service],[data-facet],[data-facetjump],[data-higher],[data-sheet],[data-clear],[data-act],[data-topic],[data-focusnode],[data-dropfocus],[data-mapnode],[data-other],[data-mine],[data-sharemine],[data-topicpage],[data-pick],[data-pickx],[data-pickgo],[data-pickfilm]');
   if (!t) return;
 
   if (t.dataset.clear) { e.stopPropagation(); const k = t.dataset.clear; S.filters[k] = k === 'services' ? [] : null; save(); renderBuild(); return; }
@@ -4610,9 +4798,13 @@ document.addEventListener('click', e => {
     st.tags = st.tags.filter(k => k !== t.dataset.pickx);
     save(); renderPicker(); return;
   }
+  if (t.dataset.pickfilm) {
+    pickState().film = Number(t.dataset.pickfilm);
+    save(); renderPicker(); return;
+  }
   if (t.dataset.pickgo) {
     S.topic = makeTopic(JSON.parse(t.dataset.pickgo));
-    S.tray = []; S.pick = { q: '', tags: [] };
+    S.tray = []; S.pick = { q: '', tags: [], film: null };
     S.scene = 'build'; save(); render(); return;
   }
   /* A browse gesture opens the topic; only a CTA commits to it. The criteria
@@ -4716,6 +4908,7 @@ document.addEventListener('click', e => {
     case 'pick':
       if (!(S.done || []).length) { S.scene = 'build'; save(); render(); break; }
       pickState(); S.scene = 'pick'; save(); render(); break;
+    case 'pickfilmback': pickState().film = null; save(); renderPicker(); break;
     case 'pickback': S.scene = (S.done || []).length ? 'you' : 'build'; save(); render(); break;
     case 'discover': S.scene = 'discover'; save(); render(); break;
     /* The Badge Case remembers where you came from, because it is reachable
@@ -4801,6 +4994,7 @@ window.topicTitle = topicTitle; window.topicPrompt = topicPrompt; window.makeTop
 window.supply = supply; window.offerable = offerable; window.inTopic = inTopic; window.KEY = KEY;
 window.consensusTen = consensusTen;
 window.pickerSuggest = pickerSuggest; window.tagsTopic = tagsTopic;
+window.rootsForTitle = rootsForTitle; window.titleHits = titleHits;
 window.tagSpace = tagSpace; window.tagSupply = tagSupply;
 window.resolvePhrase = resolvePhrase; window.nearestFillable = nearestFillable;
 window.offerable = offerable; window.critFromTags = critFromTags;

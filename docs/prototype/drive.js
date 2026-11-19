@@ -3748,6 +3748,101 @@ const DOMAIN_SPEECH = `(() => {
   await noBritishSpelling('the picker');
   await noJargon('the picker');
 
+  /* ── Starting from a film (2026-11-18, Mischa) ──────────────────────────
+     "...or starting with a single title (either by searching for it or
+     browsing and selecting it)."
+
+     Naming a subject from nothing is work; naming a film you love is not.
+     So: pick a film, be shown the lists it is in.
+
+     The hard part is not finding rooms - a film sits in hundreds - it is
+     finding the ones that are LISTS. The first version offered the tightest
+     and produced "Top 10 Religion Based on Novel or Book Movies" and "Top 10
+     Love at First Sight Dramas" for The Godfather. Both are statistically
+     true; neither is a list. These checks hold the rules that fixed it. */
+  console.log('\n── Starting from a film ─────────────────────────');
+
+  await page.evaluate(() => {
+    localStorage.clear(); S.seen = true; S.tipDone = true;
+    const t = window.makeTopic({ domain: 'movie' });
+    S.done = [{ topicId: t.id, title: 'Top 10 Movies of All Time', domain: 'movie',
+                ranked: CAT.slice(0, 10).map(f => f.id) }];
+    S.pick = { q: '', tags: [], film: null };
+    S.scene = 'pick'; save(); render();
+  });
+  await page.waitForTimeout(250);
+
+  check(await page.locator('[data-pickfilm]').count() >= 6,
+    `with nothing typed, films to browse (${await page.locator('[data-pickfilm]').count()})`);
+
+  await page.fill('#pq', 'godfather');
+  await page.waitForTimeout(320);
+  check(await page.locator('[data-pickfilm]').count() >= 1,
+    'and typing a title finds it');
+
+  await page.locator('[data-pickfilm]').first().click();
+  await page.waitForTimeout(250);
+  const onFilm = await page.evaluate(() => ({
+    head: (document.querySelector('.filmhead .pickname') || {}).textContent.trim(),
+    lede: (document.querySelector('.filmhead .lvl') || {}).textContent.trim(),
+    offers: [...document.querySelectorAll('.sug-topic .t')].map(e => e.textContent.trim()),
+    counts: [...document.querySelectorAll('.sug-topic .why')]
+      .map(e => Number((e.textContent.match(/\d+/) || [0])[0])),
+    back: document.querySelectorAll('[data-act="pickfilmback"]').length,
+    // the type-ahead must be GONE: you asked what this film is in
+    stillTyping: document.querySelectorAll('[data-pick]').length,
+  }));
+  check(/Godfather/.test(onFilm.head), `picking one leads with the film ("${onFilm.head}")`);
+  check(onFilm.offers.length >= 5,
+    `and the lists it is in (${onFilm.offers.length}: ${onFilm.offers.slice(0, 3).join(' / ')})`);
+  check(onFilm.offers.every(t => /^Top 10 /.test(t)), 'each one a named list');
+  check(onFilm.counts.every(n => n >= 15),
+    `each with enough behind it to fill, with margin (worst ${Math.min(...onFilm.counts)})`);
+  check(onFilm.back === 1 && onFilm.stillTyping === 0,
+    'and a way back, with the tag type-ahead out of the way');
+
+  /* THE INVARIANT: every room offered actually contains the film. A rule that
+     builds roots from shapes rather than from the film's own tags could pass
+     every other check here and still offer a list the film is not in. */
+  const containsIt = await page.evaluate(() => {
+    const out = [];
+    for (const name of ['The Godfather', 'Spirited Away', 'Mad Max: Fury Road',
+                        'Pulp Fiction', 'Alien', 'Parasite']) {
+      const f = window.CAT.find(x => x.t === name);
+      if (!f) continue;
+      for (const r of window.rootsForTitle(f, 'movie')) {
+        const topic = window.tagsTopic(r.tags, 'movie');
+        out.push({ film: name, list: topic.title,
+                   holdsIt: window.inTopic(f, topic),
+                   n: r.n,
+                   kinds: r.tags.map(t => t.kind).sort().join('+') });
+      }
+    }
+    return out;
+  });
+  check(containsIt.length > 30, `swept ${containsIt.length} offers across six films`);
+  check(containsIt.every(o => o.holdsIt),
+    'every list offered from a film really contains that film');
+
+  /* The two rules that turned nonsense into lists. */
+  check(containsIt.every(o => o.kinds !== 'keyword+keyword'),
+    'no list pairs two keywords — two subjects in one name collide rather than refine');
+  check(containsIt.every(o => o.n >= 15),
+    `and none is one tagging decision from not existing (worst ${Math.min(...containsIt.map(o => o.n))})`);
+
+  // Taking one starts that list.
+  const want = onFilm.offers[0];
+  await page.locator('.sug-topic').first().click();
+  await page.waitForTimeout(300);
+  const opened = await page.evaluate(() => ({
+    scene: window.S.scene,
+    title: (document.querySelector('.topbar h1') || {}).textContent.trim(),
+    holds: window.supply(window.S.topic),
+  }));
+  check(opened.scene === 'build' && opened.title === want,
+    `taking one opens the build screen on it ("${opened.title}")`);
+  check(opened.holds >= 10, `with ${opened.holds} to choose from`);  // 10, not TEN: that constant lives in the page, not here
+
   /* ── Every list in the pool is one the wall can actually carry ──────────
      The wall shows four of six, and which four rotates per visit, so four of
      them are never on the first screen anybody sees. A rule that happens to

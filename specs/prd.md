@@ -894,8 +894,35 @@ disagree about what a phrase means.
   offers tags; no suggestion anywhere can fail to fill; "Make this list"
   opens the build screen on that root.
 
-**Not built:** the start-from-a-title path (pick a film, be offered the roots
-it belongs to). Measured root
+**17. Starting from a film (built 2026-11-18/19).** The third way into a
+root, and the one that asks least: naming a subject from nothing is work,
+naming a film you love is not. Search the field for a title or take one from
+the browse rail, and the app offers **the lists that film is in**.
+
+**The hard part is not finding rooms — a film sits in hundreds — it is
+finding the ones that are lists.** Offering the tightest produced, for The
+Godfather: *Top 10 Religion Based on Novel or Book Movies* (11), *Top 10 Love
+at First Sight Dramas* (12). Statistically true, and not lists. Three rules
+fixed it:
+
+- **Pairs are built from named shapes**, never from every combination:
+  genre+genre, genre+decade, genre+keyword, keyword+decade, studio+genre,
+  director+genre. **keyword+keyword is excluded by construction** — two
+  subjects in one name collide rather than refine.
+- **A pair that says it twice is dropped.** If four fifths of the smaller tag
+  sits inside the larger, the name stutters: *Mafia Gangster Movies*,
+  *Animated Anime Movies*.
+- **Specific first, floored at fifteen.** Sorted the other way it led with
+  *Based on Novel or Book Dramas* for The Godfather and *Action Adventure
+  Movies* for Mad Max — true of hundreds of films and therefore about none of
+  them. The point is the room the film is remarkable in.
+
+What it gives now: The Godfather → *Crime Movies of the 70s* (17), *Gangster
+Dramas* (34), *Crime Dramas* (187). Mad Max → *Action Survival Movies* (17),
+*Adventure Dystopia Movies* (37).
+
+- Acceptance: every list offered really contains that film; none pairs two
+  keywords; none is under fifteen; taking one opens the build screen on it. Measured root
 space and the data limits are in `docs/list-mechanics.md` — 87 one-tag and
 423 two-tag roots can be filled today; studio tags cover 21% of titles, and
 TMDB keywords (*procedural*, *heist*) are not fetched at all.

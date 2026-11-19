@@ -193,6 +193,17 @@ const SCREENS = {
     },
   },
 
+  fromtitle: {
+    what: 'Start a list from a film you love',
+    seed: (h) => {
+      eval(h.prep); const makeDone = eval(h.makeDone);
+      S.done = [makeDone({ domain: 'movie' })];
+      const god = CAT.find(f => f.t === 'The Godfather');
+      S.pick = { q: 'godfather', tags: [], film: god ? god.id : null };
+      S.scene = 'pick'; save(); render();
+    },
+  },
+
   badges: {
     what: 'a sheet of badges across topics — the system, not one screen',
     dark: true,
