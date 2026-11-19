@@ -102,15 +102,20 @@ const q = (o) => {
   check(noAuth.forms === 0 && !noAuth.signIn,
     'nothing on it asks you to sign in — a browser arrives from a link');
 
-  /* Nothing on this page is gated (2026-11-18). The badge that used to sit
+  /* The link above still carries `badge=` and `unlocked=1`, which a link
+     shared before 2026-11-18 would have. They are no longer parsed, and these
+     checks are what proves an old link still renders its list and draws no
+     badge rather than erroring.
+
+     Nothing on this page is gated (2026-11-18). The badge that used to sit
      beside the list, locked until you made your own take, is retired with the
      whole badge-per-list idea. What stands in its place is the offer, which
      is now the only thing converting a reader into a maker. */
   const aside = await p.evaluate(() => ({
-    present: !!document.querySelector('.badgecol'),
-    cta: document.querySelector('.badgecol .cta')?.innerText.trim() || '',
-    href: document.querySelector('.badgecol .cta')?.getAttribute('href') || '',
-    anyBadge: document.querySelectorAll('.badgecol svg, .lockedbadge').length,
+    present: !!document.querySelector('.remixcol'),
+    cta: document.querySelector('.remixcol .cta')?.innerText.trim() || '',
+    href: document.querySelector('.remixcol .cta')?.getAttribute('href') || '',
+    anyBadge: document.querySelectorAll('.remixcol svg, .lockedbadge').length,
     lockWords: (document.body.innerText.match(/\block(ed)?\b/gi) || []).length,
   }));
   check(aside.present && /^Make your Top 10 /.test(aside.cta),
@@ -167,7 +172,7 @@ const q = (o) => {
   const stranger = await p.evaluate(() => ({
     rows: document.querySelectorAll('.ten .row').length,
     titles: [...document.querySelectorAll('.ten .row')].every(r => r.innerText.trim().length > 3),
-    cta: document.querySelector('.badgecol .cta')?.innerText.trim() || '',
+    cta: document.querySelector('.remixcol .cta')?.innerText.trim() || '',
     hidden: document.querySelectorAll('[hidden], .locked, .lockedbadge').length,
   }));
   check(stranger.rows === 10 && stranger.titles,

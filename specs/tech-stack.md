@@ -446,6 +446,53 @@ topten/
 - Image-gen badge tier — P1, blocked on licensing re-audit.
 - iPad/visionOS layouts — P2.
 
+## A test can keep a deleted system alive (2026-11-19, Claude)
+
+The worst of the residue the retired badge system left behind was not the dead
+CSS. It was **three green checks demanding the dead code work**:
+
+```
+── One badge renderer, not three ──────────────────────
+  ok — the app and the share page draw byte-identical badges from one composition
+  ok — and both pages expose the locked one too
+```
+
+`compose()` and `inscribe()` were deleted from `index.html` on 2026-11-18.
+`badge.js` — the 411-line renderer they called — was not. It is still
+`<script src>`-ed by **four pages**, and measured against live callers:
+
+| export | live callers |
+|---|---|
+| `badgeSVG` | none |
+| `lockedBadge` | none |
+| `fieldTones` | none |
+| `badgeHash` | none |
+| `MOTIF_PATHS` | `index.html`, in `achMark()` |
+
+**One of five.** Of the four pages that load it, three (`card.html`,
+`topic.html`, `ten.html`) call nothing from it at all. The one live use is the
+glyph path table, ~30 lines, which the achievement marks draw from.
+
+The suite is why it survived. `drive_share.js` asserts `badgeSVG` renders
+identically on two pages; `drive.js` asserts all four functions exist
+(`'the renderer exports what the pages call'`). Those checks were right when
+they were written and are now a lock on the door: deleting the renderer turns
+the suite red, so the renderer stays, so the pages keep loading 23KB of dead
+colour mathematics.
+
+**A test asserting a deleted system works is worse than no test.** It reports
+green for the wrong reason and it blocks the cleanup. When a system is retired,
+its tests are retired in the same change — and the checks that stay are the
+ones asserting it is *gone* (`drive_share.js` still sends `badge=` and
+`unlocked=1` on a share link, which now proves a link shared before the change
+still renders its list and draws no badge).
+
+**Owed:** reduce `badge.js` to its glyph table, drop it from the three pages
+that never call it, and retire the three checks above. Not done in the
+2026-11-19 change, which stopped at the dead CSS, the dead markup and the
+lying copy — doing half of this (deleting the tests, keeping the code) would
+be worse than either end.
+
 ## A crash is not a pass, and a filtered pipe hides both (2026-11-18, Claude)
 
 `drive.js` ended `})().catch(e => { console.error('\n' + e.message); ... })`.

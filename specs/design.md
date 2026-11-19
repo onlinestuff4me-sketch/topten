@@ -416,6 +416,44 @@ or Tenet. A rabbit hole into a director is worthless if their work is missing,
 so the build now pulls the fuller filmography of every director who appears
 more than once. 220 films became 620.
 
+## Copy may not name a system the app no longer has (2026-11-19, Claude)
+
+A sibling of the rule below, and the same shape of fault: not a competing word
+for a live thing, but **the name of a dead one**.
+
+The badge case, the badge-per-list and the reveal gate were all retired on
+2026-11-18. A day later the app still shipped:
+
+- `"Open your badge case"` — a button on the finished screen, the second of
+  only two doors to the You screen.
+- `build 0021 · the wall, what to make next, your badge case` — the splash's
+  own build line, advertising it.
+- `<div class="insc">${(d.badge || {}).inscription || ''}</div>` — the `mine`
+  screen rendering an inscription from a composer that no longer exists, which
+  is to say rendering an empty box.
+- `.badge-wrap`, `.badge-inline`, `.lockedbadge`, `.case-item`, `.case-badge`,
+  `.case-name`, `.ich`, `#l-plate`, `#l-motif`, `#l-metal` — 55 lines of CSS
+  for the deleted system, four of whose rules painted with `var(--locked)`, a
+  token **declared nowhere in the file**.
+- `badge=<base64>&unlocked=1` on every share link, both always empty.
+
+**Removing a system removes its code and leaves its name.** The code stops
+being called, so nothing fails; the copy keeps being read, so a person is told
+about a feature that is gone. Deleting the call site is not deleting the
+feature.
+
+The rule: when a system is retired, the same change removes its words, its
+styles and its URL parameters — and the jargon sweep in `drive.js` gains the
+phrases, so the next one cannot survive a day. The sweep now fails on
+`badge case`, `reveal your badge` and `unlock(s|ed) the badge|list|topic`.
+
+**And copy may not claim a measurement we do not take.** The discovery screen's
+`"Rising now"` row was computed from the summed TMDB vote counts of films
+released in the last four years — the catalogue's popularity, which no list
+made in this app can move. It now reads **"From recent releases"**, which is
+what the number is. A heading is a claim; if we cannot measure it, we do not
+print it. See `docs/app-structure.md` §2.
+
 ## The words for the things (2026-11-18, Mischa — "We should be really clear on our terms")
 
 Measured before writing this, by rendering six screens and counting what a

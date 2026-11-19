@@ -27,7 +27,12 @@ const Share = (() => {
     !f ? '' : (f.img ? f.img : (f.p ? IMG + size + f.p : ''));
 
   /* ── Reading a shared link ─────────────────────────────────────────────────
-     `?t=<title>&by=<handle>&items=1,2,3…&badge=<json>&mine=4,7`
+     `?t=<title>&by=<handle>&items=1,2,3…&mine=4,7`
+
+     A link made before 2026-11-18 also carries `badge=<base64>&unlocked=1`.
+     Those are ignored rather than parsed — the badge-per-list and the reveal
+     gate are both retired — and `drive_share.js` still sends them so that an
+     already-shared link is proven to render its list and show no badge.
 
      `mine` is what makes the comparison overlay work without an account: your
      own picks travel in the link you followed, from your own device's draft.
@@ -38,15 +43,11 @@ const Share = (() => {
     const ids = (q.get('items') || '').split(',').map(Number).filter(Boolean);
     if (!ids.length) return null;
     const mine = (q.get('mine') || '').split(',').map(Number).filter(Boolean);
-    let badge = null;
-    try { badge = q.get('badge') ? JSON.parse(atob(q.get('badge'))) : null; } catch (e) { badge = null; }
     return {
       title: q.get('t') || 'A Top 10',
       author: q.get('by') || 'someone',
       topicId: q.get('topic') || '',
       items: ids.map(id => byId.get(id) || { id, t: 'Unavailable', y: null }),
-      badge,
-      unlocked: q.get('unlocked') === '1',
       mine,
     };
   }
@@ -59,21 +60,18 @@ const Share = (() => {
     q.set('by', ten.author);
     if (ten.topicId) q.set('topic', ten.topicId);
     q.set('items', ten.items.map(f => f.id ?? f).join(','));
-    if (ten.badge) q.set('badge', btoa(JSON.stringify(ten.badge)));
-    if (ten.unlocked) q.set('unlocked', '1');
     if (ten.mine && ten.mine.length) q.set('mine', ten.mine.join(','));
     return `${origin}/ten?${q.toString()}`;
   }
 
-  /* ── The badge block ──────────────────────────────────────────────────────
-     The gate, drawn rather than enforced. The list above it is fully visible;
-     Nothing is withheld from a reader any more: the reveal gate was retired
-     on 2026-11-18 (specs/badges.md) along with the badge-per-list it hid.
-     What stood here as a lock is now the offer that replaced it — the whole
+  /* ── The remix offer ──────────────────────────────────────────────────────
+     Nothing is withheld from a reader. The reveal gate was retired on
+     2026-11-18 (specs/badges.md) along with the badge-per-list it hid, and
+     what stood here as a lock is now the offer that replaced it — the whole
      reason a stranger on this page is worth anything to the product is that
      they might go and make their own. */
   function remixBlock(ten) {
-    return `<aside class="badgecol">
+    return `<aside class="remixcol">
       <p class="how">You can read any Top 10 here. The one worth having is
         your own.</p>
       <a class="cta" href="./?topic=${encodeURIComponent(ten.topicId || '')}">Make your ${esc(ten.title)}</a>

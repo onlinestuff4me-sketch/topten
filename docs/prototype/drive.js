@@ -535,8 +535,16 @@ const DOMAIN_SPEECH = `(() => {
      already settled in writing and both shipped anyway.
 
      Catalogue titles are subtracted first, exactly as the British-spelling
-     sweep does: "The Shelf" would be a film's name, not our copy. */
-  const JARGON = /\b(a Ten|the Ten|your Ten|Tens|takes? on (a|the|this|somebody|someone)|the crowd|shelf|shelves)\b/i;
+     sweep does: "The Shelf" would be a film's name, not our copy.
+
+     Amended 2026-11-19. The second half of the pattern is a different bug
+     with the same shape: not a competing word for a live thing, but the NAME
+     OF A DELETED ONE. "Open your badge case" sat on the finished screen for
+     a day after the badge case stopped existing, and the splash's own build
+     line advertised it — because removing a system removes its code and
+     leaves its copy. Every phrase here names something the app no longer
+     does: a badge case, a badge to reveal, a thing to unlock. */
+  const JARGON = /\b(a Ten|the Ten|your Ten|Tens|takes? on (a|the|this|somebody|someone)|the crowd|shelf|shelves|badge case|reveal your badge|unlock(s|ed)? (this|the) (badge|list|topic))\b/i;
   const noJargon = async where => {
     const found = await page.evaluate(re => {
       const rx = new RegExp(re, 'i');
@@ -2929,7 +2937,7 @@ const DOMAIN_SPEECH = `(() => {
        trusted: AGENTS.md's gates say "VoiceOver pass on every new screen"
        and a Dynamic Type pass from XS to accessibility sizes, and a screen
        that is not in the list is a screen that has had neither. */
-    ['your badge case', () => {
+    ['your Top 10s and badges', () => {
       const made = crit => { const t = makeTopic(crit);
         const ten = CAT.filter(f => inTopic(f, t)).sort((a, b) => (b.vc || 0) - (a.vc || 0))
           .slice(0, 10).map(f => f.id);
@@ -2995,7 +3003,7 @@ const DOMAIN_SPEECH = `(() => {
        trusted: AGENTS.md's gates say "VoiceOver pass on every new screen"
        and a Dynamic Type pass from XS to accessibility sizes, and a screen
        that is not in the list is a screen that has had neither. */
-    ['your badge case', () => {
+    ['your Top 10s and badges', () => {
       const made = crit => { const t = makeTopic(crit);
         const ten = CAT.filter(f => inTopic(f, t)).sort((a, b) => (b.vc || 0) - (a.vc || 0))
           .slice(0, 10).map(f => f.id);

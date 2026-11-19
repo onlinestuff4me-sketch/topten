@@ -75,21 +75,17 @@
   .byline { color: var(--text-secondary); margin: var(--s3) 0 0; font-size: 0.9375rem; }
   .byline b { color: var(--text-primary); font-weight: 600; }
 
-  /* The badge column. On a phone it sits under the title; on a laptop beside
-     it, because the badge is the thing the page is selling. */
-  .badgecol { display: flex; flex-direction: column; align-items: center;
+  /* The remix offer. On a phone it sits under the title; on a laptop beside
+     it, because it is the only thing this page is selling — a stranger who
+     reads a list and leaves is worth nothing, and one who makes their own is
+     the whole product. (Until 2026-11-18 a composed badge stood here behind a
+     reveal gate. Both are retired; see specs/badges.md.) */
+  .remixcol { display: flex; flex-direction: column; align-items: center;
     gap: var(--s3); padding: var(--s6) var(--s4);
     background: var(--bg-surface); border: 1px solid var(--border-subtle);
     border-radius: var(--r-card); }
-  .badgecol .state { font-size: 0.6875rem; font-weight: 700; letter-spacing: .08em;
-    text-transform: uppercase; color: var(--text-secondary); }
-  .badgecol .insc { font-family: var(--serif); font-size: 1.0625rem; text-align: center;
-    line-height: 1.25; }
-  .badgecol .how { font-size: 0.8125rem; color: var(--text-secondary); text-align: center;
+  .remixcol .how { font-size: 0.8125rem; color: var(--text-secondary); text-align: center;
     line-height: 1.35; max-width: 24em; }
-  .lockedbadge .plate { fill: var(--locked); opacity: .22; }
-  .lockedbadge .shackle, .lockedbadge .body { fill: none; stroke: var(--locked); stroke-width: 3; }
-  .lockedbadge .body { fill: var(--locked); opacity: .55; }
 
   .cta { display: inline-flex; align-items: center; justify-content: center;
     min-height: 48px; padding: 0 var(--s6); border-radius: 999px;

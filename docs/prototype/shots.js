@@ -77,7 +77,7 @@ const PREP = () => {
 };
 
 /* A finished Ten, built the way the app builds one: the topic's own shelf,
-   most-voted first, with a real composed badge. */
+   most-voted first. */
 const MAKE_DONE = (crit) => {
   const t = window.makeTopic(crit);
   const ten = CAT.filter(f => window.inTopic(f, t))
@@ -124,7 +124,7 @@ const SCREENS = {
   },
 
   case: {
-    what: 'Your Top 10s — the badge case',
+    what: 'You, in Vault — the same screen dark, for the contrast gate',
     dark: true,
     seed: (h) => {
       eval(h.prep); const makeDone = eval(h.makeDone);
@@ -172,23 +172,33 @@ const SCREENS = {
   },
 
   done: {
-    what: 'the screen that hands you a badge',
+    what: 'the finished screen — the list is the reward',
     dark: true,
     seed: (h) => {
       eval(h.prep); const makeDone = eval(h.makeDone);
       const d = makeDone({ genre: 'Crime', decade: 1990 });
       S.done = [d]; S.topic = window.makeTopic({ genre: 'Crime', decade: 1990 });
-      S.ranked = d.ranked; S.badge = d.badge;
+      S.ranked = d.ranked;
       S.scene = 'done'; save(); render();
     },
   },
 
   picker: {
-    what: 'Start a list — type a phrase or narrow by tags',
+    what: 'Start a list — the empty state, what it offers cold',
     seed: (h) => {
       eval(h.prep); const makeDone = eval(h.makeDone);
       S.done = [makeDone({ domain: 'movie' })];
-      S.pick = { q: 'disney animated movies of the 2000s', tags: [] };
+      S.pick = { q: '', tags: [], film: null };
+      S.scene = 'pick'; save(); render();
+    },
+  },
+
+  'picker-typed': {
+    what: 'Start a list — a phrase that cannot fill, and the answer',
+    seed: (h) => {
+      eval(h.prep); const makeDone = eval(h.makeDone);
+      S.done = [makeDone({ domain: 'movie' })];
+      S.pick = { q: 'disney animated movies of the 2000s', tags: [], film: null };
       S.scene = 'pick'; save(); render();
     },
   },
@@ -205,32 +215,31 @@ const SCREENS = {
   },
 
   badges: {
-    what: 'a sheet of badges across topics — the system, not one screen',
-    dark: true,
+    what: 'the ten achievements, earned and not, with every condition stated',
     seed: (h) => {
-      eval(h.prep);
-      const topics = [
+      /* The real set, drawn by the app's own `achMark()` from the app's own
+         `achievements()` — not a hand-built sheet. The previous version of
+         this screen called `compose()`, which was deleted with the
+         badge-per-list on 2026-11-18, so it had been throwing since: proof
+         that a review image nobody asked for is a review image nobody runs.
+
+         Seeded with eleven lists across both categories and five decades, so
+         some are earned, some carry a progress bar and some are bare — which
+         is the whole point of showing them unlocked-visible. */
+      eval(h.prep); const makeDone = eval(h.makeDone);
+      S.done = [
         { genre: 'Crime', decade: 1990 }, { genre: 'Animation', decade: 2000 },
-        { director: 'Alfred Hitchcock' }, { domain: 'tv', genre: 'Drama' },
-        { genre: 'Science Fiction' }, { genre: 'Western' },
-        { genre: 'Horror' }, { genre: 'Romance' },
-        { genre: 'Documentary' }, { genre: 'Comedy', decade: 1980 },
-        { genre: 'Thriller', decade: 1970 }, { genre: 'War' },
-      ];
-      const cells = topics.map(crit => {
-        const t = window.makeTopic(crit);
-        const ten = CAT.filter(f => window.inTopic(f, t))
-          .sort((a, b) => (b.vc || 0) - (a.vc || 0)).slice(0, 10);
-        if (ten.length < 10) return '';
-        const c = compose(ten.map(f => f.id), t);
-        return `<figure style="margin:0;text-align:center">
-          ${window.badgeSVG(c, 150).replace(/class="layer"/g, 'class="layer on"')}
-          <figcaption style="font:600 11px/1.3 -apple-system,system-ui,sans-serif;
-            color:#A79F92;margin-top:6px">${t.title.replace(/^Top 10 /, '')}</figcaption>
-        </figure>`;
-      }).join('');
-      document.body.innerHTML = `<div style="background:#121110;min-height:100vh;padding:20px;
-        display:grid;grid-template-columns:repeat(3,1fr);gap:18px 10px">${cells}</div>`;
+        { genre: 'Western', decade: 1960 }, { genre: 'Horror', decade: 1980 },
+        { genre: 'Science Fiction', decade: 1970 }, { genre: 'Thriller' },
+        { genre: 'Documentary' }, { genre: 'Comedy' },
+        { domain: 'tv', genre: 'Drama' }, { domain: 'tv', genre: 'Comedy' },
+        { director: 'Alfred Hitchcock' },
+      ].map(makeDone).filter(d => d.ranked.length === 10);
+      S.scene = 'you'; save(); render();
+      /* The ten fit in one frame only without the list of lists under them.
+         This screen is about the set; `you` is about a person's own page. */
+      const lists = document.querySelector('.mylists');
+      if (lists) lists.closest('section').remove();
     },
   },
 

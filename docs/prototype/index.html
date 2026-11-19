@@ -415,21 +415,9 @@ section { margin-top: var(--s8); }
 .vault { position: fixed; inset: 0; z-index: 50; background: var(--vault-bg); color: var(--vault-text); display: grid; place-items: center; padding: var(--s6); opacity: 0; transition: opacity 420ms ease; }
 .vault.in { opacity: 1; }
 .vault .stage { text-align: center; max-width: 340px; width: 100%; }
-.badge-wrap { width: min(72vw, 260px); margin: 0 auto; aspect-ratio: 1; }
-.badge-wrap svg { width: 100%; height: 100%; display: block; }
-.layer { opacity: 0; transform-box: fill-box; transform-origin: center; transition: opacity 460ms ease, transform 460ms var(--ease-out); }
-.layer.on { opacity: 1; transform: none; }
-#l-plate:not(.on) { transform: scale(0.86); }
-#l-motif:not(.on) { transform: scale(0.7); }
-#l-metal:not(.on) { transform: scale(1.04); }
 .revealed-name { font-family: var(--serif); font-weight: 600; font-size: 1.25rem; margin: var(--s6) 0 0; min-height: 1.6em;
   opacity: 0; transition: opacity 400ms var(--ease-out); }
 .revealed-name.on { opacity: 1; }
-/* The badge carries its own inscription on every surface. Only inside the
-   vault do the letters wait to be struck. */
-.ich { opacity: 1; }
-.vault .ich { opacity: 0; }
-.vault .ich.on { opacity: 1; transition: opacity 90ms linear; }
 .vault .skip { position: absolute; top: calc(env(safe-area-inset-top) + 14px); right: 18px; color: #A79F92; font-size: 0.875rem; min-height: 44px; padding: 0 var(--s2); opacity: 0; transition: opacity 300ms ease; }
 .vault .skip.on { opacity: 1; }
 .vault .after { opacity: 0; transition: opacity 400ms ease; margin-top: var(--s6); display: flex; gap: var(--s2); justify-content: center; }
@@ -437,13 +425,10 @@ section { margin-top: var(--s8); }
 .vault .after .btn.ghost { color: var(--accent-bright); border-color: #33302B; }
 
 @media (prefers-reduced-motion: reduce) {
-  .layer, .vault .ich, .revealed-name, .vault, .vault .after, .vault .skip, .sheet, .scrim, .slotmini { transition-duration: 1ms !important; animation: none !important; }
-  #l-plate, #l-motif, #l-metal { transform: none; }
+  .revealed-name, .vault, .vault .after, .vault .skip, .sheet, .scrim, .slotmini { transition-duration: 1ms !important; animation: none !important; }
 }
 
 /* ── Finished ───────────────────────────────────────────────────────────── */
-.badge-inline { width: 128px; margin: 0 auto var(--s2); }
-.badge-inline svg { width: 100%; display: block; }
 /* The last row on the finished screen was an inline `display:flex` with no
    wrap, so at 24px root text its two buttons ran 57px past the screen and
    the page scrolled sideways - 176px of it at 32px. Two buttons that do not
@@ -451,30 +436,6 @@ section { margin-top: var(--s8); }
    else. */
 .endbar { display: flex; flex-wrap: wrap; gap: var(--s2); }
 
-/* ── The Badge Case (PRD Req 11) ──────────────────────────────────────────
-   A shelf, not a list. Req 11 makes the badges the profile's hero, so they
-   are what the grid is made of and the list name hangs underneath; a row
-   layout with a thumbnail would have made them captions on something else.
-
-   `auto-fill` with a 132px floor rather than a fixed column count: two
-   badges across on every phone, three on a Pro Max in landscape and four on
-   a tablet, without a breakpoint deciding it. The floor is the width at
-   which a two-line list name stops wrapping to four. */
-.case { display: grid; grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
-  gap: var(--s4) var(--s3); }
-.case-item { display: grid; gap: var(--s2); justify-items: center; text-align: center;
-  background: none; border: 0; padding: var(--s2) 0; min-width: 0; cursor: pointer;
-  transition: transform var(--m-press) var(--ease-out); }
-.case-item:active { transform: scale(0.96); }
-.case-item:focus-visible { outline: 2px solid var(--accent); outline-offset: 4px; border-radius: var(--r-card); }
-@media (prefers-reduced-motion: reduce) { .case-item { transition: none; } }
-/* The badge is the item. 112px is the smallest size at which the plate's
-   inscription ring is still legible as type rather than as texture — below
-   it the badge reads as a coin, which is the one thing it must not. */
-.case-badge { width: 112px; max-width: 100%; }
-.case-badge svg { width: 100%; height: auto; display: block; }
-.case-name { font-family: var(--serif); font-weight: 600; font-size: 0.9375rem;
-  line-height: 1.2; color: var(--text-primary); overflow-wrap: break-word; min-width: 0; }
 .case-empty { text-align: center; }
 .case-empty .btn { margin-top: var(--s3); }
 .endbar .btn { flex: 1 1 14rem; }
@@ -546,19 +507,6 @@ section { margin-top: var(--s8); }
   font-weight: 600; font-size: 0.9375rem; text-align: center;
   transition: transform var(--m-press) var(--ease-out); }
 .other-ten .cta:active { transform: scale(.985); }
-/* The gate-crossing action on a person's page: the same 48pt pill, and never
-   welded to the sentence above it. */
-/* The locked badge: the badge's plate in status.locked, wearing a lock. It
-   was a circle over a bar, which at 44pt reads as an avatar — the one thing it
-   must not be mistaken for on a screen full of other people. */
-.lockedbadge { width: 44px; height: 44px; display: block; }
-.lockedbadge .plate { fill: var(--locked); opacity: .22; }
-/* The motif showing through the frost: present, not readable. */
-.lockedbadge .ghost { fill: var(--locked); stroke: var(--locked); opacity: .3;
-  stroke-linejoin: round; stroke-linecap: round; }
-.lockedbadge .shackle { stroke: var(--locked); fill: none; stroke-width: 7; stroke-linecap: round; opacity: .75; }
-.lockedbadge .body { fill: var(--locked); opacity: .75; }
-.lockedbadge.big { width: 128px; height: 128px; margin: 0 auto; }
 .tenrow.shared { box-shadow: inset 0 0 0 1px var(--accent-muted); border-radius: var(--r-card); }
 .sug-topic .why { font-style: italic; font-size: 0.875rem; color: var(--text-secondary); margin-top: 2px; }
 
@@ -1283,7 +1231,7 @@ function fresh(topic = TOPIC_ALL) {
     // round 2's headline complaint was that it did.
     graph: { nodes: {}, roots: [], focus: null },
     filters: { services: [], genre: null, director: null, actor: null, studio: null },
-    region: guessRegion(), keep: [], ranked: [], rank: null, comparisons: 0, badge: null,
+    region: guessRegion(), keep: [], ranked: [], rank: null, comparisons: 0,
     done: [],         // every Ten finished this session, in order
     tipDone: false    // the services coach mark, dismissed once and for good
   };
@@ -2203,7 +2151,7 @@ function notes() {
   return `<footer class="notes">
     <p>Structure prototype. Glass, haptics, and final motion are judged on
     device, not here. Judge the flow, the anatomy, and the words.</p>
-    <p class="build">build 0021 · the wall, what to make next, your badge case</p>
+    <p class="build">build 0022 · the picker, start from a title, achievements</p>
   </footer>`;
 }
 
@@ -3795,7 +3743,7 @@ function whatsNext() {
       <span class="pickname">${esc(week.topic.title)}</span>
     </button>` : ''}
     ${rising.length ? `<div class="risingrow">
-      <p class="eyebrow">Rising now</p>
+      <p class="eyebrow">From recent releases</p>
       <div class="chips">${rising.map(chip).join('')}</div>
     </div>` : ''}
   </section>`;
@@ -4068,16 +4016,13 @@ function renderMine(topicId) {
   const d = (S.done || []).find(x => x.topicId === topicId);
   if (!d) { S.scene = 'you'; save(); return renderYou(); }
   const films = (d.ranked || []).map(id => byId.get(id)).filter(Boolean);
-  // Other lists on this topic on the same topic, which is where this screen earns its
-  // place: a badge case that only looks inward is a trophy shelf, and the
-  // product is an argument.
+  /* Other people's lists on the same topic, which is where this screen earns
+     its place: a page about your own list that only looks inward is a trophy,
+     and the product is an argument. */
   const theirs = SOURCES.filter(s => s.topic.id === topicId);
   app.innerHTML = `
     <div class="topbar"><h1 class="display-lg fitline">${esc(d.title)}</h1>
       <button class="link" data-act="you">Back</button></div>
-    <div class="finished-head">
-      <div class="insc">${esc((d.badge || {}).inscription || '')}</div>
-    </div>
     <section><ol>${films.map((f, i) => `<li><div class="tenrow ${i === 0 ? 'one' : ''}">
       <span class="num">${i + 1}</span><span class="thumb"><img src="${art(f)}" alt=""></span>
       <span class="meta"><span class="t">${esc(f.t)}</span><span class="s">${f.y}${f.d ? ' · ' + esc(f.d) : ''}</span></span>
@@ -4494,7 +4439,7 @@ function renderFinished() {
       <p class="prompt" style="margin:0 0 var(--s3)">${(S.done || []).length === 1
         ? 'One badge so far. They live here.'
         : `All ${(S.done || []).length} of them, with their badges.`}</p>
-      <button class="btn ghost" data-act="opencase">Open your badge case</button>
+      <button class="btn ghost" data-act="opencase">Your Top 10s</button>
     </section>
 
     <section class="endbar">
@@ -4820,7 +4765,7 @@ document.addEventListener('click', e => {
   if (t.dataset.sharemine) {
     const d = (S.done || []).find(x => x.topicId === t.dataset.sharemine);
     if (d) shareLink(Share.link({ title: d.title, author: 'you', topicId: d.topicId,
-      items: d.ranked, badge: d.badge, unlocked: true }, location.origin));
+      items: d.ranked }, location.origin));
     return;
   }
   if (t.dataset.deeper) {
