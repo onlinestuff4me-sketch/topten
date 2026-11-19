@@ -1111,6 +1111,22 @@ footer.notes .build { color: var(--text-secondary); margin-top: var(--s2); }
   margin: var(--s2) 0 0; }
 .won-note { font-size: 0.6875rem; font-weight: 700; letter-spacing: .08em;
   text-transform: uppercase; color: var(--vault-accent); margin: var(--s1) 0 0; }
+
+/* ── The picker (2026-11-18) ──────────────────────────────────────────── */
+.chips.picked { margin-top: var(--s4); }
+.pickpick { background: var(--bg-surface); border: 1px solid var(--accent);
+  border-radius: var(--r-card); padding: var(--s4); margin-top: var(--s4); }
+.pickpick .lvl { font-size: 0.6875rem; text-transform: uppercase;
+  letter-spacing: 0.04em; font-weight: 700; color: var(--accent-ink); }
+.pickname { font-family: var(--serif); font-weight: 600; font-size: 1.375rem;
+  line-height: 1.15; margin-top: var(--s2); color: var(--text-primary); }
+.picksupply { font-size: 0.875rem; color: var(--text-secondary); margin-top: var(--s1); }
+.pickpick .btn { width: 100%; margin-top: var(--s3); }
+/* A near miss is stated, never hidden: the number is the reason. */
+.pickshort { font-size: 0.9375rem; color: var(--text-secondary);
+  margin: var(--s4) 0 0; }
+.pickshort b { color: var(--text-primary); }
+.sug-topic .why { font-size: 0.8125rem; color: var(--text-secondary); margin-top: 2px; }
 </style>
 </head>
 <body>
@@ -3118,6 +3134,178 @@ function makeTopic(criteria) {
   const t = { ...criteria, domain: (criteria && criteria.domain) || 'movie' };
   return { ...t, id: topicId(t), title: topicTitle(t), prompt: topicPrompt(t) };
 }
+/* ── The picker's tag space (2026-11-18, Mischa) ─────────────────────────
+   "Ppl should be able to filter and narrow down by tags, type and
+   auto-suggest and select from there to build your list, or type in free
+   text and we find tag matches to suggest list names."
+
+   Two jobs from one index:
+
+     TYPE-AHEAD   you type "cri", it offers Crime, Crime Dramas, Crime
+                  Thrillers — tags you pick one at a time to narrow down.
+     FREE TEXT    you type "disney animated movies of the 2000s", it finds
+                  the three tags in that sentence and names the list.
+
+   Both are the same operation over the same index, which is why they cannot
+   disagree about what a phrase means.
+
+   EVERY CANDIDATE IS CHECKED FOR SUPPLY. A tag that cannot reach ten with
+   what is already selected is never offered, because `offerable` forbids the
+   list and a picker that offers an impossible list is lying. */
+const _norm = s => String(s || '').toLowerCase().replace(/[^a-z0-9 ]+/g, ' ')
+  .replace(/\s+/g, ' ').trim();
+
+/* People write "crime dramas", not "Crime Drama"; the label is singular and
+   the sentence is not. PLURALISING THE LABEL is reliable where stemming the
+   input is not - "movies" stems to "movy" under any rule simple enough to
+   trust, while "movie" pluralises to "movies" under one everybody agrees on.
+   So each tag carries the ways it might be written, and matching is done
+   against all of them. */
+function pluralOf(word) {
+  if (/[^aeiou]y$/.test(word)) return word.slice(0, -1) + 'ies';
+  if (/(s|x|z|ch|sh)$/.test(word)) return word + 'es';
+  return word + 's';
+}
+function aliasesFor(e) {
+  const out = new Set([_norm(e.label)]);
+  const last = _norm(e.label).split(' ').pop();
+  out.add(pluralOf(_norm(e.label)));
+  /* A surname is how a director is referred to. "hitchcock" has to find
+     Alfred Hitchcock or the free-text path cannot resolve the one axis where
+     everybody knows the short form. */
+  if ((e.kind === 'director' || e.kind === 'studio') && last && last !== _norm(e.label)) out.add(last);
+  if (e.kind === 'decade') {
+    const d = Number(e.value);
+    out.add(String(d));                    // 1990
+    out.add(String(d).slice(2) + 's');     // 90s
+    out.add(String(d) + 's');              // 1990s
+  }
+  if (e.kind === 'genre') out.add(pluralOf(_norm(e.value)));
+  return [...out].filter(Boolean);
+}
+
+const _tagSpaces = {};
+function tagSpace(domain = domainOf(S.topic)) {
+  if (_tagSpaces[domain]) return _tagSpaces[domain];
+  const by = new Map();
+  const add = (kind, value, label, id) => {
+    const key = `${kind}:${value}`;
+    let e = by.get(key);
+    if (!e) by.set(key, e = { key, kind, value, label, ids: new Set() });
+    e.ids.add(id);
+  };
+  for (const f of CAT) {
+    if ((f.dm || 'movie') !== domain) continue;
+    for (const g of (f.g || [])) add('genre', g, GENRE_ADJ[g] || g, f.id);
+    for (const k of keywordsFor(f)) add('keyword', k, keywordName(k), f.id);
+    const d = Math.floor(f.y / 10) * 10;
+    if (d) add('decade', d, decadeName(d), f.id);
+    for (const b of (f.br || [])) add('studio', b, studioName(b), f.id);
+    if (f.d) add('director', f.d, f.d, f.id);
+  }
+  /* Only tags that could ever head a list. A tag with nine titles behind it
+     cannot start a root and must not appear in a type-ahead, or the first
+     thing the picker teaches is that its own suggestions do not work. */
+  const space = [...by.values()].filter(e => e.ids.size >= TEN)
+    .sort((a, b) => b.ids.size - a.ids.size);
+  for (const e of space) e.aliases = aliasesFor(e);
+  _tagSpaces[domain] = space;
+  return space;
+}
+
+/* Tags back into the criteria the rest of the app speaks. */
+function critFromTags(tags, domain = domainOf(S.topic)) {
+  const c = { domain };
+  for (const t of tags) {
+    if (t.kind === 'genre') (c.genre = c.genre || []).push(t.value);
+    else if (t.kind === 'keyword') (c.keyword = c.keyword || []).push(t.value);
+    else if (t.kind === 'decade') c.decade = Number(t.value);
+    else if (t.kind === 'studio') c.studio = t.value;
+    else if (t.kind === 'director') c.director = t.value;
+  }
+  return c;
+}
+const tagsTopic = (tags, domain) => makeTopic(critFromTags(tags, domain));
+
+/* How many titles survive a set of tags, without building a topic: the
+   picker asks this for every candidate on every keystroke. */
+function tagSupply(tags) {
+  if (!tags.length) return 0;
+  let live = null;
+  for (const t of tags.slice().sort((a, b) => a.ids.size - b.ids.size)) {
+    if (!live) { live = new Set(t.ids); continue; }
+    for (const id of [...live]) if (!t.ids.has(id)) live.delete(id);
+    if (!live.size) break;
+  }
+  return live ? live.size : 0;
+}
+
+/* FREE TEXT -> TAGS. Longest labels first, so "coming of age" wins over
+   "age" and "science fiction" over "fiction", and a tag already matched
+   cannot have its words reused by a shorter one. One decade, one studio, one
+   director; genres and keywords may stack. */
+function resolvePhrase(query, domain = domainOf(S.topic)) {
+  let text = ` ${_norm(query)} `;
+  if (!text.trim()) return [];
+  const longest = t => Math.max(...t.aliases.map(a => a.length));
+  const space = tagSpace(domain).slice()
+    .sort((a, b) => longest(b) - longest(a) || b.ids.size - a.ids.size);
+  const out = [], once = new Set();
+  for (const t of space) {
+    // longest alias first, so "science fiction" is spent before "fiction"
+    const hit = t.aliases.slice().sort((a, b) => b.length - a.length)
+      .find(a => a && text.includes(` ${a} `));
+    if (!hit) continue;
+    if (['decade', 'studio', 'director'].includes(t.kind) && once.has(t.kind)) continue;
+    once.add(t.kind);
+    out.push(t);
+    text = text.split(` ${hit} `).join(' ');     // its words are spent
+  }
+  return out;
+}
+
+/* The near-miss rule. Studio tags cover 21% of titles and most three-tag
+   phrases a person types land short, so this is the common path rather than
+   an edge case: drop the narrowest tag and try again, and SAY what was
+   dropped. Failing silently into a half-built list is the one outcome worse
+   than refusing. */
+function nearestFillable(tags) {
+  let live = tags.slice();
+  const dropped = [];
+  while (live.length && tagSupply(live) < TEN) {
+    /* WHICH TAG TO GIVE UP. The first version dropped the NARROWEST, which
+       on "disney animated movies of the 2000s" threw away Disney - the whole
+       point of the sentence - and kept "Animated + 2000s". The decade is the
+       relaxable one: it is a slice of a subject, where every other tag IS the
+       subject. So a decade goes first, and only then the broadest remaining
+       tag, which is the one contributing least to what the list is about. */
+    const decade = live.find(t => t.kind === 'decade');
+    const give = decade || live.reduce((a, b) => (a.ids.size >= b.ids.size ? a : b));
+    dropped.push(give);
+    live = live.filter(t => t !== give);
+  }
+  return { tags: live, dropped };
+}
+
+/* What to offer for a query, given what is already chosen. */
+function pickerSuggest(query, selected, domain = domainOf(S.topic)) {
+  const q = _norm(query);
+  const chosen = new Set(selected.map(t => t.key));
+  const phrase = resolvePhrase(query, domain).filter(t => !chosen.has(t.key));
+
+  const candidates = [];
+  for (const t of tagSpace(domain)) {
+    if (chosen.has(t.key)) continue;
+    if (q && !t.aliases.some(a => a.includes(q))) continue;
+    const n = tagSupply([...selected, t]);
+    if (n < TEN) continue;                      // never offer an empty room
+    candidates.push({ tag: t, n, exact: t.aliases.some(a => a.startsWith(q)) });
+    if (candidates.length > 400) break;
+  }
+  candidates.sort((a, b) => (b.exact - a.exact) || (b.n - a.n));
+  return { phrase, candidates: candidates.slice(0, 12) };
+}
+
 /* A list nobody can fill is not a list. A criteria name promises ten entries
    that all satisfy it, so the criteria have to have ten to give. This gate is
    what keeps that promise honest — "Top 10 Hitchcock Thrillers" is a fine name
@@ -3217,6 +3405,11 @@ function theirTen(src) {
    on a topic you have NOT finished - so the set survives under a name that
    says what it actually is. */
 const finishedTopics = () => new Set((S.done || []).map(d => d.topicId));
+
+/* The picker's own state. `tags` holds KEYS rather than tag objects: the tag
+   space is rebuilt from the catalogue on load and an object stored in
+   localStorage would be a stale copy of one. */
+const pickState = () => (S.pick = S.pick || { q: '', tags: [] });
 
 /* What a stranger's list is FOR (Mischa, 2026-11-17: "Who is Sam, why do I
    care about his top 10, why would that make me want to make my own? We need
@@ -3705,6 +3898,7 @@ function renderYou() {
     </section>` : ''}
 
     ${done.length ? `<section class="endbar">
+      <button class="btn" data-act="pick">Start a list about&hellip;</button>
       <button class="btn ghost" data-act="discover">Other people&rsquo;s Top 10 lists</button>
     </section>` : ''}
     ${notes()}`;
@@ -3861,6 +4055,141 @@ function facts(ids) {
 
    `facts()` above survives: the topic suggester uses it, and it is the only
    thing in this file that knows what a list is ABOUT. */
+
+/* ── The picker (2026-11-18, Mischa) ──────────────────────────────────────
+   "Ppl should be able to filter and narrow down by tags, type and
+   auto-suggest and select from there to build your list, or type in free
+   text and we find tag matches to suggest list names."
+
+   One field doing both. What you type is read two ways at once:
+
+     AS A PHRASE   "disney animated movies of the 2000s" -> three tags and a
+                   named list, offered whole.
+     AS A PREFIX   "cri" -> Crime, Criminal, Organized Crime, to pick one at
+                   a time and narrow.
+
+   Reached only after a first finished list (Mischa: "Ppl should have to
+   finish their first generic favorite list first"), because choosing a
+   sub-genre before you have chosen a film is the hard part first.
+
+   EVERY NUMBER ON THIS SCREEN IS REAL. A suggestion carries the count of
+   titles behind it, and nothing that cannot reach ten is ever offered. The
+   screen's whole job is to stop somebody naming a list that cannot exist. */
+function pickTags() {
+  const space = tagSpace();
+  return (S.pick && S.pick.tags || []).map(k => space.find(t => t.key === k)).filter(Boolean);
+}
+
+function renderPicker() {
+  const q = (S.pick && S.pick.q) || '';
+  const chosen = pickTags();
+  app.className = 'wrap';
+  app.innerHTML = `
+    <div class="topbar"><h1 class="display-lg">Start a list</h1>
+      <button class="link" data-act="pickback">Done</button></div>
+    <p class="prompt">Type what it is about &mdash; a genre, a decade, a director,
+      or a whole phrase like <i>disney animated movies</i>.</p>
+    <div class="search">
+      <svg viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor"
+        stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
+      <input id="pq" type="search" autocomplete="off" value="${esc(q)}"
+        placeholder="Crime dramas, 90s sci-fi, heist thrillers&hellip;"
+        aria-label="What is your list about?">
+    </div>
+    <div id="pickresults">${pickerResults()}</div>
+    ${notes()}`;
+  dockEl.innerHTML = '';
+
+  /* The same debounce-and-restore the build screen's search uses. Re-rendering
+     on every keystroke loses the caret, and a field that jumps to the end as
+     you type is unusable - this is why only the results region is rebuilt. */
+  const qi = $('#pq');
+  if (qi) {
+    let t = null;
+    qi.oninput = () => {
+      const v = qi.value;
+      clearTimeout(t);
+      t = setTimeout(() => {
+        S.pick.q = v; save();
+        const r = $('#pickresults');
+        if (r) r.innerHTML = pickerResults();
+      }, 160);
+    };
+  }
+}
+
+function pickerResults() {
+  const q = (S.pick && S.pick.q) || '';
+  const chosen = pickTags();
+  const { phrase } = pickerSuggest(q, chosen);
+
+  /* `offered` is whatever this screen is actually putting in front of
+     somebody - the sentence they typed, or the nearest thing to it that can
+     be filled. It decides both the card and what the list underneath is for.
+
+     Getting this wrong was visible: with a near miss on screen, the narrowing
+     list still matched the raw query, found nothing, and printed "Nothing
+     with ten behind it matches that" directly beneath a card offering exactly
+     what had been asked for, minus the decade. */
+  let offered = null, lede = '', short = '';
+  if (phrase.length) {
+    const all = chosen.concat(phrase);
+    const n = tagSupply(all);
+    if (n >= TEN) { offered = all; lede = 'From what you typed'; }
+    else {
+      const near = nearestFillable(all);
+      short = `${tagsTopic(all).title} would be <b>${n} ${countWord(n)}</b>. A Top 10 needs ten.`;
+      if (near.tags.length && tagSupply(near.tags) >= TEN) {
+        offered = near.tags;
+        lede = `Without ${near.dropped.map(d => d.label).join(' or ')}`;
+      }
+    }
+  } else if (chosen.length && tagSupply(chosen) >= TEN) {
+    offered = chosen; lede = 'Your list';
+  }
+
+  // Narrow what is on offer; or, with nothing on offer, match what was typed.
+  const { candidates } = offered
+    ? pickerSuggest('', offered)
+    : pickerSuggest(q, chosen);
+
+  const chips = chosen.length ? `<div class="chips picked">${chosen.map(t =>
+    `<button class="chip on" data-pickx="${esc(t.key)}">${esc(t.label)}
+       <span class="x" aria-hidden="true">&times;</span>
+       <span class="sr">Remove</span></button>`).join('')}</div>` : '';
+
+  const shortBlock = short ? `<p class="pickshort">${short}</p>` : '';
+  const card = offered ? pickCard(offered, tagSupply(offered), lede) : '';
+
+  const narrow = candidates.length ? `<section>
+    <div class="section-head"><h2 class="section-h">${
+      offered ? 'Narrow it further' : (q ? 'Matching' : 'Popular right now')}</h2></div>
+    ${candidates.map(c => `<button class="sug-topic" data-pick="${esc(c.tag.key)}">
+      <div class="lvl">${esc(KIND_WORD[c.tag.kind] || c.tag.kind)}</div>
+      <div class="t">${esc(c.tag.label)}</div>
+      <div class="why">${c.n} ${countWord(c.n)}</div>
+    </button>`).join('')}</section>`
+    : (offered ? '' : `<section><p class="prompt">Nothing with ten behind it
+        matches that. Try fewer words.</p></section>`);
+
+  return chips + shortBlock + card + narrow;
+}
+
+const KIND_WORD = { genre: 'Genre', keyword: 'Subject', decade: 'Decade',
+  studio: 'Studio', director: 'Director', actor: 'Actor' };
+const countWord = n => `${nounFor(S.topic)}`.replace(/s$/, '') + (n === 1 ? '' : 's');
+
+/* A named, countable, startable list. The count is the promise the name
+   makes, so they are never shown apart. */
+function pickCard(tags, n, lede) {
+  const topic = tagsTopic(tags);
+  return `<section class="pickpick">
+    <div class="lvl">${esc(lede)}</div>
+    <div class="pickname">${esc(topic.title)}</div>
+    <div class="picksupply">${n} ${countWord(n)} to choose from</div>
+    <button class="btn" data-pickgo='${esc(JSON.stringify(critFromTags(tags)))}'>Make this list</button>
+  </section>`;
+}
 
 let timers = [];
 
@@ -4249,6 +4578,7 @@ function render() {
   else if (S.scene === 'other') renderOther(S.other);
   else if (S.scene === 'you') renderYou();
   else if (S.scene === 'topic') renderTopicPage(S.topicPage);
+  else if (S.scene === 'pick') renderPicker();
   else if (S.scene === 'mine') renderMine(S.mine);
   else if (S.scene === 'build') renderBuild();
   else if (S.scene === 'cut') renderCut();
@@ -4259,7 +4589,7 @@ function render() {
 }
 
 document.addEventListener('click', e => {
-  const t = e.target.closest('[data-title],[data-add],[data-deeper],[data-remove],[data-move],[data-toggle],[data-toggle-service],[data-facet],[data-facetjump],[data-higher],[data-sheet],[data-clear],[data-act],[data-topic],[data-focusnode],[data-dropfocus],[data-mapnode],[data-other],[data-mine],[data-sharemine],[data-topicpage]');
+  const t = e.target.closest('[data-title],[data-add],[data-deeper],[data-remove],[data-move],[data-toggle],[data-toggle-service],[data-facet],[data-facetjump],[data-higher],[data-sheet],[data-clear],[data-act],[data-topic],[data-focusnode],[data-dropfocus],[data-mapnode],[data-other],[data-mine],[data-sharemine],[data-topicpage],[data-pick],[data-pickx],[data-pickgo]');
   if (!t) return;
 
   if (t.dataset.clear) { e.stopPropagation(); const k = t.dataset.clear; S.filters[k] = k === 'services' ? [] : null; save(); renderBuild(); return; }
@@ -4268,6 +4598,23 @@ document.addEventListener('click', e => {
   }
   if (t.dataset.add) { addFilm(+t.dataset.add, t); return; }
   if (t.dataset.mine) { S.mine = t.dataset.mine; S.scene = 'mine'; save(); render(); return; }
+  /* Picking a tag clears the query: the tag is now a chip, and leaving the
+     words in the field would offer it again as if it had not been taken. */
+  if (t.dataset.pick) {
+    const st = pickState();
+    if (!st.tags.includes(t.dataset.pick)) st.tags.push(t.dataset.pick);
+    st.q = ''; save(); renderPicker(); return;
+  }
+  if (t.dataset.pickx) {
+    const st = pickState();
+    st.tags = st.tags.filter(k => k !== t.dataset.pickx);
+    save(); renderPicker(); return;
+  }
+  if (t.dataset.pickgo) {
+    S.topic = makeTopic(JSON.parse(t.dataset.pickgo));
+    S.tray = []; S.pick = { q: '', tags: [] };
+    S.scene = 'build'; save(); render(); return;
+  }
   /* A browse gesture opens the topic; only a CTA commits to it. The criteria
      travel in the attribute rather than an id, because a topic page can be
      opened for a topic nobody has made yet. */
@@ -4364,6 +4711,12 @@ document.addEventListener('click', e => {
       // Next visit opens on a different person's Ten.
       S.introSeen = (S.introSeen || 0) + 1;
       S.scene = 'build'; save(); render(); break;
+    /* Only after a first finished list, per Mischa 2026-11-18. The button is
+       not drawn before then, and this is the second lock in case it is. */
+    case 'pick':
+      if (!(S.done || []).length) { S.scene = 'build'; save(); render(); break; }
+      pickState(); S.scene = 'pick'; save(); render(); break;
+    case 'pickback': S.scene = (S.done || []).length ? 'you' : 'build'; save(); render(); break;
     case 'discover': S.scene = 'discover'; save(); render(); break;
     /* The Badge Case remembers where you came from, because it is reachable
        from two different places and "Done" has to mean the same thing in
@@ -4447,6 +4800,10 @@ window.theirTen = theirTen; window.listName = listName;
 window.topicTitle = topicTitle; window.topicPrompt = topicPrompt; window.makeTopic = makeTopic;
 window.supply = supply; window.offerable = offerable; window.inTopic = inTopic; window.KEY = KEY;
 window.consensusTen = consensusTen;
+window.pickerSuggest = pickerSuggest; window.tagsTopic = tagsTopic;
+window.tagSpace = tagSpace; window.tagSupply = tagSupply;
+window.resolvePhrase = resolvePhrase; window.nearestFillable = nearestFillable;
+window.offerable = offerable; window.critFromTags = critFromTags;
 window.rabbitHole = rabbitHole; window.CAT = CAT; window.renderBuild = renderBuild;
 render();
 </script>

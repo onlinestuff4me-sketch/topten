@@ -3597,6 +3597,157 @@ const DOMAIN_SPEECH = `(() => {
   check(kw.decadeLeaked.length === 0,
     `nor bare decades, which would duplicate the decade axis (${JSON.stringify(kw.decadeLeaked)})`);
 
+  /* ── The picker (2026-11-18, Mischa) ────────────────────────────────────
+     "Ppl should be able to filter and narrow down by tags, type and
+     auto-suggest and select from there to build your list, or type in free
+     text and we find tag matches to suggest list names."
+
+     One field read two ways. The checks below are the three promises it
+     makes: a typed SENTENCE becomes a named list, a typed PREFIX becomes
+     tags to pick, and NOTHING it offers is a list that cannot be filled -
+     which is the only one of the three a user would not notice being broken,
+     and the reason the screen exists. */
+  console.log('\n── The picker ───────────────────────────────────');
+
+  await page.evaluate(() => {
+    localStorage.clear(); S.seen = true; S.tipDone = true;
+    const t = window.makeTopic({ domain: 'movie' });
+    S.done = [{ topicId: t.id, title: 'Top 10 Movies of All Time', domain: 'movie',
+                ranked: CAT.slice(0, 10).map(f => f.id) }];
+    S.scene = 'you'; save(); render();
+  });
+  await page.waitForTimeout(200);
+
+  check(await page.locator('[data-act="pick"]').count() === 1,
+    'a finished list unlocks a way to start a custom one');
+  await page.locator('[data-act="pick"]').click();
+  await page.waitForTimeout(250);
+  check((await page.locator('.topbar h1').innerText()).trim() === 'Start a list',
+    'which opens the picker');
+
+  const typed = async (text) => {
+    await page.fill('#pq', text);
+    await page.waitForTimeout(320);          // the field debounces at 160ms
+    return page.evaluate(() => ({
+      name: (document.querySelector('.pickname') || {}).textContent || '',
+      supply: (document.querySelector('.picksupply') || {}).textContent || '',
+      lede: (document.querySelector('.pickpick .lvl') || {}).textContent || '',
+      short: ((document.querySelector('.pickshort') || {}).textContent || '')
+        .replace(/\s+/g, ' ').trim(),
+      narrow: [...document.querySelectorAll('.sug-topic .t')].map(e => e.textContent.trim()),
+      counts: [...document.querySelectorAll('.sug-topic .why')]
+        .map(e => Number((e.textContent.match(/\d+/) || [0])[0])),
+      nothingMatches: /Nothing with ten behind it/.test(document.body.innerText),
+    }));
+  };
+
+  // A SENTENCE becomes a named list.
+  const phrase = await typed('crime dramas');
+  check(phrase.name === 'Top 10 Crime Dramas',
+    `a typed sentence becomes a named list ("${phrase.name}")`);
+  check(/^187 movies/.test(phrase.supply),
+    `carrying the number of titles behind it ("${phrase.supply}")`);
+  check(phrase.narrow.length > 0 && !phrase.nothingMatches,
+    `and the list below offers what to add next (${phrase.narrow.slice(0, 3).join(', ')})`);
+
+  // Plurals and surnames — the two ways a sentence is written and a tag is not.
+  for (const [text, want] of [['zombie comedies', 'Top 10 Zombie Comedies'],
+                              ['heist thrillers', 'Top 10 Heist Thrillers'],
+                              ['hitchcock', 'Top 10 Hitchcock Movies'],
+                              ['90s sci-fi', 'Top 10 Sci-Fi Movies of the 90s']]) {
+    const r = await typed(text);
+    check(r.name === want, `"${text}" resolves to ${want} ("${r.name}")`);
+  }
+
+  // THE NEAR MISS, which is the common path and not an edge case.
+  const miss = await typed('disney animated movies of the 2000s');
+  check(/would be 7 movies/.test(miss.short) && /needs ten/i.test(miss.short),
+    `a sentence that cannot fill says so, with the number ("${miss.short}")`);
+  check(miss.name === 'Top 10 Disney Animated Movies',
+    `and the nearest thing that CAN fill is offered instead ("${miss.name}")`);
+  check(/2000s/.test(miss.lede),
+    `saying what was given up to get there ("${miss.lede}")`);
+  check(!miss.nothingMatches,
+    'and never "nothing matches" directly beneath a card that matched');
+
+  // A PREFIX becomes tags to pick.
+  const prefix = await typed('zom');
+  check(prefix.narrow.includes('Zombie'),
+    `a prefix offers tags to choose (${prefix.narrow.slice(0, 4).join(', ')})`);
+
+  /* THE PROMISE THAT MATTERS: nothing offered anywhere on this screen is a
+     list that cannot be filled. A picker that suggests an impossible list
+     teaches, with its very first suggestion, that its suggestions are noise. */
+  const everyOffer = await page.evaluate(() => {
+    const space = window.tagSpace('movie');
+    const out = [];
+    /* SWEPT WITH A SELECTION, which is the only state where the guard does
+       anything. The first version of this swept with nothing selected - and
+       `tagSpace` has already dropped every tag under ten, so every candidate
+       passed whatever the guard said. Deleting the guard entirely did not
+       fail the test. That is the third vacuous check this project has caught
+       by breaking the code before trusting the test.
+
+       Narrow tags are chosen on purpose: with "heist" or "zombie" selected,
+       most of the tag space intersects to nothing, so a picker that does not
+       re-check supply offers rooms that are empty. */
+    for (const seed of ['keyword:heist', 'keyword:zombie', 'studio:Walt Disney Pictures',
+                        'director:Alfred Hitchcock', 'keyword:time travel']) {
+      const tag = space.find(t => t.key === seed);
+      if (!tag) continue;
+      for (const q of ['', 'a', 'c', 'thriller', 'comedy']) {
+        for (const c of window.pickerSuggest(q, [tag], 'movie').candidates) {
+          out.push({ with: tag.label, label: c.tag.label, n: c.n,
+                     real: window.supply(window.tagsTopic([tag, c.tag], 'movie')) });
+        }
+      }
+    }
+    return out;
+  });
+  check(everyOffer.length > 40,
+    `swept ${everyOffer.length} suggestions made ON TOP of an already-narrow tag`);
+  check(everyOffer.every(o => o.n >= 10),
+    `and not one of them is a list that cannot be filled (worst: ${Math.min(...everyOffer.map(o => o.n))})`);
+  check(everyOffer.every(o => o.n === o.real),
+    'the count shown beside a tag is the count the combined list would really have');
+
+  // Picking a tag narrows, and the chip can be taken off again.
+  await page.fill('#pq', '');
+  await page.waitForTimeout(320);
+  await page.locator('.sug-topic').first().click();
+  await page.waitForTimeout(250);
+  const picked = await page.evaluate(() => ({
+    chips: document.querySelectorAll('.chips.picked .chip').length,
+    field: (document.querySelector('#pq') || {}).value,
+    card: (document.querySelector('.pickname') || {}).textContent,
+  }));
+  check(picked.chips === 1, 'picking a tag puts it on screen as a chip');
+  check(picked.field === '', 'and clears the field, because those words are spent');
+  check(/^Top 10 /.test(picked.card || ''), `with the list it now names ("${picked.card}")`);
+
+  await page.locator('.chips.picked .chip').first().click();
+  await page.waitForTimeout(250);
+  check(await page.locator('.chips.picked .chip').count() === 0,
+    'and the chip comes off again');
+
+  // And it starts the list it named.
+  await page.fill('#pq', 'heist thrillers');
+  await page.waitForTimeout(320);
+  await page.locator('[data-pickgo]').first().click();
+  await page.waitForTimeout(300);
+  const launched = await page.evaluate(() => ({
+    scene: window.S.scene,
+    title: (document.querySelector('.topbar h1') || {}).textContent.trim(),
+    tray: (window.S.tray || []).length,
+    offerable: window.offerable(window.S.topic),
+  }));
+  check(launched.scene === 'build' && launched.title === 'Top 10 Heist Thrillers',
+    `"Make this list" opens the build screen on that root ("${launched.title}")`);
+  check(launched.tray === 0, 'with an empty tray');
+  check(launched.offerable, 'and a root that really has ten to give');
+  await noBritishSpelling('the picker');
+  await noJargon('the picker');
+
   /* ── Every list in the pool is one the wall can actually carry ──────────
      The wall shows four of six, and which four rotates per visit, so four of
      them are never on the first screen anybody sees. A rule that happens to

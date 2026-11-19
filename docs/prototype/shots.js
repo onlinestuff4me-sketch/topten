@@ -183,6 +183,16 @@ const SCREENS = {
     },
   },
 
+  picker: {
+    what: 'Start a list — type a phrase or narrow by tags',
+    seed: (h) => {
+      eval(h.prep); const makeDone = eval(h.makeDone);
+      S.done = [makeDone({ domain: 'movie' })];
+      S.pick = { q: 'disney animated movies of the 2000s', tags: [] };
+      S.scene = 'pick'; save(); render();
+    },
+  },
+
   badges: {
     what: 'a sheet of badges across topics — the system, not one screen',
     dark: true,

@@ -870,8 +870,32 @@ with a single title."*
    **from a single title** (search or browse to a film, and the app offers
    the roots that film belongs to).
 
-**Built so far:** roots as tag sets, the namer, and the fillability rule.
-**Not built:** the picker, and the start-from-a-title path. Measured root
+**Built 2026-11-18/19:** roots as tag sets, the namer, the fillability rule,
+the keyword axis, and **the picker**.
+
+**16. The picker.** One field, read two ways at once. A typed *sentence*
+resolves to tags and is offered as a named list; a typed *prefix* offers tags
+to pick one at a time and narrow. Both run over one index, so they cannot
+disagree about what a phrase means.
+
+- **Nothing unfillable is ever offered.** Every candidate is checked against
+  the current selection, not just against the catalogue.
+- **A near miss is stated, with the number, and answered.** *"Top 10 Disney
+  Animated Movies of the 2000s would be 7 movies. A Top 10 needs ten."* —
+  then the nearest root that fills, labelled with what was given up
+  (*Without 2000s*). This is the common path, not an edge case: studio tags
+  cover 21% of titles.
+- **A decade is the relaxable tag.** When a set cannot fill, the decade goes
+  first and only then the broadest remaining tag — it is a slice of a
+  subject, where everything else IS the subject.
+- **Plurals and surnames resolve.** People write *crime dramas* and
+  *hitchcock*; tags are *Crime*, *Drama*, *Alfred Hitchcock*.
+- Acceptance: a sentence becomes a named list with its real supply; a prefix
+  offers tags; no suggestion anywhere can fail to fill; "Make this list"
+  opens the build screen on that root.
+
+**Not built:** the start-from-a-title path (pick a film, be offered the roots
+it belongs to). Measured root
 space and the data limits are in `docs/list-mechanics.md` — 87 one-tag and
 423 two-tag roots can be filled today; studio tags cover 21% of titles, and
 TMDB keywords (*procedural*, *heist*) are not fetched at all.

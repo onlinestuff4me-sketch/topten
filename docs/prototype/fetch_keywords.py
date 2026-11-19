@@ -68,7 +68,22 @@ HERE = pathlib.Path(__file__).parent
 #                 has a `director` axis. A list of films by women directors is
 #                 a fine thing to want; it should come from that axis, named
 #                 deliberately, not from a tag that happens to be in the data.
+# Read the 512 single-word tags that reach ten titles and the mood cluster is
+# unmistakable — TMDB tags how a film FEELS as well as what it is about, and
+# the two live in one namespace. These are the ones that surfaced in a
+# type-ahead for "cri" and "tim": Critical, Intimate, Time. A picker that
+# offers "Top 10 Critical Movies" has taught the user that its suggestions
+# are noise before they have made anything.
+#
+# The line is drawn at SUBJECT vs TONE, and it is not always obvious:
+#   satire   kept    — a thing a film IS about
+#   satirical blocked — how it feels
+#   romantic kept    — "Top 10 Romantic Movies" is a list people want
+#   gothic   kept    — a style with a canon
+#   macabre  kept    — same
+#   mysterious blocked — "Top 10 Mysterious Movies" is not a list
 MOOD = {
+    # the obvious emotional register
     "amused", "intense", "suspenseful", "excited", "dramatic", "bold",
     "hilarious", "absurd", "admiring", "aggressive", "audacious",
     "enthusiastic", "awestruck", "cheerful", "adoring", "inspirational",
@@ -80,6 +95,22 @@ MOOD = {
     "gripping", "chilling", "heartwarming", "uplifting", "bleak", "quirky",
     "charming", "moving", "disturbing", "unsettling", "exhilarating",
     "poignant", "sombre", "somber", "wistful", "euphoric", "dreamy",
+    # the rest of the cluster, read off the 512 single-word fillable tags
+    "ambivalent", "apologetic", "assertive", "baffled", "bewildered",
+    "biting", "bitter", "blunt", "callous", "calm", "candid", "celebratory",
+    "comforting", "commanding", "complicated", "critical", "cruel",
+    "curious", "cynical", "defiant", "depressing", "desperate", "dignified",
+    "distressing", "disturbed", "dreary", "earnest", "exhilarated",
+    "exuberant", "familiar", "farcical", "forceful", "foreboding", "frantic",
+    "frustrated", "grand", "grim", "harsh", "horrified", "incredulous",
+    "informative", "intimate", "introspective", "joyous", "loving",
+    "meditative", "melodramatic", "mischievous", "mysterious", "ominous",
+    "optimistic", "paranoid", "provocative", "questioning", "reflective",
+    "ridiculous", "satirical", "serious", "sincere", "sinister",
+    "sympathetic", "zealous", "horrifying", "touching", "rousing",
+    # too vague to name a list, whatever they were tagged for
+    "time", "general", "individual", "affectation", "enchant", "cliché",
+    "cliche", "unsociability", "questioning",
 }
 PIPELINE = {"duringcreditsstinger", "aftercreditsstinger", "woman director"}
 
