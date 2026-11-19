@@ -85,9 +85,16 @@ Of the three offers:
   ```
 
   **No list anybody makes in this app moves that number.** It is the
-  catalogue's popularity wearing the word "now". Renamed to **"From recent
-  releases"** today (2026-11-19), which is what it measures. The honest version
-  of trending needs data we do not have yet — see §5.
+  catalogue's popularity wearing the word "now".
+
+  In fairness to the original: the code comment above it already said the row
+  was a stand-in, and the reasoning there explicitly refused to invent
+  activity counts — *"the label says 'Rising now' and never 'N people made
+  this today'"*. That instinct was right and the execution still leaked.
+  Refusing to invent the number and then labelling it as something else only
+  moves the invention into the heading. Renamed to **"From recent releases"**
+  on 2026-11-19, which is exactly what the sum measures. The honest version of
+  trending needs data we do not have yet — see §5.
 
 ---
 

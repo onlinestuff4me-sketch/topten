@@ -3599,12 +3599,22 @@ function claimFor(t) {
    that, computed rather than invented, so what is being judged is the
    mechanism and not a mock-up.
 
-   RISING IS A STAND-IN AND SAYS SO. In the product it is other people's
+   THIS ROW IS A STAND-IN AND SAYS SO. In the product it is other people's
    activity. There are no other people yet, and inventing counts is the thing
-   the seed-source decision of this same morning refused to do, so it is
-   derived from the one thing that IS real here: titles that are both recent
-   and widely rated. The label says "Rising now" and never "N people made
-   this today". See prd.md for what replaces it when there is a database. */
+   the seed-source decision refused to do, so it is derived from the one thing
+   that IS real here: titles that are both recent and widely rated. The label
+   has never said "N people made this today".
+
+   Amended 2026-11-19. It said "Rising now", which was a smaller version of
+   the same invention: not a fabricated count, but a fabricated TENSE. Nothing
+   anybody does in this app moves that number — it is the summed TMDB vote
+   count of films released in the last four years, which is the catalogue's
+   popularity wearing the word "now". The label is now "From recent releases",
+   which is exactly what the sum below measures. Refusing to invent the number
+   and then labelling it as something else only moves the invention into the
+   heading. See `docs/app-structure.md` for the four rows that replace this
+   when there is a database, and which of them the database still cannot
+   answer. */
 
 const WEEK_MS = 6048e5;
 const dayNumber = (d = new Date()) => Math.floor(
