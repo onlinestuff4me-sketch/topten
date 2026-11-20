@@ -35,7 +35,7 @@ ol, ul { list-style: none; margin: 0; padding: 0; }
 .wrap {
   max-width: 560px; margin-inline: auto;
   padding: calc(env(safe-area-inset-top) + var(--s4)) var(--margin)
-           calc(var(--dock-h, 168px) + var(--s8)) var(--margin);
+           calc(var(--dock-h, 168px) + var(--tabs-h, 0px) + var(--s8)) var(--margin);
 }
 
 .display-lg { font-family: var(--serif); font-weight: 600; font-size: 1.875rem; line-height: 1.16; letter-spacing: -0.015em; margin: 0; }
@@ -325,6 +325,58 @@ section { margin-top: var(--s8); }
 .trail > span:first-child { text-transform: uppercase; letter-spacing: .04em; font-weight: 700; font-size: 0.6875rem; }
 .trail button { color: var(--accent); font-weight: 600; min-height: 32px; }
 .trail button:last-of-type { color: var(--text-secondary); }
+
+/* ── The tab bar (2026-11-20, Mischa — "Yes to tabs") ──────────────────────
+   Two destinations, because there are two jobs and Mischa numbered them as
+   peers: making and sharing your lists, and browsing other people's. Create
+   is NOT a tab — a tab is a place you can be, and creating is something you
+   finish and leave — so it sits in the toolbar of both roots, which is where
+   Notes and Reminders put "new".
+
+   It is a sibling of #app rather than part of any screen, so it survives the
+   innerHTML replacement every render does, and no screen has to know it is
+   there beyond leaving room at the bottom.
+
+   NOT shown during the making flow. The build screen already owns the bottom
+   of the window with the dock, and stacking two bars there is how a phone
+   runs out of screen; the cut, the duel and the reveal are ceremonies. Those
+   screens get a non-destructive way out instead — see `leavebuild`. */
+.tabs { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
+  background: color-mix(in srgb, var(--bg-base) 82%, transparent);
+  backdrop-filter: blur(20px) saturate(140%); -webkit-backdrop-filter: blur(20px) saturate(140%);
+  border-top: 1px solid var(--border-subtle);
+  padding-bottom: env(safe-area-inset-bottom); }
+@media (prefers-reduced-transparency: reduce) {
+  .tabs { background: var(--bg-surface); backdrop-filter: none; -webkit-backdrop-filter: none; } }
+.tabs-in { max-width: 560px; margin-inline: auto; display: grid; grid-auto-flow: column;
+  grid-auto-columns: 1fr; }
+.tabs .t { display: grid; justify-items: center; gap: 3px; padding: var(--s2) var(--s1) var(--s2);
+  min-height: 52px; background: none; border: 0; cursor: pointer;
+  color: var(--text-secondary); font-size: 0.6875rem; font-weight: 600;
+  transition: color var(--m-press) var(--ease-out); }
+.tabs .t[aria-current="page"] { color: var(--accent); }
+.tabs .t svg { width: 23px; height: 23px; display: block; }
+.tabs .t .glyph { stroke: currentColor; fill: none; stroke-width: 5;
+  stroke-linecap: round; stroke-linejoin: round;
+  transition: stroke-width var(--m-press) var(--ease-out); }
+.tabs .t[aria-current="page"] .glyph { stroke-width: 7; }
+@media (prefers-reduced-motion: reduce) { .tabs .t, .tabs .t .glyph { transition: none; } }
+
+/* The draft, kept in reach. iOS 26 puts an in-progress thing in the tab
+   view's bottom accessory — the slot Music uses for now-playing — which is
+   the platform's own answer to "where did my list go". Before this, a
+   half-finished Ten lived on the build screen and the only way off that
+   screen destroyed it. */
+.draftbar { max-width: 560px; margin-inline: auto; display: flex; align-items: center;
+  gap: var(--s3); width: 100%; padding: var(--s2) var(--margin);
+  background: none; border: 0; border-bottom: 1px solid var(--border-subtle);
+  cursor: pointer; text-align: left; min-height: 48px; }
+.draftbar .dot { width: 8px; height: 8px; border-radius: 50%; background: var(--accent); flex: none; }
+.draftbar .what { min-width: 0; flex: 1; }
+.draftbar .nm { font-family: var(--serif); font-weight: 600; font-size: 0.9375rem;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.draftbar .n { font-size: 0.75rem; color: var(--text-secondary); }
+.draftbar .go { font-size: 0.8125rem; font-weight: 600; color: var(--accent); flex: none; }
 
 /* ── The dock: ten slots, always visible ────────────────────────────────── */
 .dock { position: fixed; left: 0; right: 0; bottom: 0; z-index: 30;
@@ -1092,6 +1144,7 @@ footer.notes .build { color: var(--text-secondary); margin-top: var(--s2); }
 <body>
 <div id="app" class="wrap"></div>
 <div id="dock"></div>
+<nav id="tabs" aria-label="Main"></nav>
 <div id="sheets"></div>
 <div id="live" class="sr" aria-live="polite"></div>
 
@@ -1114,7 +1167,8 @@ footer.notes .build { color: var(--text-secondary); margin-top: var(--s2); }
 const IMG = 'https://image.tmdb.org/t/p/';
 const $ = (s, r = document) => r.querySelector(s);
 const $$ = (s, r = document) => [...r.querySelectorAll(s)];
-const app = $('#app'), dockEl = $('#dock'), sheetsEl = $('#sheets'), live = $('#live');
+const app = $('#app'), dockEl = $('#dock'), tabsEl = $('#tabs'),
+      sheetsEl = $('#sheets'), live = $('#live');
 /* Artwork, in one place. Films and shows are TMDB paths that only mean
    something concatenated onto TMDB's CDN; books are not on TMDB at all and
    carry their own URL in `img`. Every call site asks this instead of building
@@ -1232,6 +1286,7 @@ function fresh(topic = TOPIC_ALL) {
     graph: { nodes: {}, roots: [], focus: null },
     filters: { services: [], genre: null, director: null, actor: null, studio: null },
     region: guessRegion(), keep: [], ranked: [], rank: null, comparisons: 0,
+    tab: 'browse',    // which tab bar destination is current
     done: [],         // every Ten finished this session, in order
     tipDone: false    // the services coach mark, dismissed once and for good
   };
@@ -1939,6 +1994,8 @@ function renderBuild() {
   app.innerHTML = `
     <div class="topbar">
       <h1 class="display-lg fitline">${esc(S.topic.title)}</h1>
+      ${(S.done || []).length
+        ? `<button class="link" data-act="leavebuild">Back</button>` : ''}
     </div>
 
     <div class="stickybar">
@@ -3762,7 +3819,9 @@ function whatsNext() {
 function renderDiscover() {
   const tens = SOURCES.map(theirTen).filter(t => t.ranked.length === 10);
   app.innerHTML = `
-    <div class="topbar"><h1 class="display-lg">Other Top 10 Lists</h1><button class="link" data-act="backhome">Done</button></div>
+    <div class="topbar"><h1 class="display-lg">Other Top 10 Lists</h1>${(S.done || []).length
+      ? `<button class="link" data-act="pick">Start a list</button>`
+      : `<button class="link" data-act="backhome">Done</button>`}</div>
     ${whatsNext()}
     ${tens.map((t, i) => {
       const who = esc(t.src.label), topic = esc(t.src.topic.title);
@@ -3796,7 +3855,8 @@ function renderDiscover() {
          argument: these are theirs, and that button is yours. It costs the
          topbar nothing, which a second link up there would not. -->
     <section class="endbar">
-      <button class="btn ghost" data-act="opencase">Your own Top 10s</button>
+      ${(S.done || []).length ? '' :
+        `<button class="btn ghost" data-act="opencase">Your own Top 10s</button>`}
     </section>
     ${notes()}`;
   dockEl.innerHTML = '';
@@ -3957,7 +4017,9 @@ function renderYou() {
 
   app.innerHTML = `
     <div class="topbar"><h1 class="display-lg">You</h1>
-      <button class="link" data-act="youback">Done</button></div>
+      ${(S.done || []).length
+        ? `<button class="link" data-act="pick">Start a list</button>`
+        : `<button class="link" data-act="youback">Done</button>`}</div>
     <p class="prompt">${done.length
       ? `${countNoun(done.length, S.topic).replace(/[a-z]+$/, done.length === 1 ? 'list' : 'lists')} finished, ${have} of ${got.length} badges earned.`
       : 'Nothing here yet. The first list takes about two minutes.'}</p>
@@ -3999,8 +4061,9 @@ function renderYou() {
     </section>` : ''}
 
     ${done.length ? `<section class="endbar">
-      <button class="btn" data-act="pick">Start a list about&hellip;</button>
-      <button class="btn ghost" data-act="discover">Other people&rsquo;s Top 10 lists</button>
+      ${(S.done || []).length ? '' :
+        `<button class="btn" data-act="pick">Start a list about&hellip;</button>
+         <button class="btn ghost" data-act="discover">Other people&rsquo;s Top 10 lists</button>`}
     </section>` : ''}
     ${notes()}`;
   dockEl.innerHTML = '';
@@ -4711,6 +4774,65 @@ function renderTitle(id) {
   window.scrollTo(0, 0);
 }
 
+/* Which tab a scene belongs to, and which scenes carry the bar at all.
+
+   A scene NOT in this map is one of the focused ones — the splash, the cut,
+   the duel, the reveal, the build screen — where chrome would compete with
+   the task or with the dock. */
+const TAB_OF = {
+  discover: 'browse', topic: 'browse', other: 'browse', title: 'browse',
+  you: 'yours', mine: 'yours', pick: 'yours', done: 'yours',
+};
+const TAB_GLYPH = {
+  // Four cards: other people's lists. Stroke only — a fill at 22px closes up
+  // the interior detail and the glyph reads as a blob.
+  browse: '<rect class="glyph" x="16" y="16" width="27" height="27" rx="6"/>'
+        + '<rect class="glyph" x="53" y="16" width="27" height="27" rx="6"/>'
+        + '<rect class="glyph" x="16" y="53" width="27" height="27" rx="6"/>'
+        + '<rect class="glyph" x="53" y="53" width="27" height="27" rx="6"/>',
+  yours: '<circle class="glyph" cx="48" cy="33" r="15"/>'
+       + '<path class="glyph" d="M19 81c0-16 13-26 29-26s29 10 29 26"/>',
+};
+
+/* The draft: a tray with something in it, on a topic not yet finished. */
+function draftNow() {
+  const n = (S.tray || []).length;
+  if (!n || !S.topic) return null;
+  const finished = new Set((S.done || []).map(d => d.topicId));
+  return finished.has(S.topic.id) ? null : { n, title: S.topic.title };
+}
+
+function renderTabs() {
+  /* Gated on the first finished list, per the locked order of play: until
+     you have made one, the app is a single job and a tab bar would be
+     furniture around an empty room. */
+  const tab = TAB_OF[S.scene];
+  if (!tab || !(S.done || []).length) {
+    tabsEl.innerHTML = '';
+    document.documentElement.style.setProperty('--tabs-h', '0px');
+    return;
+  }
+  const draft = draftNow();
+  const t = (key, label) => `<button class="t" data-act="tab${key}"
+      ${S.tab === key ? 'aria-current="page"' : ''}>
+      <svg viewBox="0 0 96 96" aria-hidden="true">${TAB_GLYPH[key]}</svg>
+      <span>${label}</span></button>`;
+  tabsEl.innerHTML = `<div class="tabs">
+    ${draft ? `<button class="draftbar" data-act="resumedraft">
+      <span class="dot" aria-hidden="true"></span>
+      <span class="what"><span class="nm">${esc(draft.title)}</span>
+        <span class="n">${draft.n} of ten picked</span></span>
+      <span class="go">Resume</span></button>` : ''}
+    <div class="tabs-in">${t('browse', 'Browse')}${t('yours', 'Yours')}</div>
+  </div>`;
+  /* A tabbed screen never has a dock, and --dock-h holds whatever the build
+     screen last measured — so clear it, or the page reserves room for two
+     bars and shows one. */
+  document.documentElement.style.setProperty('--dock-h', '0px');
+  const el = $('.tabs', tabsEl);
+  document.documentElement.style.setProperty('--tabs-h', (el ? el.offsetHeight : 0) + 'px');
+}
+
 function render() {
   $$('.vault').forEach(v => v.remove());
   closeMap();
@@ -4729,6 +4851,7 @@ function render() {
   else if (S.scene === 'reveal') renderReveal();
   else if (S.scene === 'done') renderFinished();
   else if (S.scene === 'title') renderTitle(S.title);
+  renderTabs();
 }
 
 document.addEventListener('click', e => {
@@ -4865,6 +4988,18 @@ document.addEventListener('click', e => {
       pickState(); S.scene = 'pick'; save(); render(); break;
     case 'pickfilmback': pickState().film = null; save(); renderPicker(); break;
     case 'pickback': S.scene = (S.done || []).length ? 'you' : 'build'; save(); render(); break;
+    case 'tabbrowse': S.tab = 'browse'; S.scene = 'discover'; save(); render(); break;
+    case 'tabyours':  S.tab = 'yours';  S.scene = 'you';      save(); render(); break;
+    case 'resumedraft': S.scene = 'build'; save(); render(); break;
+    /* Leaving the build screen WITHOUT destroying the draft. Until today its
+       only exits were `restart`, which throws the tray away, and two sheets —
+       the screen a person spends the most time on had no way out that kept
+       their work. The draft bar above the tab bar is where it went. */
+    case 'leavebuild':
+      S.scene = S.tab === 'browse' ? 'discover' : 'you';
+      save(); render();
+      if (draftNow()) announce(`Draft kept. ${(S.tray || []).length} of ten picked.`);
+      break;
     case 'discover': S.scene = 'discover'; save(); render(); break;
     /* The Badge Case remembers where you came from, because it is reachable
        from two different places and "Done" has to mean the same thing in

@@ -416,6 +416,39 @@ or Tenet. A rabbit hole into a director is worthless if their work is missing,
 so the build now pulls the fuller filmography of every director who appears
 more than once. 220 films became 620.
 
+## The tab bar and the draft accessory (2026-11-20)
+
+Two destinations, `Browse` and `Yours`, as a fixed bar at the bottom. It is a
+**sibling of `#app`**, not part of any screen, so it survives the `innerHTML`
+replacement every render does and no screen has to know it is there beyond
+leaving room at the bottom.
+
+- **Glass like the dock**: `color-mix(in srgb, var(--bg-base) 82%, transparent)`
+  with a 20px blur, dropping to a solid `--bg-surface` under
+  `prefers-reduced-transparency`. These are scheme-following tokens and the bar
+  is scheme-following chrome, so they are correct here — unlike on the wall or
+  the splash, which are always dark and take `--vault-*`.
+- **Glyphs are stroke-only, never filled.** The first pair filled the active
+  glyph at 18% accent, and at 22px the fill closed up the interior detail — a
+  house glyph's door became a muddy square. The current tab is said by
+  **colour** (`--accent` against `--text-secondary`) and by **stroke weight**
+  (5 → 7), which both survive being small.
+- **Browse is four cards, not a house.** The tab is other people's lists, and a
+  house means "home", which is not what it opens.
+- Minimum height 52px, and the bar is in the 44pt sweep via the You screen.
+- `--tabs-h` is measured after render and added to `.wrap`'s bottom padding
+  beside `--dock-h`. **`renderTabs()` also zeroes `--dock-h`**, because a
+  tabbed screen never has a dock and `--dock-h` otherwise holds whatever the
+  build screen last measured — the page would reserve room for two bars and
+  show one.
+
+**The draft accessory** sits directly above the bar, borrowing iOS 26's
+`tabViewBottomAccessory` slot — the one Music uses for now-playing. A dot in
+`--accent`, the list's name, `N of ten picked`, and `Resume`. It appears only
+when the tray has something in it on a topic not yet finished, and it is the
+answer to "where did my list go": before it existed, the only way off the build
+screen destroyed the draft.
+
 ## Copy may not name a system the app no longer has (2026-11-19, Claude)
 
 A sibling of the rule below, and the same shape of fault: not a competing word

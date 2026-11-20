@@ -3486,6 +3486,155 @@ const DOMAIN_SPEECH = `(() => {
      could not be named, matched or filled. These check the three things the
      whole model rests on: a set MATCHES as a set, it is NAMED in English, and
      two people who reach the same set by different routes get the same root. */
+  /* ── The tab bar (2026-11-20, Mischa — "Yes to tabs") ────────────────────
+     `docs/app-structure.md` measured the fault these replace: the app's home
+     was `(S.done||[]).length ? 'done' : 'build'` — a receipt — each core job
+     was a button on the other job's screen, and the build screen's only exits
+     were two sheets and `restart`, which throws the draft away.
+
+     These checks hold the three claims: the bar is gated on the first list,
+     it is absent from the making flow, and no screen is a dead end. */
+  console.log('\n── Two tabs, and no dead ends ───────────────────');
+
+  const seedDone = (n = 1) => page.evaluate(count => {
+    localStorage.clear(); S.seen = true; S.tipDone = true; S.tray = [];
+    const crit = [{ genre: 'Crime', decade: 1990 }, { domain: 'tv', genre: 'Drama' }];
+    S.done = crit.slice(0, count).map(c => {
+      const t = window.makeTopic(c);
+      const ten = CAT.filter(f => window.inTopic(f, t))
+        .sort((a, b) => (b.vc || 0) - (a.vc || 0)).slice(0, 10);
+      return { topicId: t.id, title: window.listName(ten, t), domain: t.domain,
+               ranked: ten.map(f => f.id) };
+    });
+    S.tab = 'browse'; S.scene = 'discover'; save(); render();
+  }, n);
+
+  // BEFORE the first list there is no bar, per the locked order of play.
+  await page.evaluate(() => {
+    localStorage.clear(); S.seen = true; S.tipDone = true; S.done = [];
+    S.scene = 'discover'; save(); render();
+  });
+  await page.waitForTimeout(250);
+  check(await page.locator('#tabs .tabs').count() === 0,
+    'before the first finished list there is no tab bar — the app is one job');
+
+  await seedDone(1);
+  await page.waitForTimeout(250);
+  check(await page.locator('#tabs .tabs').count() === 1,
+    'after one, the bar is there');
+  check(await page.locator('#tabs .t').count() === 2,
+    `with exactly two destinations (${await page.locator('#tabs .t').count()})`);
+
+  /* WHERE IT SHOWS, AND WHERE IT MUST NOT. The build screen already owns the
+     bottom of the window with the dock; the cut, the duel and the reveal are
+     ceremonies. Two bars stacked is how a phone runs out of screen. */
+  const barOn = async (scene, fn) => {
+    await page.evaluate(fn);
+    await page.waitForTimeout(260);
+    return page.evaluate(() => ({
+      bar: document.querySelectorAll('#tabs .tabs').length,
+      dock: document.querySelectorAll('#dock .dock').length,
+    }));
+  };
+  const onDest = await barOn('discover', () => { S.scene = 'discover'; save(); render(); });
+  const onYou = await barOn('you', () => { S.scene = 'you'; save(); render(); });
+  const onBuild = await barOn('build', () => {
+    S.topic = window.makeTopic({ genre: 'Western' }); S.tray = CAT.slice(0, 4).map(f => f.id);
+    S.scene = 'build'; save(); render();
+  });
+  const onDuel = await barOn('rank', () => { S.scene = 'reveal'; save(); render(); });
+  check(onDest.bar === 1 && onYou.bar === 1, 'on both destinations');
+  check(onBuild.bar === 0 && onBuild.dock === 1,
+    'never on the build screen, which already has the dock down there');
+  check(onDuel.bar === 0, 'and never over a ceremony');
+
+  // Each tab reaches its own root.
+  await seedDone(1);
+  await page.waitForTimeout(220);
+  await page.locator('[data-act="tabyours"]').click();
+  await page.waitForTimeout(260);
+  const atYours = await page.evaluate(() => ({ scene: S.scene, tab: S.tab,
+    current: (document.querySelector('#tabs .t[aria-current="page"]') || {}).innerText }));
+  check(atYours.scene === 'you' && /Yours/.test(atYours.current || ''),
+    'Yours opens your own page, and the bar says which one you are on');
+  await page.locator('[data-act="tabbrowse"]').click();
+  await page.waitForTimeout(260);
+  check(await page.evaluate(() => S.scene) === 'discover', 'Browse opens other people’s');
+
+  /* CREATE IS ONE TAP FROM EITHER ROOT, and it is an ACTION rather than a
+     tab — a tab is a place you can be. Measured before this change: two taps,
+     through a screen about yourself, and `data-act="pick"` appeared exactly
+     once in the whole app. */
+  for (const [where, act] of [['Browse', 'tabbrowse'], ['Yours', 'tabyours']]) {
+    await page.locator(`[data-act="${act}"]`).click();
+    await page.waitForTimeout(240);
+    const start = page.locator('.topbar [data-act="pick"]');
+    check(await start.count() === 1, `${where} carries Start a list in its toolbar`);
+    await start.click();
+    await page.waitForTimeout(260);
+    check(await page.evaluate(() => S.scene) === 'pick', `  and one tap opens it`);
+  }
+
+  /* THE TRAP, AND THE WAY OUT. A draft has to survive leaving the screen it
+     was made on, or the only exit is the one that destroys it. */
+  await seedDone(1);
+  await page.evaluate(() => {
+    S.topic = window.makeTopic({ genre: 'Western' });
+    S.tray = CAT.filter(f => window.inTopic(f, S.topic)).slice(0, 6).map(f => f.id);
+    S.scene = 'build'; save(); render();
+  });
+  await page.waitForTimeout(280);
+  const exits = await page.evaluate(() =>
+    [...new Set([...document.querySelectorAll('[data-act]')].map(e => e.dataset.act))]);
+  check(exits.includes('leavebuild'),
+    `the build screen has a way out that keeps the draft (${exits.join(', ')})`);
+  await page.locator('[data-act="leavebuild"]').click();
+  await page.waitForTimeout(300);
+  const left = await page.evaluate(() => ({
+    scene: S.scene, kept: (S.tray || []).length,
+    draftbar: document.querySelectorAll('.draftbar').length,
+    says: (document.querySelector('.draftbar .n') || {}).textContent || '',
+    name: (document.querySelector('.draftbar .nm') || {}).textContent || '',
+  }));
+  check(left.scene !== 'build' && left.kept === 6,
+    `taking it leaves the screen with all six picks intact (${left.kept})`);
+  check(left.draftbar === 1 && /6 of ten/.test(left.says),
+    `and the draft is in reach above the tab bar ("${left.name.trim()} — ${left.says.trim()}")`);
+  await page.locator('[data-act="resumedraft"]').click();
+  await page.waitForTimeout(280);
+  check(await page.evaluate(() => S.scene === 'build' && (S.tray || []).length === 6),
+    'and one tap picks it back up where it was');
+
+  /* A finished list has no draft, so the bar must not advertise one. */
+  await seedDone(2);
+  await page.waitForTimeout(240);
+  check(await page.locator('.draftbar').count() === 0,
+    'with nothing in progress the draft bar is not there at all');
+
+  /* THE WHOLE POINT, stated as one check: from every screen that carries the
+     bar you can reach both jobs. Before this change `data-act="you"` appeared
+     once in the app and it was a Back link. */
+  const DESTS = [
+    ['discovery', () => { S.scene = 'discover'; save(); render(); }],
+    ['your page', () => { S.scene = 'you'; save(); render(); }],
+    ['one of your own', () => { S.mine = S.done[0].topicId; S.scene = 'mine'; save(); render(); }],
+    ['a topic page', () => { S.topicPage = { genre: 'Crime', decade: 1990 };
+                             S.topicBack = 'discover'; S.scene = 'topic'; save(); render(); }],
+    ['somebody else’s', () => { S.other = 0; S.scene = 'other'; save(); render(); }],
+    ['the picker', () => { S.scene = 'pick'; save(); render(); }],
+  ];
+  let reachable = 0;
+  for (const [, fn] of DESTS) {
+    await page.evaluate(fn);
+    await page.waitForTimeout(240);
+    const both = await page.evaluate(() =>
+      document.querySelectorAll('[data-act="tabbrowse"]').length === 1 &&
+      document.querySelectorAll('[data-act="tabyours"]').length === 1);
+    if (both) reachable++;
+  }
+  check(reachable === DESTS.length,
+    `both jobs are one tap from every destination (${reachable}/${DESTS.length})`);
+
   console.log('\n── Roots are sets of tags ───────────────────────');
 
   const roots = await page.evaluate(() => {

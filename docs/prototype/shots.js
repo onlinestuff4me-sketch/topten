@@ -214,6 +214,21 @@ const SCREENS = {
     },
   },
 
+  draft: {
+    what: 'the draft in reach — the tab bar carrying an unfinished Ten',
+    viewport: true,
+    seed: (h) => {
+      eval(h.prep); const makeDone = eval(h.makeDone);
+      S.done = h.three.slice(0, 2).map(makeDone);
+      /* Six of ten on a topic not yet finished: the state that had no home
+         before 2026-11-20, when the only way off the build screen threw it
+         away. */
+      S.topic = window.makeTopic({ genre: 'Western' });
+      S.tray = CAT.filter(f => window.inTopic(f, S.topic)).slice(0, 6).map(f => f.id);
+      S.tab = 'browse'; S.scene = 'discover'; save(); render();
+    },
+  },
+
   badges: {
     what: 'the ten achievements, earned and not, with every condition stated',
     seed: (h) => {
@@ -351,7 +366,12 @@ async function capture(browser, name, { light, motion }) {
     await settleImages(page);
     const art = await artworkReport(page);
     const out = `${stem}.jpg`;
-    await page.screenshot({ path: out, type: 'jpeg', quality: 86, fullPage: true });
+    /* `viewport: true` for a screen whose point is chrome fixed to the bottom
+       of the window. A full-page shot of a fixed element photographs it at
+       whatever scroll position it occupied, which puts the tab bar in the
+       MIDDLE of a tall image — technically correct and useless to review. */
+    await page.screenshot({ path: out, type: 'jpeg', quality: 86,
+      fullPage: !S.viewport });
     await ctx.close();
     return { out, art };
   }

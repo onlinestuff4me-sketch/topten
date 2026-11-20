@@ -927,6 +927,78 @@ space and the data limits are in `docs/list-mechanics.md` — 87 one-tag and
 423 two-tag roots can be filled today; studio tags cover 21% of titles, and
 TMDB keywords (*procedural*, *heist*) are not fetched at all.
 
+**18. Two tabs, and create is an action (decided 2026-11-20, Mischa — "Yes to
+tabs"; built the same day).** The app has two destinations, because it has two
+jobs and Mischa numbered them as peers: **Browse** (other people's Top 10s) and
+**Yours** (your lists and your badges). Browse is the launch tab once you have
+finished your first list — the app has to be worth opening on a day you have
+nothing to say.
+
+**Create is not a tab.** A tab is a place you can *be*; creating is something
+you finish and leave. "Start a list" sits in the toolbar of both roots, which
+is where Notes and Reminders put "new", and makes starting a list **one tap
+from every destination**.
+
+*Reasoning, measured in `docs/app-structure.md` before any of this was built:*
+the app's home was `(S.done||[]).length ? 'done' : 'build'` — the celebration
+screen of your last list, a receipt. Each core job was a button on the other
+job's screen and neither was anywhere. Starting a list took two taps through a
+screen about yourself. Those cross-links are now deleted; the tab bar is where
+they lived.
+
+**The bar is gated on the first finished list**, per the locked order of play —
+until then the app is one job and the chrome would be furniture around an empty
+room. **It is absent from the making flow**: the build screen already owns the
+bottom of the window with the dock, and the cut, the duel and the reveal are
+ceremonies. Stacking two bars is how a phone runs out of screen.
+
+**A draft survives leaving the screen it was made on.** Before this, the build
+screen's only exits were two sheets and `restart`, which throws the tray away —
+the screen a person spends the most time on had no way out that kept their
+work. It now has a Back that keeps it, and the draft sits above the tab bar in
+iOS 26's bottom-accessory slot (the one Music uses for now-playing): *"Top 10
+Westerns · 6 of ten picked · Resume"*.
+
+*Acceptance:* no tab bar before the first finished list, and one after; two
+destinations, never three; absent on build, cut, rank and reveal; both tabs
+reach their root and the bar says which you are on; "Start a list" in the
+toolbar of both roots, one tap to the picker; leaving the build screen keeps
+every pick and puts the draft in the accessory, one tap to resume; and from
+every screen that carries the bar, **both jobs are one tap away**. Eighteen
+checks in `drive.js` ("Two tabs, and no dead ends"), falsified by dropping a
+scene from `TAB_OF` — the last check fails at 5/6.
+
+**19. At most three actions on a list (decided 2026-11-20, Mischa).** Verbatim:
+*"we should be really focused on the actions a user can take on any given list
+so that there are at most 3: 1. Create your own version of this list 2. Like
+the list… 3. Share"*.
+
+1. **Make your own** — the remix. The primary action, and the engine of the
+   whole product.
+2. **Like** — which doubles as the save. Mischa: *"this feels weak, maybe also
+   serves a purpose of saving it for reference, so have a clear section of your
+   Liked lists."* So there is **one** reaction, not a like and a save and a
+   bookmark, and **Liked** is a named section on the Yours tab.
+3. **Share.**
+
+*Reasoning.* Hypelist carries three reactions on one bar — ♥ likes, ☆ saves,
+💬 comments — which splits one signal three ways (`docs/hypelist-teardown.md`).
+A cap of three actions is sharper than anything proposed in that teardown, and
+merging like with save answers the objection raised there (that nobody
+bookmarks a statement of taste) by making the one reaction do both jobs.
+
+**Superseded on arrival:** the teardown proposed tapping an individual pick to
+say *"this one, yes"* instead of liking the list, on the grounds that a like
+tells the author nothing about which pick landed. Not taken, and it is not
+needed — **the item graph (Req 20, pending) computes which picks landed** from
+published lists, so the author gets that answer without a fourth gesture.
+
+*Non-goal: collaborators.* Hypelist's "people you invite can add or edit items"
+is the most obviously copyable feature in that app and would do this one the
+most damage: a Top 10 with four authors is nobody's. **Our version of inviting
+somebody into your list is the remix.** Written down because it looks like an
+easy win.
+
 ## Nice-to-Have (P1)
 
 - **Social layer:** follows, a takes-feed from followed users, unlock
