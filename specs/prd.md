@@ -1026,22 +1026,48 @@ needs to be reworked for maximum clarity").**
 | jobs the line under a list did | 4, in 4 grammars, one using a retired word | 1 per section |
 | a second "Read this Top 10" button per list | 7 | 0 — the row is the button |
 
+**Amended the same day (Mischa, reviewing it): *"Topics seem like lists.
+Shouldn't we just clearly say these are your lists and show some related lists
+that other users made related to yours and your picks where they disagree?"***
+He was right, and the screenshot showed why: the heading over each group was
+"Top 10 Crime Movies of the 90s" — **a list's own name** — so the topic/list
+distinction this requirement was built on broke at its most visible point.
+"Topic" is our grouping key; people think in two nouns, *my list* and *theirs*.
+The first version of this requirement grouped lists under topic headings; the
+page is now built around **your list** instead:
+
 *The page, top to bottom:*
 
-1. **Your topics** — topics you have made a list on, each with the other lists
-   on it. The line under each list relates it to yours.
-2. **Other topics** — topics you have not, each with its lists. The line is the
-   list's own argument (the 2026-11-17 decision, unchanged).
-3. **What to make next** — Today, This week, and topics like your most recent
-   list, all in one row shape, each with its reason.
-4. **All topics** — every genre that can fill a list, by category.
+1. **Your lists, compared** — each of your lists (newest first, those somebody
+   else has also made ahead of those nobody has; three at most), labelled
+   **Yours** with a filled mark. Under each, the other lists on it, each shown
+   as **where it disagrees with yours**:
+   - its line — *"You and Mischa agree on 5 of 10"* / *"6 of your 10 are in it"*;
+   - **Not in yours** — the picks it has that you left out, in its order, at its
+     ranks (five shown, then *+N*). *"Agree on 5 of 10"* was the summary; the
+     five is the argument, and it used to be a tap away;
+   - **Biggest split** — the film you both picked but ranked furthest apart,
+     three places or more: *"Trainspotting · you #9 · Mischa #6"*.
+   A list nobody else has made says *"Nobody else has made this one yet."*
+   Tapping yours opens it, and its own page shows the same rows under
+   **Where others disagree**.
+2. **More lists** — every other list, once, each as a card: who, its name, its
+   argument (2026-11-17), its picks. People first, then the ones sharing most of
+   your picks. Two lists with one name never sit side by side.
+3. **What to make next** — unchanged.
+4. **By genre** — the directory, renamed from "All topics" so nothing on the
+   page offers a *topic* as a noun.
+
+*The first version's page, for the record:* Your topics / Other topics / What to
+make next / All topics, with lists grouped under topic headings.
 
 *The rules:*
 
-- **Two nouns, two shapes.** A *topic* is a heading or a tile — words and one
-  number, never posters. A *list* is a row — who made it, one line, its picks.
-- **A list sits under its topic**, so a topic's name is printed once. Two lists
-  on one topic stop reading as a duplicate and start reading as an argument.
+- **Two nouns: your list and theirs.** *(Was "topic and list" — see the
+  amendment above.)* Every list name on the page sits on a list that says whose
+  it is: yours, a person's or a ranking's.
+- **Your list is the anchor**, and another list on it is shown by how it
+  differs from yours, not by its top six.
 - **The section heading is the reason** something is in front of you. Cards
   never explain themselves.
 - **A person and a ranking are different shapes**: a round initial in the
@@ -1060,8 +1086,16 @@ needs to be reworked for maximum clarity").**
   so a topic your picks *concentrate* in beats one they merely fall inside
   (*Neo-noir*, six of ten, over *Dramas*, eight of hundreds). Three is the floor.
 
-*Acceptance:* the page opens on lists and "What to make next" follows them; no
-topic heading appears twice; every list's mark matches what made it, and a
+*Acceptance (as amended):* the page opens on **Your lists, compared**; each of
+your lists is an anchor labelled Yours with a filled mark, those with others on
+them first; every list under one is on that topic; **"Not in yours" is exactly
+their picks absent from yours, in their order, at their ranks**, and **the
+biggest split is the furthest-apart shared film at its real two ranks** — both
+computed from the data and checked against the screen, with a seed that puts
+both on screen; a list with nothing you left out shows no strip and no sentence
+repeating its line; every list on Browse appears exactly once; no topic heading
+on the page; every thumbnail is sized by rule; your list's page shows the same
+rows. And from the first version: "What to make next" follows the lists; every list's mark matches what made it, and a
 ranking is never drawn as a person; on your own topic a ranking reports the
 overlap and a person agrees (asserted in the state where both sentences are
 live — see below); each list row is exactly one button, ≥44pt, with nothing

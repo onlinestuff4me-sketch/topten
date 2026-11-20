@@ -544,7 +544,7 @@ const DOMAIN_SPEECH = `(() => {
      line advertised it — because removing a system removes its code and
      leaves its copy. Every phrase here names something the app no longer
      does: a badge case, a badge to reveal, a thing to unlock. */
-  const JARGON = /\b(a Ten|the Ten|your Ten|Tens|takes? on (a|the|this|somebody|someone)|the crowd|shelf|shelves|badge case|reveal your badge|unlock(s|ed)? (this|the) (badge|list|topic))\b/i;
+  const JARGON = /\b(a Ten|the Ten|your Ten|Tens|takes? on (a|the|this|somebody|someone)|the crowd|shelf|shelves|badge case|reveal your badge|badges? opened|unlock(s|ed)? (this|the) (badge|list|topic))\b/i;
   const noJargon = async where => {
     const found = await page.evaluate(re => {
       const rx = new RegExp(re, 'i');
@@ -2476,24 +2476,35 @@ const DOMAIN_SPEECH = `(() => {
 
   // ── The LIST NAME leads, the line under it is subordinate (round 5) ─────
   const type = await page.evaluate(() => [...document.querySelectorAll('.lrow')].map(r => {
-    const g = r.closest('.tgroup'), name = g.querySelector('.thead .tname'), line = r.querySelector('.lline');
+    const name = (r.querySelector('.lname') || r.closest('.cmp').querySelector('.yours .lname')), line = r.querySelector('.lline');
     const px = el => parseFloat(getComputedStyle(el).fontSize);
     return { name: name.innerText.trim(), nameSize: px(name), src: r.dataset.src,
              who: r.querySelector('.lwho b').innerText.trim(),
              claim: line.innerText.trim(), claimSize: px(line) };
   }));
   check(type.length === cardCount && type.every(t => t.nameSize > t.claimSize),
-    `the topic name is the biggest type over every list (${type[0].nameSize}px name vs ` +
+    `the list's name is the biggest type over every list (${type[0].nameSize}px name vs ` +
     `${type[0].claimSize}px line)`);
   check(type.every(t => t.nameSize >= t.claimSize * 1.25),
     'and dominant, not merely larger — at least a quarter again the line under it');
   // Since the correction of 2026-08-15 the name IS the topic, so it appears
   // once. Two people on the same topic share a name and are told apart by the
   // line beneath — which is the point of Sam and Theo both being on Crime.
-  const topicHeads = await page.evaluate(() =>
-    [...document.querySelectorAll('.thead .tname')].map(e => e.textContent.trim()));
-  check(topicHeads.length === new Set(topicHeads).size,
-    `no topic heading appears twice — lists on one topic sit under one name (${topicHeads.length} headings)`);
+  /* NO TOPIC IS SHOWN AS IF IT WERE A LIST (2026-11-20, Mischa: "Topics
+     seem like lists"). The heading that grouped lists that morning was the
+     list's own name. Now every list name on the page belongs to a list that
+     says whose it is — yours, a person's or a ranking's — and two lists with
+     one name never sit side by side. */
+  const listNames = await page.evaluate(() => ({
+    bare: document.querySelectorAll('.thead, .tgroup').length,
+    orphans: [...document.querySelectorAll('#app .lname')]
+      .filter(n => !n.closest('.yours, .lrow')?.querySelector('.src-mark')).length,
+    order: [...document.querySelectorAll('[aria-labelledby="b-more"] .lrow.card .lname')].map(e => e.textContent.trim()),
+  }));
+  check(listNames.bare === 0 && listNames.orphans === 0,
+    'no topic heading on the page — every list name sits on a list that says whose it is');
+  check(listNames.order.every((n, i) => i === 0 || n !== listNames.order[i - 1]),
+    `and two lists with one name never sit side by side (${listNames.order.length} in More lists)`);
 
   /* ── Every card makes an argument, not an introduction ──────────────────
      Mischa, 2026-11-17: "Who is Sam, why do I care about his top 10, why
@@ -2677,7 +2688,7 @@ const DOMAIN_SPEECH = `(() => {
     const b = r.getBoundingClientRect();
     return { tag: r.tagName, nested: r.querySelectorAll('button, a').length,
       label: r.getAttribute('aria-label') || '', h: b.height, w: b.width,
-      topic: r.closest('.tgroup').querySelector('.thead .tname').textContent.trim() };
+      topic: (r.querySelector('.lname') || r.closest('.cmp').querySelector('.yours .lname')).textContent.trim() };
   }));
   check(rows.every(r => r.tag === 'BUTTON' && r.nested === 0),
     'each list is exactly one action — the row itself, with nothing nested inside it');
@@ -2685,7 +2696,7 @@ const DOMAIN_SPEECH = `(() => {
     `every row meets the 44pt minimum (smallest ${Math.round(Math.min(...rows.map(r => r.h)))}pt tall)`);
   check(rows.every(r => r.label.includes(r.topic.replace(/^Top 10 /, ''))),
     `and says what it opens, topic included ("${rows[0].label.slice(0, 60)}…")`);
-  check(await page.locator('.lrow .cta, .tgroup .cta').count() === 0,
+  check(await page.locator('.lrow .cta, .cmp .cta').count() === 0,
     'and no row carries a second "Read" button');
 
   /* A PERSON AND A RANKING ARE DIFFERENT SHAPES. Mischa, 2026-11-18: every
@@ -4304,7 +4315,7 @@ const DOMAIN_SPEECH = `(() => {
     `a ranking reports the overlap with yours ("${ruleLines[0] && ruleLines[0].line}")`);
   check(personLines.every(l => /^You and (?!the )\S+ agree on (\d+ of 10|nothing at all)\.$/.test(l.line)),
     `and a person agrees with you ("${personLines[0] && personLines[0].line}")`);
-  const firstList = order.ids.findIndex(i => i === 'b-yours' || i === 'b-other');
+  const firstList = order.ids.findIndex(i => i === 'b-yours' || i === 'b-more');
   check(firstList === 0 && order.ids.indexOf('b-next') > firstList,
     `the page opens on lists, and what to make comes after them (${order.ids.join(' \u2192 ')})`);
   check(order.rows[0] && order.rows[0].eb === 'Today' && order.rows[0].name === nextPicks.today.title,
@@ -4349,6 +4360,145 @@ const DOMAIN_SPEECH = `(() => {
     `building the topic that was offered ("${nextPicks.today.title}")`);
   await page.evaluate(() => { S.scene = 'discover'; save(); render(); });
   await page.waitForTimeout(250);
+
+  /* ── Your lists, compared (2026-11-20, Mischa) ────────────────────────────
+     "Topics seem like lists. Shouldn't we just clearly say these are your
+     lists and show some related lists that other users made related to yours
+     and your picks where they disagree?"
+
+     Three lists seeded so every branch is live: Crime of the 90s as a person
+     would make it (others disagree with it), Animated of the 2000s as the
+     most-rated ten (close to the ranking on it), and Westerns, which nobody
+     else has made. Every number on screen is checked against the data. */
+  console.log('\n── Your lists, compared ─────────────────────────');
+  await page.evaluate(() => {
+    localStorage.clear();
+    document.querySelectorAll('.sheet, .scrim, .coach, .coachscrim, .vault').forEach(n => n.remove());
+    S.seen = true; S.tipDone = true; S.tray = [];
+    const make = (crit, spread) => {
+      const t = makeTopic(crit);
+      const pool = CAT.filter(f => inTopic(f, t)).sort((a, b) => (b.vc || 0) - (a.vc || 0)).slice(0, 24);
+      const ten = (spread ? [0, 3, 1, 6, 9, 4, 13, 17, 11, 21] : [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]).map(i => pool[i]);
+      return { topicId: t.id, title: listName(ten, t), domain: t.domain, ranked: ten.map(f => f.id) };
+    };
+    S.done = [make({ genre: 'Crime', decade: 1990 }, true), make({ genre: 'Animation', decade: 2000 }, false),
+              make({ genre: 'Western' }, false)];
+    S.tab = 'browse'; S.scene = 'discover'; save(); render();
+  });
+  await page.waitForTimeout(350);
+
+  const ylc = await page.evaluate(() => {
+    const sec = document.querySelector('[aria-labelledby="b-yours"]');
+    return {
+      first: document.querySelector('.bsec').getAttribute('aria-labelledby'),
+      heading: sec && sec.querySelector('.section-h').textContent.trim(),
+      blocks: sec ? [...sec.querySelectorAll('.cmp')].map(c => {
+        const y = c.querySelector('.yours');
+        return {
+          mine: y.dataset.mine, name: y.querySelector('.lname').textContent.trim(),
+          said: y.querySelector('.lwho b').textContent.trim(),
+          filled: getComputedStyle(y.querySelector('.src-mark.you')).backgroundColor,
+          alone: (c.querySelector('.alone') || {}).textContent || '',
+          rows: [...c.querySelectorAll('.lrow.vs')].map(r => ({
+            id: r.dataset.other,
+            ranks: [...r.querySelectorAll('.diff .mini b')].map(b => Number(b.textContent)),
+            plus: Number(((r.querySelector('.plus') || {}).textContent || '+0').slice(1)),
+            same: !!r.querySelector('.same'),
+            split: (r.querySelector('.stext') || {}).textContent || '' })),
+        };
+      }) : [],
+      everyList: [...document.querySelectorAll('.lrow')].map(r => r.dataset.other),
+    };
+  });
+  /* Every thumbnail on Browse is a thumbnail. The anchor's strip once drew
+     each poster at its natural 370px, stacked down the screen, and nothing
+     in this suite noticed: no element spilled sideways, so the layout sweeps
+     were content. Found by a screenshot, asserted here so it stays found. */
+  /* Measured as the RULE, not the rendered box. This suite runs without
+     artwork — CI's world — and a broken image has no natural size, so the
+     unsized thumbnail collapsed to nothing instead of ballooning to 370px:
+     the first version of this check measured boxes and PASSED with the bug
+     in. A computed width of "auto" is the bug whether or not art loads. */
+  const thumbs = await page.evaluate(() => [...document.querySelectorAll('#app .mini')].map(m => {
+    const cs = getComputedStyle(m);
+    return { w: cs.width, h: cs.height, where: m.closest('.yours') ? 'yours' : 'list' };
+  }));
+  const offSize = thumbs.filter(t => t.w !== '40px' || t.h !== '60px');
+  check(thumbs.length > 20 && offSize.length === 0,
+    `every poster on Browse is sized as a thumbnail by rule, your own list's included `
+    + `(${thumbs.length}` + (offSize.length ? ` — ${offSize.length} are not, e.g. ${offSize[0].where}: ${offSize[0].w}` : '') + ')');
+  check(ylc.first === 'b-yours' && ylc.heading === 'Your lists, compared',
+    `the page opens on your lists, said plainly ("${ylc.heading}")`);
+  check(ylc.blocks.length === 3 && ylc.blocks.every(b => b.said === 'Yours'),
+    `each of your three lists is an anchor, labelled Yours (${ylc.blocks.map(b => b.name.replace(/^Top 10 /, '')).join(' / ')})`);
+  check(ylc.blocks.every(b => b.filled !== 'rgba(0, 0, 0, 0)'),
+    'with a filled mark — a third shape, so yours is never read as one more list in the feed');
+  check(ylc.blocks[ylc.blocks.length - 1].rows.length === 0
+        && ylc.blocks.slice(0, -1).every(b => b.rows.length > 0),
+    'lists somebody else has also made come first; the one nobody has comes last');
+  check(/^Nobody else has made this one yet\.$/.test(ylc.blocks[2].alone.trim()),
+    `and says so rather than showing an empty box ("${ylc.blocks[2].alone.trim()}")`);
+
+  /* THE ARGUMENT, CHECKED AGAINST THE DATA. "Not in yours" must be exactly
+     their picks that are absent from your list, in their order, with their
+     ranks; the biggest split must be a film you both picked, at its real two
+     ranks, the furthest apart of any — and absent when none is three apart. */
+  const ylTruth = await page.evaluate(blocks => blocks.map(b => {
+    const d = S.done.find(x => x.topicId === b.mine);
+    const yRank = new Map(d.ranked.map((id, i) => [id, i + 1]));
+    return b.rows.map(r => {
+      const src = SOURCES.find(x => x.id === r.id), t = theirTen(src);
+      const missing = t.ranked.map((f, i) => [f, i + 1]).filter(([f]) => !yRank.has(f.id)).map(([, k]) => k);
+      let best = null;
+      t.ranked.forEach((f, i) => { const y = yRank.get(f.id);
+        if (y && Math.abs(y - (i + 1)) >= 3 && (!best || Math.abs(y - (i + 1)) > best.gap))
+          best = { t: f.t, you: y, them: i + 1, gap: Math.abs(y - (i + 1)), who: src.label }; });
+      return { onTopic: src.topic.id === d.topicId, missing, best, r };
+    });
+  }), ylc.blocks);
+  const ylAll = ylTruth.flat();
+  check(ylAll.length >= 3 && ylAll.every(x => x.onTopic),
+    `every list under one of yours is on that same topic (${ylAll.length} compared)`);
+  check(ylAll.every(x => JSON.stringify(x.r.ranks) === JSON.stringify(x.missing.slice(0, 5))
+                     && x.r.plus === Math.max(0, x.missing.length - 5)),
+    `"Not in yours" is exactly their picks you left out, in their order, at their ranks `
+    + `(${ylAll.map(x => x.missing.length).join(', ')} missing)`);
+  /* A list with nothing you left out shows no strip and no second sentence:
+     its line already says ten of ten. (It said "The same ten as yours." as
+     well until the first screenshot showed two lines saying one thing.) */
+  check(ylAll.filter(x => x.missing.length === 0).length >= 1
+        && ylAll.every(x => x.r.same === false && (x.missing.length === 0) === (x.r.ranks.length === 0)),
+    'and a list with nothing you left out shows no empty strip and no sentence repeating its line');
+  check(ylAll.every(x => x.best
+      ? x.r.split.includes(`you #${x.best.you}`) && x.r.split.includes(`${x.best.who} #${x.best.them}`)
+        && x.r.split.startsWith(x.best.t.split(/[:—–]/)[0].trim())
+      : x.r.split === ''),
+    `the biggest split is the furthest-apart film you share, at its real ranks `
+    + `("${(ylAll.find(x => x.best) || { r: { split: 'none' } }).r.split}")`);
+  check(ylAll.some(x => x.missing.length > 0) && ylAll.some(x => x.best),
+    'and the seed puts both on screen, so neither check above is passing on an empty set');
+
+  const ylSources = await page.evaluate(() => SOURCES.map(s => s.id));
+  check(ylSources.every(id => ylc.everyList.filter(x => x === id).length === 1)
+        && ylc.everyList.length === ylSources.length,
+    `every list on Browse appears exactly once — compared under yours, or in More lists (${ylc.everyList.length})`);
+
+  // The anchor is the way into your own list, and that page shows the same
+  // comparison, not a promise to "read it and see where you disagree".
+  await page.locator('[aria-labelledby="b-yours"] .yours').first().click();
+  await page.waitForTimeout(300);
+  const ylMine = await page.evaluate(() => ({
+    scene: S.scene, mine: S.mine,
+    heads: [...document.querySelectorAll('.section-h')].map(h => h.textContent.trim()),
+    vs: document.querySelectorAll('.lrow.vs').length,
+    text: document.body.innerText }));
+  check(ylMine.scene === 'mine' && ylMine.mine === ylc.blocks[0].mine,
+    'tapping your list opens your list');
+  check(ylMine.heads.includes('Where others disagree') && ylMine.vs === ylc.blocks[0].rows.length,
+    `and it shows the same comparison rows (${ylMine.vs})`);
+  check(!/on this topic on this|badges? opened/i.test(ylMine.text),
+    'without the garbled heading or the retired gate’s "your badge opened" that the old block carried');
+  await noJargon('one of your own, with lists to compare');
 
   console.log('\n\u2500\u2500 A books shelf speaks like one \u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500\u2500');
   const BOOK_SCREENS = [

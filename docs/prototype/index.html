@@ -506,22 +506,27 @@ section { margin-top: var(--s8); }
 .bsec { margin: 0 0 var(--s8); }
 .bsec > .section-h { margin: 0 0 var(--s3); }
 
-/* A topic and the lists on it, as one object. The topic heading is the way
-   into the topic page; each row is the way into one list. */
-.tgroup { background: var(--bg-surface); border: 1px solid var(--border-subtle);
-  border-radius: var(--r-card); margin: 0 0 var(--s3); overflow: hidden; }
-.thead-h { margin: 0; font: inherit; }
-.thead { display: flex; align-items: center; justify-content: space-between; gap: var(--s2);
-  width: 100%; min-height: 52px; padding: var(--s3) var(--s4); background: none; border: 0;
-  text-align: left; cursor: pointer; color: inherit; }
-.thead .tname { font-family: var(--serif); font-weight: 600; font-size: 1.25rem; line-height: 1.2;
-  letter-spacing: -0.01em; min-width: 0; overflow-wrap: break-word; }
-.chev { color: var(--text-secondary); font-size: 1.375rem; line-height: 1.2; flex: none; }
+/* Your list and the others on it, as one object: the anchor on top, then one
+   row per other list showing where it parts from yours. */
+.cmp { background: var(--bg-surface); border: 1px solid var(--border-subtle);
+  border-radius: var(--r-card); margin: 0 0 var(--s4); overflow: hidden; }
+.yours { display: grid; gap: var(--s2); width: 100%; padding: var(--s4); background: none;
+  border: 0; text-align: left; cursor: pointer; color: inherit;
+  background: color-mix(in srgb, var(--accent) 6%, var(--bg-surface)); }
+.yours:active { background: var(--bg-recessed); }
+/* A list's name, wherever a list is shown on its own. */
+.lname { font-family: var(--serif); font-weight: 600; font-size: 1.25rem; line-height: 1.2;
+  letter-spacing: -0.01em; overflow-wrap: break-word; }
+.alone { margin: 0; padding: var(--s3) var(--s4); border-top: 1px solid var(--border-subtle);
+  font-size: 0.875rem; color: var(--text-secondary); }
 
 .lrow { display: grid; gap: var(--s2); width: 100%; padding: var(--s3) var(--s4) var(--s4);
-  background: none; border: 0; border-top: 1px solid var(--border-subtle);
-  text-align: left; cursor: pointer; color: inherit;
+  background: none; border: 0; text-align: left; cursor: pointer; color: inherit;
   transition: background-color var(--m-press) var(--ease-out); }
+.lrow.vs { border-top: 1px solid var(--border-subtle); }
+/* Somebody else's list on its own, in More lists. */
+.lrow.card { background: var(--bg-surface); border: 1px solid var(--border-subtle);
+  border-radius: var(--r-card); margin: 0 0 var(--s3); padding: var(--s4); }
 .lrow:active { background: var(--bg-recessed); }
 .lhead { display: flex; align-items: center; gap: var(--s2); min-width: 0; }
 /* WHO, AS A SHAPE. A person is a round initial in the accent; a ranking is a
@@ -535,16 +540,30 @@ section { margin-top: var(--s8); }
 .src-mark.rule { border-radius: 7px; color: var(--text-secondary); background: var(--bg-recessed); }
 .src-mark.rule svg { width: 16px; height: 16px; fill: none; stroke: currentColor;
   stroke-width: 2.4; stroke-linecap: round; }
+/* Yours: filled, not tinted. A third shape for the third kind of author, so
+   your list cannot be read as one more list in the feed. */
+.src-mark.you { border-radius: 50%; background: var(--accent); }
+/* Where another list parts from yours. */
+.diff, .split { display: grid; gap: 4px; }
+.dlabel { font: 700 0.6875rem/1.2 var(--sans); letter-spacing: .1em; text-transform: uppercase;
+  color: var(--text-secondary); }
+.stext { font-size: 0.9375rem; line-height: 1.35; color: var(--text-primary); }
+.plus { width: 40px; height: 60px; flex: 0 0 40px; border-radius: 4px; display: grid; place-items: center;
+  background: var(--bg-recessed); color: var(--text-secondary); font-size: 0.8125rem; font-weight: 700; }
 .lwho { display: flex; flex-wrap: wrap; column-gap: var(--s2); align-items: baseline;
   min-width: 0; font-size: 0.875rem; line-height: 1.3; }
 .lwho b { font-weight: 700; color: var(--text-primary); }
 .lrole { color: var(--text-secondary); font-size: 0.8125rem; }
 .lline { font-size: 0.9375rem; line-height: 1.35; color: var(--text-primary); }
-.lrow .strip { display: flex; gap: 4px; }
-.lrow .mini { position: relative; width: 40px; height: 60px; border-radius: 4px; overflow: hidden;
+/* Scoped to BOTH places a strip of picks appears. Scoped to `.lrow` alone, the
+   anchor for your own list (`.yours`) got no thumbnail size at all and drew
+   every poster at its natural 370px, stacked down the screen — with 598
+   checks green, because nothing spilled sideways. Found by the screenshot. */
+.lrow .strip, .yours .strip { display: flex; gap: 4px; }
+.lrow .mini, .yours .mini { position: relative; width: 40px; height: 60px; border-radius: 4px; overflow: hidden;
   flex: 0 0 40px; background: var(--bg-recessed); }
-.lrow .mini img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.lrow .mini b { position: absolute; left: 0; bottom: 0; font-family: var(--serif); font-size: 0.625rem;
+.lrow .mini img, .yours .mini img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.lrow .mini b, .yours .mini b { position: absolute; left: 0; bottom: 0; font-family: var(--serif); font-size: 0.625rem;
   background: rgba(18,17,16,.72); color: #F4F1EA; padding: 0 4px; border-radius: 0 4px 0 4px; }
 @media (prefers-reduced-motion: reduce) { .lrow { transition: none; } }
 
@@ -3815,21 +3834,22 @@ function thisWeeksPick(when = new Date()) {
 
    The rules that replace it:
 
-   1. TWO NOUNS, TWO SHAPES. A topic is a heading or a tile — words and a
-      count, never posters. A list is a row — a source, one line, its picks.
-   2. LISTS SIT UNDER THEIR TOPIC, so a topic's name is printed once. Two
-      lists on one topic stop looking like a duplicate and start looking like
-      what they are: an argument.
+   1. TWO NOUNS: YOUR LIST AND THEIRS. (Amended the same day — this rule
+      first read "topic and list", and grouped lists under a topic heading.
+      Mischa: "Topics seem like lists." They did: the heading was the list's
+      own name. See "Your lists, compared" below.)
+   2. YOUR LIST IS THE ANCHOR. Other people's lists on it sit under it, each
+      shown as where it disagrees with yours.
    3. THE SECTION HEADING IS THE REASON. Why something is in front of you is
       said once, at the top of its section, in the same place every time.
       Cards never explain themselves.
    4. A PERSON AND A RANKING ARE DIFFERENT SHAPES. Mischa, 2026-11-18: "every
       seed list states what it is". It said so in words in the same slot; now
       it is a round initial against a square bar mark, legible before reading.
-   5. THE LINE UNDER A LIST ANSWERS ONE QUESTION PER SECTION. On your topics:
-      how it relates to yours. On other topics: the list's own argument
-      (2026-11-17). A count summarises what you cannot see, so topic tiles
-      carry one and topic headings over visible lists do not. */
+   5. THE LINE UNDER A LIST ANSWERS ONE QUESTION PER SECTION. Under your
+      list: how it relates to yours, and where it parts from it. In More
+      lists: the list's own argument (2026-11-17). A count summarises what you
+      cannot see, so the tiles you might make carry one. */
 
 /* Every list on a topic, yours included — the one number on a topic tile. */
 const listsOnTopic = id => SOURCES.filter(s => s.topic.id === id).length
@@ -3876,36 +3896,6 @@ const RULE_MARK = '<svg viewBox="0 0 24 24"><path d="M5 19v-5M10 19V6M15 19v-9M2
 const sourceMark = src => src.kind === 'person'
   ? `<span class="src-mark person" aria-hidden="true">${esc(src.label.slice(0, 1))}</span>`
   : `<span class="src-mark rule" aria-hidden="true">${RULE_MARK}</span>`;
-
-/* A list, as a row under its topic. The whole row is the tap target — there
-   is no separate "Read" button, because a row that is not itself the way in
-   would need a second control to say what the first already does. */
-function listRow(t) {
-  const src = t.src, line = lineFor(t), person = src.kind === 'person';
-  const label = person
-    ? `${src.label}’s ${src.topic.title}. ${line}`
-    : `${src.topic.title}, ranked by ${src.label}: ${src.role}. ${line}`;
-  return `<button class="lrow" data-other="${esc(src.id)}" data-src="${person ? 'person' : 'rule'}"
-      aria-label="${esc(label)}">
-    <span class="lhead">${sourceMark(src)}
-      <span class="lwho"><b>${esc(src.label)}</b><span class="lrole">${esc(src.role)}</span></span></span>
-    <span class="lline">${esc(line)}</span>
-    <span class="strip" aria-hidden="true">${t.ranked.slice(0, 6).map((f, j) =>
-      `<span class="mini"><img src="${IMG}w185${f.p}" alt="" loading="lazy"><b>${j + 1}</b></span>`).join('')}</span>
-  </button>`;
-}
-
-/* A topic heading with its lists. The name is a heading for VoiceOver's
-   rotor AND the way into the topic page, which shows every list on it and
-   what everyone picked. No count: the lists are right there. */
-function topicGroup(topic, tens) {
-  return `<section class="tgroup">
-    <h3 class="thead-h"><button class="thead" data-topicpage='${esc(JSON.stringify(critOf(topic)))}'>
-      <span class="tname">${esc(topic.title)}</span><span class="chev" aria-hidden="true">›</span>
-    </button></h3>
-    ${tens.map(listRow).join('')}
-  </section>`;
-}
 
 /* A topic you might make, as a row: an optional reason above, the name, the
    one number, and an optional sentence. */
@@ -3969,36 +3959,146 @@ function genreTopics(domain) {
     .sort((a, b) => a.title.localeCompare(b.title));
 }
 
+/* ── Your lists, compared (2026-11-20, Mischa, the same day as the Browse
+   rework above) ────────────────────────────────────────────────────────────
+   "Topics seem like lists. Shouldn't we just clearly say these are your
+   lists and show some related lists that other users made related to yours
+   and your picks where they disagree?"
+
+   He was right, and the screenshot showed it: the heading over each group
+   was "Top 10 Crime Movies of the 90s", which is a LIST'S name. The rule
+   "two nouns, two shapes" broke at the most visible point on the page,
+   because "topic" is our grouping key, not a thing anybody holds in their
+   head. People think in two nouns: my list, and theirs.
+
+   So the anchor is YOUR LIST, labelled as yours, and under it the lists other
+   people made on it — each showing WHERE IT DISAGREES WITH YOURS: the picks
+   it has that you left out, in its own order, and the one film you both
+   picked but ranked furthest apart. "Agree on 5 of 10" was the summary; the
+   five is the argument, and it was one tap away. */
+
+/* How a ranked list differs from yours. */
+function diffOf(yours, theirs) {
+  const yRank = new Map((yours || []).map((id, i) => [id, i + 1]));
+  const missing = theirs.map((f, i) => ({ f, rank: i + 1 })).filter(x => !yRank.has(x.f.id));
+  /* A split under three places is noise — two people who both rank a film
+     somewhere in the top five agree about it. */
+  let split = null;
+  theirs.forEach((f, i) => {
+    const y = yRank.get(f.id);
+    if (!y) return;
+    const gap = Math.abs(y - (i + 1));
+    if (gap >= 3 && (!split || gap > split.gap)) split = { f, you: y, them: i + 1, gap };
+  });
+  return { missing, split };
+}
+
+const shortTitle = s => String(s).split(/[:—–]/)[0].trim();
+const mini = (f, rank) =>
+  `<span class="mini"><img src="${IMG}w185${f.p}" alt="" loading="lazy"><b>${rank}</b></span>`;
+
+/* Another list on your topic, shown as where it parts from yours. No strip of
+   its top six: you know the overlap from the line above, and what the row is
+   FOR is the difference — the full list is one tap away. */
+function vsRow(t, d) {
+  const src = t.src, person = src.kind === 'person', line = lineFor(t);
+  const { missing, split } = diffOf(d.ranked, t.ranked);
+  const shown = missing.slice(0, 5);
+  const splitText = split
+    ? `${shortTitle(split.f.t)} · you #${split.you} · ${src.label} #${split.them}` : '';
+  const label = `${person ? `${src.label}’s` : `${src.label}:`} ${src.topic.title}. ${line} `
+    + (missing.length
+      ? `Not in yours: ${missing.map(m => `${m.f.t}, their ${m.rank}`).join('; ')}.` : '')
+    + (split ? ` Biggest split: ${split.f.t}, your ${split.you}, ${src.label}’s ${split.them}.` : '');
+  return `<button class="lrow vs" data-other="${esc(src.id)}" data-src="${person ? 'person' : 'rule'}"
+      aria-label="${esc(label)}">
+    <span class="lhead">${sourceMark(src)}
+      <span class="lwho"><b>${esc(src.label)}</b><span class="lrole">${esc(src.role)}</span></span></span>
+    <span class="lline">${esc(line)}</span>
+    ${missing.length ? `<span class="diff"><span class="dlabel">Not in yours</span>
+      <span class="strip" aria-hidden="true">${shown.map(m => mini(m.f, m.rank)).join('')}${
+        missing.length > shown.length ? `<span class="plus">+${missing.length - shown.length}</span>` : ''}</span></span>`
+      : ''}
+    ${split ? `<span class="split"><span class="dlabel">Biggest split</span>
+      <span class="stext">${esc(splitText)}</span></span>` : ''}
+  </button>`;
+}
+
+/* Your list, as the anchor. Marked as yours by a filled mark and the word,
+   so it cannot be read as one more list in the feed. */
+function yourAnchor(d) {
+  const films = (d.ranked || []).map(id => byId.get(id)).filter(Boolean);
+  return `<button class="yours" data-mine="${esc(d.topicId)}" aria-label="Your ${esc(d.title)}">
+    <span class="lhead"><span class="src-mark you" aria-hidden="true"></span>
+      <span class="lwho"><b>Yours</b></span></span>
+    <span class="lname">${esc(d.title)}</span>
+    <span class="strip" aria-hidden="true">${films.slice(0, 6).map((f, i) => mini(f, i + 1)).join('')}</span>
+  </button>`;
+}
+
+/* One of your lists and the others on it. */
+function compareBlock(d, vs) {
+  return `<section class="cmp">
+    ${yourAnchor(d)}
+    ${vs.length ? vs.map(t => vsRow(t, d)).join('')
+      : `<p class="alone">Nobody else has made this one yet.</p>`}
+  </section>`;
+}
+
+/* Somebody else's list, on a topic you have not made: who, the list's name,
+   its argument, its picks. */
+function cardRow(t) {
+  const src = t.src, person = src.kind === 'person', line = lineFor(t);
+  const name = listName(t.ranked, src.topic);
+  const label = person ? `${src.label}’s ${name}. ${line}`
+                       : `${name}, ranked by ${src.label}: ${src.role}. ${line}`;
+  return `<button class="lrow card" data-other="${esc(src.id)}" data-src="${person ? 'person' : 'rule'}"
+      aria-label="${esc(label)}">
+    <span class="lhead">${sourceMark(src)}
+      <span class="lwho"><b>${esc(src.label)}</b><span class="lrole">${esc(src.role)}</span></span></span>
+    <span class="lname">${esc(name)}</span>
+    <span class="lline">${esc(line)}</span>
+    <span class="strip" aria-hidden="true">${t.ranked.slice(0, 6).map((f, j) => mini(f, j + 1)).join('')}</span>
+  </button>`;
+}
+
+/* Two lists with one name must not sit side by side: the person or ranking
+   above each says whose it is, but stacked identical names still read as a
+   fault before they read as an argument (2026-11-18). */
+function apart(list) {
+  const out = list.slice();
+  for (let i = 1; i < out.length; i++) {
+    if (out[i].src.topic.id !== out[i - 1].src.topic.id) continue;
+    const j = out.findIndex((t, k) => k > i && t.src.topic.id !== out[i - 1].src.topic.id);
+    if (j > 0) [out[i], out[j]] = [out[j], out[i]];
+  }
+  return out;
+}
+
 function renderDiscover() {
   const done = S.done || [];
-  const mine = new Set(done.map(d => d.topicId));
+  const tens = SOURCES.map(theirTen).filter(t => t.ranked.length === 10);
   const yourPicks = new Set(done.flatMap(d => d.ranked || []));
+  const personFirst = (a, b) => (b.src.kind === 'person') - (a.src.kind === 'person');
 
-  /* Every list, grouped under its topic; people before rankings inside a
-     topic, because a person is the thing this product is about. */
-  const groups = new Map();
-  for (const t of SOURCES.map(theirTen).filter(t => t.ranked.length === 10)) {
-    const id = t.src.topic.id;
-    if (!groups.has(id)) groups.set(id, { topic: t.src.topic, tens: [] });
-    groups.get(id).tens.push(t);
-  }
-  const hasPerson = g => g.tens.some(t => t.src.kind === 'person');
-  const shared = g => g.tens.reduce((s, t) => s + t.ranked.filter(f => yourPicks.has(f.id)).length, 0);
-  for (const g of groups.values())
-    g.tens.sort((a, b) => (b.src.kind === 'person') - (a.src.kind === 'person'));
-  const all = [...groups.values()];
-  const onYours = all.filter(g => mine.has(g.topic.id));
-  const onOther = all.filter(g => !mine.has(g.topic.id))
-    .sort((a, b) => (hasPerson(b) - hasPerson(a)) || (shared(b) - shared(a)));
+  /* Your lists, newest first — the ones somebody else has also made ahead of
+     the ones nobody has, because a comparison is the thing worth seeing. Three
+     at most: the rest are on the Yours tab. */
+  const anchors = done.slice().reverse()
+    .map(d => ({ d, vs: tens.filter(t => t.src.topic.id === d.topicId).sort(personFirst) }))
+    .sort((a, b) => (b.vs.length > 0) - (a.vs.length > 0))
+    .slice(0, 3);
+  const compared = new Set(anchors.flatMap(a => a.vs.map(t => t.src.id)));
 
-  /* What to make next. Today and This week keep exactly the cadence Mischa
-     set on 2026-11-18 — daily, weekly, deterministic within the period,
-     always offerable, never something you have made. What changed is WHERE:
-     they were the top 62% of a reading page, and they are now the section
-     after the lists, in the same shape as every other topic. */
+  /* Every other list, once. People first; then the ones sharing most of your
+     picks, which is relevance without a sentence about it. */
+  const shared = t => t.ranked.filter(f => yourPicks.has(f.id)).length;
+  const more = apart(tens.filter(t => !compared.has(t.src.id))
+    .sort((a, b) => personFirst(a, b) || (shared(b) - shared(a))));
+
   const today = todaysPick(), week = thisWeeksPick();
   const recent = done[done.length - 1];
-  const taken = new Set([...mine, today && today.topic.id, week && week.topic.id].filter(Boolean));
+  const taken = new Set([...done.map(d => d.topicId), today && today.topic.id, week && week.topic.id].filter(Boolean));
   const like = recent ? topicsLikeYours(recent, taken) : [];
   const domains = [...new Set(CAT.map(f => f.dm || 'movie'))];
 
@@ -4009,14 +4109,14 @@ function renderDiscover() {
     <div class="topbar"><h1 class="display-lg">Other Top 10 Lists</h1>${done.length
       ? `<button class="link" data-act="pick">Start a list</button>`
       : `<button class="link" data-act="backhome">Done</button>`}</div>
-    ${section('b-yours', 'Your topics', onYours.map(g => topicGroup(g.topic, g.tens)).join(''))}
-    ${section('b-other', 'Other topics', onOther.map(g => topicGroup(g.topic, g.tens)).join(''))}
+    ${section('b-yours', 'Your lists, compared', anchors.map(a => compareBlock(a.d, a.vs)).join(''))}
+    ${section('b-more', anchors.length ? 'More lists' : 'Lists to read', more.map(cardRow).join(''))}
     ${section('b-next', 'What to make next', (today || week || like.length) ? `
       ${today ? topicRow(today.topic, { eyebrow: 'Today', why: today.why }) : ''}
       ${week ? topicRow(week.topic, { eyebrow: 'This week' }) : ''}
       ${like.length ? `<p class="because">Because you made <b>${esc(recent.title)}</b></p>
         ${like.map(x => topicRow(x.t, { why: overlapLine(x.hit) })).join('')}` : ''}` : '')}
-    ${section('b-all', 'All topics', domains.map(dm => `
+    ${section('b-genre', 'By genre', domains.map(dm => `
       <h3 class="cat">${CATEGORY_NAME[dm] || dm}</h3>
       <div class="tgrid">${genreTopics(dm).map(topicTile).join('')}</div>`).join(''))}
     ${done.length ? '' : `<section class="endbar">
@@ -4255,8 +4355,16 @@ function renderMine(topicId) {
   const films = (d.ranked || []).map(id => byId.get(id)).filter(Boolean);
   /* Other people's lists on the same topic, which is where this screen earns
      its place: a page about your own list that only looks inward is a trophy,
-     and the product is an argument. */
-  const theirs = SOURCES.filter(s => s.topic.id === topicId);
+     and the product is an argument.
+
+     Since 2026-11-20 they are the same rows Browse shows under your list —
+     where each one parts from yours — rather than a promise to "read it and
+     see where you disagree". The block they replace also carried two stale
+     bugs: a heading garbled to "Other lists on this topic on this", and
+     "Your badge opened all 2 the moment you finished", which described the
+     reveal gate retired two days earlier. */
+  const theirs = SOURCES.filter(s => s.topic.id === topicId)
+    .sort((a, b) => (b.kind === 'person') - (a.kind === 'person'));
   app.innerHTML = `
     <div class="topbar"><h1 class="display-lg fitline">${esc(d.title)}</h1>
       <button class="link" data-act="you">Back</button></div>
@@ -4264,13 +4372,9 @@ function renderMine(topicId) {
       <span class="num">${i + 1}</span><span class="thumb"><img src="${art(f)}" alt=""></span>
       <span class="meta"><span class="t">${esc(f.t)}</span><span class="s">${f.y}${f.d ? ' · ' + esc(f.d) : ''}</span></span>
     </div></li>`).join('')}</ol></section>
-    ${theirs.length ? `<section>
-      <div class="section-head"><h2 class="section-h">Other lists on this topic on this</h2></div>
-      <p class="prompt" style="margin:0 0 var(--s3)">Your badge opened ${
-        theirs.length === 1 ? 'this one' : `all ${theirs.length}`} the moment you finished.</p>
-      ${theirs.map(s => `<button class="sug-topic" data-other="${esc(s.id)}">
-        <div class="lvl">${esc(s.role)}</div><div class="t">${esc(s.label)}</div>
-        <div class="why">Read it and see where you disagree.</div></button>`).join('')}
+    ${theirs.length ? `<section class="bsec">
+      <h2 class="section-h">Where others disagree</h2>
+      <div class="cmp">${theirs.map(src => vsRow(theirTen(src), d)).join('')}</div>
     </section>` : ''}
     <section class="endbar">
       <button class="btn" data-sharemine="${esc(d.topicId)}">Share this Top 10</button>

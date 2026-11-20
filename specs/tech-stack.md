@@ -446,6 +446,20 @@ topten/
 - Image-gen badge tier — P1, blocked on licensing re-audit.
 - iPad/visionOS layouts — P2.
 
+## Measure the rule, not the box, when the box depends on artwork (2026-11-20, Claude)
+
+The second time in three days the no-artwork world hid a bug (the first is
+"CI has never had any artwork" below). Your-list anchor posters had no size
+rule and drew at their natural 370px — visible in the first screenshot, with
+598 checks green. The check written to catch it **measured rendered boxes and
+passed with the bug in**: the suite runs mirrorless, a broken image has no
+natural size, and an unsized thumbnail around a broken image collapses to
+nothing rather than ballooning.
+
+**When a size depends on an image loading, assert the computed style**
+(`getComputedStyle(el).width === '40px'`), which is the same with or without
+art. `auto` is the bug in both worlds; a bounding box is the bug only in one.
+
 ## A sweep of the empty state is not a sweep of the screen (2026-11-20, Claude)
 
 The jargon sweep checked Browse on every run and never once saw the sentence

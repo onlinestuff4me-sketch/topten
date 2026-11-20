@@ -420,19 +420,41 @@ more than once. 220 films became 620.
 
 The reasoning and measurements are in PRD Req 20. These are the reusable parts.
 
-**Two nouns, two shapes — never mixed.**
+**Two nouns — your list and theirs — never a topic shown as if it were a list.**
+*(Amended the same day: the first version grouped lists under a `.tgroup` topic
+heading, and the heading was the list's own name. Mischa: "Topics seem like
+lists." Topic rows and tiles survive only where they mean "a list you could
+make".)*
 
 | component | is a | carries | never carries |
 |---|---|---|---|
-| `.tgroup` — topic heading + its lists | topic | the name, once, as a heading and a link to the topic page | a count (its lists are on screen) |
-| `.lrow` — one list | list | source mark, name + role, **one line**, six ranked posters | a second button, a topic name |
+| `.cmp` — your list + the others on it | — | `.yours` anchor, then one `.lrow.vs` per other list | a topic heading |
+| `.yours` — your list | list | filled mark, **Yours**, the list's name, your six | a count |
+| `.lrow.vs` — another list, against yours | list | source mark, name + role, **one line**, **Not in yours** strip, **Biggest split** | its own top six, a second button |
+| `.lrow.card` — somebody else's list | list | source mark, name + role, the list's name, **one line**, six ranked posters | a second button |
 | `.trow` — a topic to make | topic | optional eyebrow (the reason), name, **one number**, optional sentence | posters |
 | `.ttile` — a topic in the directory | topic | name without "Top 10", **one number** | posters, emphasis |
 
 **Source marks.** Same slot, same 28px box, different shape: a **person** is a
 round initial in `--accent` on an 16% accent tint; a **ranking** is a 7px-radius
 square with a four-bar glyph in `--text-secondary` on `--bg-recessed`. The shape
-says which before the words do.
+says which before the words do. **Yours** is the third shape: a solid `--accent`
+disc, filled rather than tinted, so your list is never read as one more in the
+feed.
+
+**Where another list parts from yours** is two labelled parts, both small caps
+in `--text-secondary`: **Not in yours** over a strip of their picks you left out
+(their rank on each, five then a `+N` tile), and **Biggest split** over one line
+— *film · you #N · them #M* — shown only when a shared film is three or more
+places apart. When nothing differs there is no strip and no sentence: the line
+above already says ten of ten.
+
+**A component's styles are scoped to every container that uses it.** The
+thumbnail rules were written as `.lrow .mini`, and the `.yours` anchor uses the
+same strip — so its posters drew at their natural 370px, stacked down the
+screen. Scoped to both now, and asserted by **computed** width, because in CI
+(no artwork) a broken image has no size and the bug is invisible to a box
+measurement.
 
 **The line under a list answers one question per section.** On your topics:
 relation to yours — *"You and Mischa agree on 5 of 10"* (person), *"6 of your 10
