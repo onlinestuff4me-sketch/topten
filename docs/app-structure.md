@@ -183,11 +183,20 @@ things for a year.
 | Row | Needs | Buildable now? |
 |---|---|---|
 | Because of what you've made | your own lists + a root index | **Yes.** On device, no account. |
+| Where else this film stands | published lists, nothing more | **Nearly.** See below. |
 | Popular | published-list counts per root | No — needs the database |
 | New rooms | publish timestamps, first-author | No — needs the database |
 | Trending | publish timestamps + baseline | No — needs the database |
 
-**One of the four.** The other three are fixtures until Supabase holds published
+**Amended 2026-11-20** after the Hypelist teardown (`docs/hypelist-teardown.md`),
+which added the second row. It is the item graph — tap a film in anyone's Ten
+and see the other Tens it stands in, *"in 34 other Top 10s, 6 of them at number
+one"*. It needs no timestamps, no baseline and no trending ratio, only published
+lists, and it is reachable from every poster on every screen rather than living
+in a row. Of the five, it is the one that gets most of its value from our
+constraint: in an app of 42-item lists the same overlap means almost nothing.
+
+**Two of the five, and the second is the better steal.** The other three are fixtures until Supabase holds published
 lists, and the prototype should say so in its own copy rather than compute a
 number from TMDB and call it "rising" — which is the exact mistake corrected in
 §2.
