@@ -259,6 +259,18 @@ cadence is therefore the decision, and it is three different ones:
 | **This week** | one topic, new each ISO week | deliberately **broader** — a genre or a decade, never a person | a week is long enough that a bigger list is not a chore, and the breadth keeps the two from reading as the same suggestion twice |
 | **Rising now** | continuous | a row of topics | not a suggestion at all — what the collection is busy with, so the screen has a pulse that is not about you |
 
+*Amended 2026-11-20 (Mischa: rework Browse "for maximum clarity"; Claude made
+the call below and flagged it).* **The cadence above is unchanged** — Today
+daily, This week weekly, both deterministic and never something you have made.
+**What changed is where they sit**: they were the top 62% of a page called
+"Other Top 10 Lists", in three different shapes with three kinds of reason.
+They are now the section *after* the lists (Req 20), in the same row shape as
+every other topic. Today also opens its topic page rather than going straight
+to build, which is the gesture every topic on that page makes; Make yours is
+one tap further. **Rising now is retired** — see Req 20. If Today needs to be
+back on top as the daily hook, that is one compact row and a retention call
+that is Mischa's to make.
+
 Both picks are **deterministic within their period**: the same day gives the
 same topic on every render and on every device. A suggestion that moved when
 the screen redrew would be a slot machine. Both are also drawn from the pool
@@ -990,7 +1002,7 @@ bookmarks a statement of taste) by making the one reaction do both jobs.
 **Superseded on arrival:** the teardown proposed tapping an individual pick to
 say *"this one, yes"* instead of liking the list, on the grounds that a like
 tells the author nothing about which pick landed. Not taken, and it is not
-needed — **the item graph (Req 20, pending) computes which picks landed** from
+needed — **the item graph (Req 21, pending) computes which picks landed** from
 published lists, so the author gets that answer without a fourth gesture.
 
 *Non-goal: collaborators.* Hypelist's "people you invite can add or edit items"
@@ -998,6 +1010,81 @@ is the most obviously copyable feature in that app and would do this one the
 most damage: a Top 10 with four authors is nobody's. **Our version of inviting
 somebody into your list is the remix.** Written down because it looks like an
 easy win.
+
+**20. Browse is organised by topic, and every section says why it is there
+(2026-11-20, Mischa — "The feed, cards, metadata, relevance signals and how we
+message that relevance of lists to users, the taxonomy and structure of the page
+needs to be reworked for maximum clarity").**
+
+*Measured first, on the page as a real user meets it (one finished list):*
+
+| | before | after |
+|---|---|---|
+| where the first list starts | 406px of a 659px screen — **62% of it about making**, on a page called "Other Top 10 Lists" | **61px** |
+| lists whose byline slot held a sort order styled as a name | 5 of 7 | 0 — a ranking is a different shape |
+| headlines printed twice | 2 of 7 | **0** |
+| jobs the line under a list did | 4, in 4 grammars, one using a retired word | 1 per section |
+| a second "Read this Top 10" button per list | 7 | 0 — the row is the button |
+
+*The page, top to bottom:*
+
+1. **Your topics** — topics you have made a list on, each with the other lists
+   on it. The line under each list relates it to yours.
+2. **Other topics** — topics you have not, each with its lists. The line is the
+   list's own argument (the 2026-11-17 decision, unchanged).
+3. **What to make next** — Today, This week, and topics like your most recent
+   list, all in one row shape, each with its reason.
+4. **All topics** — every genre that can fill a list, by category.
+
+*The rules:*
+
+- **Two nouns, two shapes.** A *topic* is a heading or a tile — words and one
+  number, never posters. A *list* is a row — who made it, one line, its picks.
+- **A list sits under its topic**, so a topic's name is printed once. Two lists
+  on one topic stop reading as a duplicate and start reading as an argument.
+- **The section heading is the reason** something is in front of you. Cards
+  never explain themselves.
+- **A person and a ranking are different shapes**: a round initial in the
+  accent, against a square bar mark in grey. Mischa's 2026-11-18 rule — *every
+  seed list states what it is* — was stated in words in the same slot as a
+  person's name; now it is legible before reading.
+- **A ranking cannot agree with you.** On your own topic a person's line reads
+  *"You and Mischa agree on 5 of 10"*; a ranking's reads *"6 of your 10 are in
+  it"*. It used to read *"You and the crowd agree on 10 of 10"* — giving an
+  ordering rule a mind, in a word retired from copy on 2026-11-18.
+- **A count summarises what you cannot see.** Topic tiles carry one — *"3
+  lists"*, or *"Be the first"* when nobody has, which is also the condition for
+  the First Here badge. Topic headings over visible lists do not.
+- **Topics like yours are read off your own picks**, the same evidence Today
+  already used: scored by picks-in-it over the square root of the topic's size,
+  so a topic your picks *concentrate* in beats one they merely fall inside
+  (*Neo-noir*, six of ten, over *Dramas*, eight of hundreds). Three is the floor.
+
+*Acceptance:* the page opens on lists and "What to make next" follows them; no
+topic heading appears twice; every list's mark matches what made it, and a
+ranking is never drawn as a person; on your own topic a ranking reports the
+overlap and a person agrees (asserted in the state where both sentences are
+live — see below); each list row is exactly one button, ≥44pt, with nothing
+nested; rows hold together at 14px and 24px root text; Today and This week are
+the first two rows of their section with their reasons word for word; every
+topic like yours holds at least three of your picks, is not yours, can be
+filled, and states its count exactly; and tapping Today opens its topic page,
+where Make yours builds that topic.
+
+*Two gate failures found by building this.* **The jargon sweep had never seen
+Browse in a real user's state** — it swept it with no finished lists, where the
+relation sentence cannot exist, which is how "the crowd" reached a reader with a
+green suite. It now sweeps with a list of your own, and fails by name when the
+old sentence is restored. **And one of this change's own new checks was
+vacuous**: "a ranking never agrees" passed with the bug put back, because where
+it ran no ranking was on your topic. Removed, with the reason left where it
+stood; the live version is the one above.
+
+**Retired with it: the "Rising now" row** (renamed "From recent releases" on
+2026-11-19). It measured TMDB vote counts, and a page whose rule is that every
+section states truthfully why it is there cannot carry a section whose reason is
+a stand-in. Its real version — what people are making — returns with publish
+data (`docs/app-structure.md` §5).
 
 ## Nice-to-Have (P1)
 
@@ -1338,6 +1425,13 @@ The three questions now answer themselves on this screen too:
 - **Why make my own?** Because the card has just told you something about
   your own taste that you cannot check any other way — and once you have a
   take, every card on that topic turns into a number.
+
+*Amended 2026-11-20 (Req 20).* Both forms survive, and the card around them
+changed. The list name no longer leads each card — **lists sit under their
+topic**, so the name is printed once and the line beneath identifies them along
+with who made them. The second form gained a sibling for rankings, because a
+ranking cannot "agree": *"6 of your 10 are in it"*. The old ranking form was
+*"You and the crowd agree"*, which the 2026-11-18 glossary had already retired.
 
 **No free text, still.** Every claim is generated from the list; `drive.js`
 asserts each one matches one of the three shapes the generator can produce,

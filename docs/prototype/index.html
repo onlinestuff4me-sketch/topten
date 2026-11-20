@@ -502,63 +502,90 @@ section { margin-top: var(--s8); }
    live text on a live card. Found 2026-11-18 when the contrast sweep stopped
    skipping everything below the fold. */
 .sug-topic .lvl { font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.04em; font-weight: 700; color: var(--text-secondary); margin-bottom: var(--s1); }
-/* The card leads with the LIST NAME (Mischa, 2026-08-15). The name is the
-   only display-size type on the card; the topic sits above it as a label and
-   the creator below it as a byline, both far smaller — a card is a list first
-   and a person second. Nothing on it is free text. */
-.other-ten { position: relative; background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--r-card); padding: var(--s4); margin-bottom: var(--s3); }
-.other-ten .topic { display: block; font-size: 0.6875rem; font-weight: 700; letter-spacing: 0.04em; text-transform: uppercase; color: var(--text-secondary); }
-/* ── What to make next ──────────────────────────────────────────────────── */
-.whatsnext { display: grid; gap: var(--s3); margin: 0 0 var(--s6); }
-.whatsnext .eyebrow { margin: 0; font: 700 0.6875rem/1.2 var(--sans); letter-spacing: .14em;
-  text-transform: uppercase; color: var(--accent-ink); }
-.pick { display: block; width: 100%; text-align: left; background: var(--bg-surface);
-  border: 1px solid var(--border-subtle); border-radius: var(--r-card);
-  padding: var(--s4); margin: 0; color: inherit; }
-.pick .pickname { font-family: var(--serif); font-weight: 600; font-size: 1.25rem;
-  line-height: 1.18; letter-spacing: -0.012em; margin: var(--s1) 0 0; display: block; }
-.pick .why { margin: var(--s2) 0 0; font-size: 0.875rem; line-height: 1.35; color: var(--text-secondary); }
-.pick .btn { width: 100%; margin-top: var(--s3); }
-/* The weekly one is the same object a size down: it is a second suggestion,
-   and two cards of equal weight would make the screen a menu rather than a
-   recommendation. One tap, so the whole card is the button. */
-.pick.thin { display: flex; flex-direction: column; gap: 2px; min-height: 44px;
-  padding: var(--s3) var(--s4); cursor: pointer; }
-.pick.thin .pickname { font-size: 1rem; margin: 0; }
-.pick.thin:active { border-color: var(--accent); }
-.risingrow { display: grid; gap: var(--s2); }
-/* The row scrolls rather than wrapping: six genres wrapped to three lines and
-   pushed the lists it is introducing off the screen. */
-.risingrow .chips { display: flex; gap: var(--s2); overflow-x: auto; scrollbar-width: none;
-  margin: 0 calc(var(--margin) * -1); padding: 2px var(--margin) var(--s2); }
-.risingrow .chips::-webkit-scrollbar { display: none; }
-.pickchip { flex: 0 0 auto; }
+/* ── Browse (2026-11-20) — the reasoning is above renderDiscover() ──────── */
+.bsec { margin: 0 0 var(--s8); }
+.bsec > .section-h { margin: 0 0 var(--s3); }
 
-.other-ten .listname { font-family: var(--serif); font-weight: 600; font-size: 1.375rem; line-height: 1.18; letter-spacing: -0.012em; margin: var(--s1) 0 0; }
-.other-ten .claim { margin: var(--s2) 0 0; font-size: 0.875rem; line-height: 1.35; color: var(--text-secondary); }
-/* Attribution, under the claim. Two parts on one line: who, then what they
-   are - the second half is what stops a bare name reading as somebody you
-   were supposed to recognise. It wraps rather than truncating, because at
-   accessibility sizes "the ones most people have voted on" is wider than a
-   phone and a clipped role answers nothing. */
-.other-ten .byline { margin: var(--s1) 0 0; display: flex; flex-wrap: wrap; column-gap: var(--s2);
-  font-size: 0.75rem; line-height: 1.4; color: var(--text-secondary); }
-.other-ten .byline .src { font-weight: 700; color: var(--text-primary); }
-.other-ten .byline .role::before { content: '\00b7'; margin-right: var(--s2); }
-.other-ten .strip { display: flex; gap: 4px; margin: var(--s3) 0 0; }
-.other-ten .mini { position: relative; width: 40px; height: 60px; border-radius: 4px; overflow: hidden; flex: 0 0 40px; background: var(--bg-recessed); }
-.other-ten .mini img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.other-ten .mini b { position: absolute; left: 0; bottom: 0; font-family: var(--serif); font-size: 0.625rem; background: rgba(18,17,16,.72); color: #F4F1EA; padding: 0 4px; border-radius: 0 4px 0 4px; }
-/* The gate, stated: what the badge is, and the one thing that opens it. It is
-   a status, never a second verb competing with the card's action. */
-/* One action per card, full width, 48pt tall, saying what it does. It was a
-   line of grey text floating in the middle of the card. */
-.other-ten .cta { display: flex; width: 100%; min-height: 48px; align-items: center; justify-content: center;
-  margin-top: var(--s4); padding: var(--s2) var(--s4); border-radius: 999px;
-  border: 1.5px solid var(--accent); background: var(--bg-surface); color: var(--accent);
-  font-weight: 600; font-size: 0.9375rem; text-align: center;
-  transition: transform var(--m-press) var(--ease-out); }
-.other-ten .cta:active { transform: scale(.985); }
+/* A topic and the lists on it, as one object. The topic heading is the way
+   into the topic page; each row is the way into one list. */
+.tgroup { background: var(--bg-surface); border: 1px solid var(--border-subtle);
+  border-radius: var(--r-card); margin: 0 0 var(--s3); overflow: hidden; }
+.thead-h { margin: 0; font: inherit; }
+.thead { display: flex; align-items: center; justify-content: space-between; gap: var(--s2);
+  width: 100%; min-height: 52px; padding: var(--s3) var(--s4); background: none; border: 0;
+  text-align: left; cursor: pointer; color: inherit; }
+.thead .tname { font-family: var(--serif); font-weight: 600; font-size: 1.25rem; line-height: 1.2;
+  letter-spacing: -0.01em; min-width: 0; overflow-wrap: break-word; }
+.chev { color: var(--text-secondary); font-size: 1.375rem; line-height: 1.2; flex: none; }
+
+.lrow { display: grid; gap: var(--s2); width: 100%; padding: var(--s3) var(--s4) var(--s4);
+  background: none; border: 0; border-top: 1px solid var(--border-subtle);
+  text-align: left; cursor: pointer; color: inherit;
+  transition: background-color var(--m-press) var(--ease-out); }
+.lrow:active { background: var(--bg-recessed); }
+.lhead { display: flex; align-items: center; gap: var(--s2); min-width: 0; }
+/* WHO, AS A SHAPE. A person is a round initial in the accent; a ranking is a
+   square bar mark in neutral. Same slot, same size, unmistakably different —
+   the 2026-11-18 rule that every seed list states what it is, made visible
+   rather than merely stated. */
+.src-mark { width: 28px; height: 28px; flex: none; display: grid; place-items: center;
+  font-weight: 700; font-size: 0.8125rem; line-height: 1; }
+.src-mark.person { border-radius: 50%; color: var(--accent);
+  background: color-mix(in srgb, var(--accent) 16%, transparent); }
+.src-mark.rule { border-radius: 7px; color: var(--text-secondary); background: var(--bg-recessed); }
+.src-mark.rule svg { width: 16px; height: 16px; fill: none; stroke: currentColor;
+  stroke-width: 2.4; stroke-linecap: round; }
+.lwho { display: flex; flex-wrap: wrap; column-gap: var(--s2); align-items: baseline;
+  min-width: 0; font-size: 0.875rem; line-height: 1.3; }
+.lwho b { font-weight: 700; color: var(--text-primary); }
+.lrole { color: var(--text-secondary); font-size: 0.8125rem; }
+.lline { font-size: 0.9375rem; line-height: 1.35; color: var(--text-primary); }
+.lrow .strip { display: flex; gap: 4px; }
+.lrow .mini { position: relative; width: 40px; height: 60px; border-radius: 4px; overflow: hidden;
+  flex: 0 0 40px; background: var(--bg-recessed); }
+.lrow .mini img { width: 100%; height: 100%; object-fit: cover; display: block; }
+.lrow .mini b { position: absolute; left: 0; bottom: 0; font-family: var(--serif); font-size: 0.625rem;
+  background: rgba(18,17,16,.72); color: #F4F1EA; padding: 0 4px; border-radius: 0 4px 0 4px; }
+@media (prefers-reduced-motion: reduce) { .lrow { transition: none; } }
+
+/* A topic you might make. One reason above, one number beside the name. */
+.trow { display: grid; gap: 2px; width: 100%; min-height: 56px; padding: var(--s3) var(--s4);
+  margin: 0 0 var(--s2); background: var(--bg-surface); border: 1px solid var(--border-subtle);
+  border-radius: var(--r-card); text-align: left; cursor: pointer; color: inherit; }
+.trow:active { border-color: var(--accent); }
+.teyebrow { font: 700 0.6875rem/1.2 var(--sans); letter-spacing: .14em; text-transform: uppercase;
+  color: var(--accent-ink); }
+.trow-main { display: flex; align-items: baseline; justify-content: space-between;
+  flex-wrap: wrap; column-gap: var(--s3); row-gap: 2px; }
+.trow .tname { font-family: var(--serif); font-weight: 600; font-size: 1.0625rem; line-height: 1.25;
+  min-width: 0; overflow-wrap: break-word; }
+.tcount { font-size: 0.8125rem; color: var(--text-secondary); white-space: nowrap; }
+/* Nobody has made it yet — which is an invitation, and the condition for the
+   "First Here" badge, so it is said in the accent rather than greyed out. */
+.tcount.first { color: var(--accent-ink); font-weight: 600; }
+.trow .why { font-size: 0.8125rem; line-height: 1.35; color: var(--text-secondary); }
+.because { font-size: 0.875rem; line-height: 1.35; color: var(--text-secondary); margin: var(--s4) 0 var(--s2); }
+.because b { color: var(--text-primary); font-weight: 600; }
+
+/* The directory. */
+.cat { font-size: 0.9375rem; font-weight: 700; margin: var(--s4) 0 var(--s2); }
+.bsec > .cat:first-of-type { margin-top: 0; }
+/* The column floor is in REM, not px, so the grid drops to one column as text
+   grows. A px floor held two columns at 32px root text and "Documentaries" —
+   one word that cannot break — pushed the page 42px off the side of the
+   phone. More text should mean fewer columns, which is what Dynamic Type
+   asks of every grid. */
+.tgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(100%, 9.5rem), 1fr));
+  gap: var(--s2); }
+.ttile { display: grid; gap: 2px; align-content: start; min-height: 64px; min-width: 0; padding: var(--s3);
+  background: var(--bg-surface); border: 1px solid var(--border-subtle); border-radius: var(--r-card);
+  text-align: left; cursor: pointer; color: inherit; }
+.ttile:active { border-color: var(--accent); }
+.ttile .tname { font-weight: 600; font-size: 0.9375rem; line-height: 1.2; overflow-wrap: break-word; }
+/* Quiet in the directory. "Be the first" in the accent is an invitation in
+   What to make next; on 47 directory tiles at once it was wallpaper, and a
+   phrase repeated that often stops being read. Same words, no emphasis. */
+.ttile .tcount, .ttile .tcount.first { color: var(--text-secondary); font-weight: 400; }
 .tenrow.shared { box-shadow: inset 0 0 0 1px var(--accent-muted); border-radius: var(--r-card); }
 .sug-topic .why { font-style: italic; font-size: 0.875rem; color: var(--text-secondary); margin-top: 2px; }
 
@@ -2208,7 +2235,7 @@ function notes() {
   return `<footer class="notes">
     <p>Structure prototype. Glass, haptics, and final motion are judged on
     device, not here. Judge the flow, the anatomy, and the words.</p>
-    <p class="build">build 0022 · the picker, start from a title, achievements</p>
+    <p class="build">build 0023 · tabs, Browse by topic, start from a title</p>
   </footer>`;
 }
 
@@ -3067,8 +3094,20 @@ const keywordsFor = f => (KW()[f.id] || []);
    the tag is "london, england" and the list is "Top 10 London Movies". */
 const SMALL_WORDS = new Set(['of', 'the', 'a', 'an', 'and', 'or', 'in', 'on',
   'at', 'to', 'for', 'with', 'vs', 'from', 'by']);
-const keywordName = k => String(k).split(',')[0].trim().split(/\s+/)
-  .map((w, i) => (i > 0 && SMALL_WORDS.has(w)) ? w
+/* Title case is wrong for three kinds of word, all of which reach a list name
+   from TMDB's lower-case tags (measured over the 731 fillable keywords,
+   2026-11-20): an acronym ("fbi agent" became "Fbi Agent"), a roman numeral
+   ("world war ii" became "World War Ii"), and a digit-letter token ("3d
+   animation" became "3d Animation" — the capital landed on the digit). A
+   trailing parenthetical is an abbreviation TMDB appends for search, and in
+   a list name it is just noise: "(cia)", "(dceu)". */
+const ACRONYM = new Set(['usa', 'us', 'uk', 'fbi', 'cia', 'mi6', 'lgbt', 'tv', 'dc',
+  'nyc', 'cgi', 'nsa', 'kgb', 'nasa', 'ai', 'un']);
+const ROMAN = /^(ii|iii|iv|vi|vii|viii|ix)$/;
+const keywordName = k => String(k).split(',')[0].replace(/\s*\([^)]*\)\s*$/, '').trim().split(/\s+/)
+  .map((w, i) => ACRONYM.has(w) || ROMAN.test(w) ? w.toUpperCase()
+    : /^\d+[a-z]$/.test(w) && !/^\d+(st|nd|rd|th)$/.test(w) ? w.toUpperCase()
+    : (i > 0 && SMALL_WORDS.has(w)) ? w
     : w.charAt(0).toUpperCase() + w.slice(1))
   .join(' ');
 
@@ -3656,22 +3695,12 @@ function claimFor(t) {
    that, computed rather than invented, so what is being judged is the
    mechanism and not a mock-up.
 
-   THIS ROW IS A STAND-IN AND SAYS SO. In the product it is other people's
-   activity. There are no other people yet, and inventing counts is the thing
-   the seed-source decision refused to do, so it is derived from the one thing
-   that IS real here: titles that are both recent and widely rated. The label
-   has never said "N people made this today".
-
-   Amended 2026-11-19. It said "Rising now", which was a smaller version of
-   the same invention: not a fabricated count, but a fabricated TENSE. Nothing
-   anybody does in this app moves that number — it is the summed TMDB vote
-   count of films released in the last four years, which is the catalogue's
-   popularity wearing the word "now". The label is now "From recent releases",
-   which is exactly what the sum below measures. Refusing to invent the number
-   and then labelling it as something else only moves the invention into the
-   heading. See `docs/app-structure.md` for the four rows that replace this
-   when there is a database, and which of them the database still cannot
-   answer. */
+   The third row, "Rising now" (renamed "From recent releases" on
+   2026-11-19 because it measured TMDB votes, not anything anybody did here),
+   was RETIRED on 2026-11-20 with the Browse rework. A row whose reason is a
+   stand-in cannot sit on a page whose rule is that every section says
+   truthfully why it is there. The real version — what people are making —
+   returns with publish data; see `docs/app-structure.md` §5. */
 
 const WEEK_MS = 6048e5;
 const dayNumber = (d = new Date()) => Math.floor(
@@ -3763,104 +3792,239 @@ function thisWeeksPick(when = new Date()) {
   return topic ? { topic } : null;
 }
 
-/* What the collection is busy with: topics whose films are both RECENT and
-   widely rated. Derived from `y` and `vc`, which are the only two things here
-   that are not a guess. */
-const RISING_YEARS = 4;
-function risingNow(n = 6) {
-  const now = new Date().getFullYear();
-  const fresh = CAT.filter(f => (f.dm || 'movie') === 'movie' && f.y >= now - RISING_YEARS);
-  const score = new Map();
-  for (const f of fresh) {
-    for (const g of f.g || []) score.set(g, (score.get(g) || 0) + (f.vc || 0));
-  }
-  /* The GENRE is what is rising, and the chip says the genre. The first
-     version pinned each one to the current decade, which is more precise and
-     reads as a fault: six chips in a row all ending "of the 2020s" look like
-     a template that has not been filled in. The recency is in how these were
-     chosen and in the heading above them, which is where a fact that is true
-     of every item in a row belongs. */
-  return [...score.entries()].sort((a, b) => b[1] - a[1])
-    .map(([g]) => makeTopic({ genre: g }))
-    .filter(offerable)
-    .slice(0, n);
+/* ── Browse (2026-11-20, Mischa — "The feed, cards, metadata, relevance
+   signals and how we message that relevance of lists to users, the taxonomy
+   and structure of the page needs to be reworked for maximum clarity") ────
+
+   Measured before this was written, on the page as a real user meets it (one
+   finished list — the state the tab bar first appears in):
+
+     - 62% of the first screen was about MAKING, on a screen called
+       "Other Top 10 Lists": Today, This week and a row of genre chips, in
+       three different shapes with three different kinds of reason.
+     - 5 of 7 lists carried a sort order in the byline slot ("Rated highest",
+       "Best known") styled exactly like a person's name.
+     - 2 of 7 headlines appeared twice — two different lists both headed
+       "Top 10 Crime Movies of the 90s" — which reads as a rendering fault.
+     - The line under each list did four different jobs in four grammars, and
+       one of them put "the crowd", a word retired from copy, in front of the
+       reader. The jargon sweep missed it because it only ever looked at this
+       screen with NO finished lists, where that sentence cannot appear.
+     - Every list carried its own "Read this Top 10" pill, duplicating the
+       card's own tap and costing ~60px a card.
+
+   The rules that replace it:
+
+   1. TWO NOUNS, TWO SHAPES. A topic is a heading or a tile — words and a
+      count, never posters. A list is a row — a source, one line, its picks.
+   2. LISTS SIT UNDER THEIR TOPIC, so a topic's name is printed once. Two
+      lists on one topic stop looking like a duplicate and start looking like
+      what they are: an argument.
+   3. THE SECTION HEADING IS THE REASON. Why something is in front of you is
+      said once, at the top of its section, in the same place every time.
+      Cards never explain themselves.
+   4. A PERSON AND A RANKING ARE DIFFERENT SHAPES. Mischa, 2026-11-18: "every
+      seed list states what it is". It said so in words in the same slot; now
+      it is a round initial against a square bar mark, legible before reading.
+   5. THE LINE UNDER A LIST ANSWERS ONE QUESTION PER SECTION. On your topics:
+      how it relates to yours. On other topics: the list's own argument
+      (2026-11-17). A count summarises what you cannot see, so topic tiles
+      carry one and topic headings over visible lists do not. */
+
+/* Every list on a topic, yours included — the one number on a topic tile. */
+const listsOnTopic = id => SOURCES.filter(s => s.topic.id === id).length
+  + ((S.done || []).some(d => d.topicId === id) ? 1 : 0);
+const countLine = n => n === 0 ? 'Be the first' : n === 1 ? '1 list' : `${n} lists`;
+
+/* The criteria a topic page is opened with — the topic's own facets, not the
+   whole object, so the attribute stays small. */
+function critOf(t) {
+  const c = { domain: domainOf(t) };
+  for (const k of ['genre', 'keyword', 'studio', 'director', 'actor', 'decade'])
+    if (t[k] != null) c[k] = t[k];
+  return c;
 }
 
-/* The block above the other people's lists: one topic for today, one for the
-   week, and what the collection is busy with. It sits HERE rather than on the
-   build screen because this is the screen you come back to - the build screen
-   already has a topic, and offering a different one on top of the one you are
-   filling is an interruption rather than an invitation. */
-function whatsNext() {
-  const today = todaysPick(), week = thisWeeksPick(), rising = risingNow(6);
-  if (!today && !week && !rising.length) return '';
-  /* A chip is a browse gesture, so it opens the topic rather than starting
-     it. Only "Make this one" and "Make yours" commit. */
-  const chip = t => `<button class="chip pickchip" data-topicpage='${esc(JSON.stringify(t))}'
-    >${esc(t.title.replace(/^Top 10 /, ''))}</button>`;
-  return `<section class="whatsnext" aria-label="What to make next">
-    ${today ? `<article class="pick">
-      <p class="eyebrow">Today</p>
-      <h2 class="pickname">${esc(today.topic.title)}</h2>
-      <p class="why">${esc(today.why)}</p>
-      <button class="btn" data-topic='${esc(JSON.stringify(today.topic))}'>Make this one</button>
-    </article>` : ''}
-    ${week ? `<button class="pick thin" data-topicpage='${esc(JSON.stringify(week.topic))}'>
-      <span class="eyebrow">This week</span>
-      <span class="pickname">${esc(week.topic.title)}</span>
-    </button>` : ''}
-    ${rising.length ? `<div class="risingrow">
-      <p class="eyebrow">From recent releases</p>
-      <div class="chips">${rising.map(chip).join('')}</div>
-    </div>` : ''}
+/* One grammar for overlap, used everywhere a set is compared with yours:
+   a ranking against your list, a topic against your picks. */
+function overlapLine(n) {
+  if (n === 0) return 'None of your 10 are in it.';
+  if (n === 10) return 'All 10 of yours are in it.';
+  return n === 1 ? '1 of your 10 is in it.' : `${n} of your 10 are in it.`;
+}
+
+/* The line under a list. If you have made this topic, it is how the list
+   relates to yours; otherwise it is the list's own argument (2026-11-17).
+
+   A PERSON agrees with you. A RANKING cannot — it is an ordering rule, not
+   somebody — so it reports the overlap instead. The old sentence for a
+   ranking was "You and the crowd agree on 10 of 10", which both gave an
+   ordering rule a mind and used a word retired from copy. */
+function lineFor(t) {
+  const mine = (S.done || []).find(d => d.topicId === t.src.topic.id);
+  if (!mine) return claimFor(t);
+  const ids = new Set(mine.ranked || []);
+  const n = t.ranked.filter(f => ids.has(f.id)).length;
+  if (t.src.kind === 'person') return n === 0
+    ? `You and ${t.src.subject} agree on nothing at all.`
+    : `You and ${t.src.subject} agree on ${n} of 10.`;
+  return overlapLine(n);
+}
+
+/* Who made it, as a shape before it is a word. */
+const RULE_MARK = '<svg viewBox="0 0 24 24"><path d="M5 19v-5M10 19V6M15 19v-9M20 19v-3"/></svg>';
+const sourceMark = src => src.kind === 'person'
+  ? `<span class="src-mark person" aria-hidden="true">${esc(src.label.slice(0, 1))}</span>`
+  : `<span class="src-mark rule" aria-hidden="true">${RULE_MARK}</span>`;
+
+/* A list, as a row under its topic. The whole row is the tap target — there
+   is no separate "Read" button, because a row that is not itself the way in
+   would need a second control to say what the first already does. */
+function listRow(t) {
+  const src = t.src, line = lineFor(t), person = src.kind === 'person';
+  const label = person
+    ? `${src.label}’s ${src.topic.title}. ${line}`
+    : `${src.topic.title}, ranked by ${src.label}: ${src.role}. ${line}`;
+  return `<button class="lrow" data-other="${esc(src.id)}" data-src="${person ? 'person' : 'rule'}"
+      aria-label="${esc(label)}">
+    <span class="lhead">${sourceMark(src)}
+      <span class="lwho"><b>${esc(src.label)}</b><span class="lrole">${esc(src.role)}</span></span></span>
+    <span class="lline">${esc(line)}</span>
+    <span class="strip" aria-hidden="true">${t.ranked.slice(0, 6).map((f, j) =>
+      `<span class="mini"><img src="${IMG}w185${f.p}" alt="" loading="lazy"><b>${j + 1}</b></span>`).join('')}</span>
+  </button>`;
+}
+
+/* A topic heading with its lists. The name is a heading for VoiceOver's
+   rotor AND the way into the topic page, which shows every list on it and
+   what everyone picked. No count: the lists are right there. */
+function topicGroup(topic, tens) {
+  return `<section class="tgroup">
+    <h3 class="thead-h"><button class="thead" data-topicpage='${esc(JSON.stringify(critOf(topic)))}'>
+      <span class="tname">${esc(topic.title)}</span><span class="chev" aria-hidden="true">›</span>
+    </button></h3>
+    ${tens.map(listRow).join('')}
   </section>`;
 }
 
+/* A topic you might make, as a row: an optional reason above, the name, the
+   one number, and an optional sentence. */
+function topicRow(topic, { eyebrow = '', why = '' } = {}) {
+  const n = listsOnTopic(topic.id);
+  return `<button class="trow" data-topicpage='${esc(JSON.stringify(critOf(topic)))}'>
+    ${eyebrow ? `<span class="teyebrow">${esc(eyebrow)}</span>` : ''}
+    <span class="trow-main"><span class="tname">${esc(topic.title)}</span>
+      <span class="tcount${n ? '' : ' first'}">${countLine(n)}</span></span>
+    ${why ? `<span class="why">${esc(why)}</span>` : ''}
+  </button>`;
+}
+
+/* A topic in the directory: the name without its "Top 10" — the heading
+   above has already said what every tile is — and the one number. */
+function topicTile(topic) {
+  const n = listsOnTopic(topic.id);
+  return `<button class="ttile" data-topicpage='${esc(JSON.stringify(critOf(topic)))}'>
+    <span class="tname">${esc(topic.title.replace(/^Top 10 /, ''))}</span>
+    <span class="tcount${n ? '' : ' first'}">${countLine(n)}</span>
+  </button>`;
+}
+
+/* TOPICS LIKE ONE YOU MADE, read off your own picks rather than off the
+   topic's name — the same evidence "Today" already uses ("Because 10 of
+   your picks were crime movies"), applied to every topic.
+
+   Scored by picks-in-it over the square root of its size, so a topic your
+   picks CONCENTRATE in beats one they merely fall inside: "Top 10 Dramas"
+   holds eight of a crime list's picks and says nothing; "Top 10 Gangster
+   Movies" holding five out of thirty-four says a lot. Three is the floor —
+   below that the overlap is a coincidence, not a resemblance. */
+function topicsLikeYours(d, exclude, n = 4) {
+  const domain = d.domain || 'movie';
+  const picks = (d.ranked || []).map(id => byId.get(id)).filter(Boolean);
+  const cands = new Map();
+  if (domain === 'movie') for (const t of topicPool()) cands.set(t.id, t);
+  for (const e of tagSpace(domain)) {
+    if (e.kind === 'decade') continue;
+    const t = tagsTopic([e], domain);
+    if (!cands.has(t.id)) cands.set(t.id, t);
+  }
+  const out = [];
+  for (const t of cands.values()) {
+    if (exclude.has(t.id)) continue;
+    const hit = picks.filter(f => inTopic(f, t)).length;
+    if (hit < 3) continue;
+    const size = supply(t);
+    if (size < TEN) continue;
+    out.push({ t, hit, score: hit / Math.sqrt(size) });
+  }
+  return out.sort((a, b) => b.score - a.score).slice(0, n);
+}
+
+/* The directory: every genre that can fill a list, by category. Generated,
+   not curated — the root model already guarantees each one is real. */
+const CATEGORY_NAME = { movie: 'Movies', tv: 'Shows', book: 'Books' };
+function genreTopics(domain) {
+  return tagSpace(domain).filter(e => e.kind === 'genre')
+    .map(e => tagsTopic([e], domain)).filter(offerable)
+    .sort((a, b) => a.title.localeCompare(b.title));
+}
+
 function renderDiscover() {
-  const tens = SOURCES.map(theirTen).filter(t => t.ranked.length === 10);
+  const done = S.done || [];
+  const mine = new Set(done.map(d => d.topicId));
+  const yourPicks = new Set(done.flatMap(d => d.ranked || []));
+
+  /* Every list, grouped under its topic; people before rankings inside a
+     topic, because a person is the thing this product is about. */
+  const groups = new Map();
+  for (const t of SOURCES.map(theirTen).filter(t => t.ranked.length === 10)) {
+    const id = t.src.topic.id;
+    if (!groups.has(id)) groups.set(id, { topic: t.src.topic, tens: [] });
+    groups.get(id).tens.push(t);
+  }
+  const hasPerson = g => g.tens.some(t => t.src.kind === 'person');
+  const shared = g => g.tens.reduce((s, t) => s + t.ranked.filter(f => yourPicks.has(f.id)).length, 0);
+  for (const g of groups.values())
+    g.tens.sort((a, b) => (b.src.kind === 'person') - (a.src.kind === 'person'));
+  const all = [...groups.values()];
+  const onYours = all.filter(g => mine.has(g.topic.id));
+  const onOther = all.filter(g => !mine.has(g.topic.id))
+    .sort((a, b) => (hasPerson(b) - hasPerson(a)) || (shared(b) - shared(a)));
+
+  /* What to make next. Today and This week keep exactly the cadence Mischa
+     set on 2026-11-18 — daily, weekly, deterministic within the period,
+     always offerable, never something you have made. What changed is WHERE:
+     they were the top 62% of a reading page, and they are now the section
+     after the lists, in the same shape as every other topic. */
+  const today = todaysPick(), week = thisWeeksPick();
+  const recent = done[done.length - 1];
+  const taken = new Set([...mine, today && today.topic.id, week && week.topic.id].filter(Boolean));
+  const like = recent ? topicsLikeYours(recent, taken) : [];
+  const domains = [...new Set(CAT.map(f => f.dm || 'movie'))];
+
+  const section = (id, heading, body) => body ? `<section class="bsec" aria-labelledby="${id}">
+      <h2 class="section-h" id="${id}">${heading}</h2>${body}</section>` : '';
+
   app.innerHTML = `
-    <div class="topbar"><h1 class="display-lg">Other Top 10 Lists</h1>${(S.done || []).length
+    <div class="topbar"><h1 class="display-lg">Other Top 10 Lists</h1>${done.length
       ? `<button class="link" data-act="pick">Start a list</button>`
       : `<button class="link" data-act="backhome">Done</button>`}</div>
-    ${whatsNext()}
-    ${tens.map((t, i) => {
-      const who = esc(t.src.label), topic = esc(t.src.topic.title);
-      // No topic line above the name any more: since the correction of
-      // 2026-08-15 the name IS the topic, and printing it twice is just
-      // printing it twice.
-      return `<article class="other-ten" data-who="${esc(t.src.id)}" aria-labelledby="ln${i}">
-        <h2 class="listname" id="ln${i}">${esc(listName(t.ranked, t.src.topic))}</h2>
-        <p class="claim">${esc(claimFor(t))}</p>
-        <!-- Attribution sits UNDER the claim, not over it: the card leads with
-             the argument (2026-11-17), and a byline above it would put the
-             name back in front. Its job is only to answer "who is this" the
-             moment the claim has already earned the glance. -->
-        <p class="byline"><span class="src">${who}</span><span class="role">${esc(t.src.role)}</span></p>
-        <!-- One label for the whole strip, read once and in order, rather
-             than six bare numerals. A screen reader met "1 2 3 4 5 6" here
-             with nothing attached to them. design.md's rule is that a rank
-             is "announced semantically ... numerals are never unlabeled
-             decoration" - and six separate announcements ahead of the card's
-             own call to action would bury it, so the strip speaks as the one
-             thing it looks like: a preview of the top six. -->
-        <div class="strip" role="img" aria-label="First six of ${esc(t.src.topic.title)}: ${
-          t.ranked.slice(0, 6).map((f, j) => `${j + 1}, ${f.t}`).join('; ')}">${
-          t.ranked.slice(0, 6).map((f, j) =>
-          `<span class="mini" aria-hidden="true"><img src="${IMG}w185${f.p}" alt=""><b>${j + 1}</b></span>`).join('')}</div>
-        <button class="cta" data-other="${esc(t.src.id)}">${t.src.kind === 'person'
-          ? `Read ${who}&rsquo;s Top 10` : 'Read this Top 10'}</button>
-      </article>`;
-    }).join('')}
-    <!-- Your own, at the foot of other people's. The adjacency is the
-         argument: these are theirs, and that button is yours. It costs the
-         topbar nothing, which a second link up there would not. -->
-    <section class="endbar">
-      ${(S.done || []).length ? '' :
-        `<button class="btn ghost" data-act="opencase">Your own Top 10s</button>`}
-    </section>
+    ${section('b-yours', 'Your topics', onYours.map(g => topicGroup(g.topic, g.tens)).join(''))}
+    ${section('b-other', 'Other topics', onOther.map(g => topicGroup(g.topic, g.tens)).join(''))}
+    ${section('b-next', 'What to make next', (today || week || like.length) ? `
+      ${today ? topicRow(today.topic, { eyebrow: 'Today', why: today.why }) : ''}
+      ${week ? topicRow(week.topic, { eyebrow: 'This week' }) : ''}
+      ${like.length ? `<p class="because">Because you made <b>${esc(recent.title)}</b></p>
+        ${like.map(x => topicRow(x.t, { why: overlapLine(x.hit) })).join('')}` : ''}` : '')}
+    ${section('b-all', 'All topics', domains.map(dm => `
+      <h3 class="cat">${CATEGORY_NAME[dm] || dm}</h3>
+      <div class="tgrid">${genreTopics(dm).map(topicTile).join('')}</div>`).join(''))}
+    ${done.length ? '' : `<section class="endbar">
+      <button class="btn ghost" data-act="opencase">Your own Top 10s</button></section>`}
     ${notes()}`;
   dockEl.innerHTML = '';
 }
+
 
 function renderOther(id) {
   const p = SOURCES.find(x => x.id === id); if (!p) return renderDiscover();
@@ -5077,7 +5241,8 @@ window.byId = byId; window.SOURCES = SOURCES;
 window.WALL_LISTS = WALL_LISTS; window.WALL_ROWS = WALL_ROWS;
 window.CORPUS_CLAIM = CORPUS_CLAIM; window.wallRows = wallRows;
 window.todaysPick = todaysPick; window.thisWeeksPick = thisWeeksPick;
-window.risingNow = risingNow; window.topicPool = topicPool;
+window.topicPool = topicPool; window.topicsLikeYours = topicsLikeYours;
+window.listsOnTopic = listsOnTopic; window.genreTopics = genreTopics;
 window.dockStep = dockStep;
 window.theirTen = theirTen; window.listName = listName;
 window.topicTitle = topicTitle; window.topicPrompt = topicPrompt; window.makeTopic = makeTopic;

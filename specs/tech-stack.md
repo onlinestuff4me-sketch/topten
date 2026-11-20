@@ -446,6 +446,23 @@ topten/
 - Image-gen badge tier — P1, blocked on licensing re-audit.
 - iPad/visionOS layouts — P2.
 
+## A sweep of the empty state is not a sweep of the screen (2026-11-20, Claude)
+
+The jargon sweep checked Browse on every run and never once saw the sentence
+that broke its rule. It seeded the screen with **no finished lists** — and the
+relation line under a list (*"You and the crowd agree on 10 of 10"*) only exists
+once you have made that topic. A green check, on the right screen, in the one
+state where the bug cannot appear.
+
+Then the same thing happened inside the change that fixed it: a new check, *"a
+ranking never agrees with you"*, passed with the bug **put back**, because at its
+point in the run no ranking was on any topic you had made.
+
+**When a sweep or a check guards text that depends on state, seed the state
+that produces the text** — and falsify it by restoring the bug, not by reading
+the assertion. Both of these looked correct and were only found by breaking the
+code under them.
+
 ## A test can keep a deleted system alive (2026-11-19, Claude)
 
 The worst of the residue the retired badge system left behind was not the dead

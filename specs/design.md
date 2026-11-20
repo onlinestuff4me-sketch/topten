@@ -416,6 +416,53 @@ or Tenet. A rabbit hole into a director is worthless if their work is missing,
 so the build now pulls the fuller filmography of every director who appears
 more than once. 220 films became 620.
 
+## Browse components (2026-11-20)
+
+The reasoning and measurements are in PRD Req 20. These are the reusable parts.
+
+**Two nouns, two shapes — never mixed.**
+
+| component | is a | carries | never carries |
+|---|---|---|---|
+| `.tgroup` — topic heading + its lists | topic | the name, once, as a heading and a link to the topic page | a count (its lists are on screen) |
+| `.lrow` — one list | list | source mark, name + role, **one line**, six ranked posters | a second button, a topic name |
+| `.trow` — a topic to make | topic | optional eyebrow (the reason), name, **one number**, optional sentence | posters |
+| `.ttile` — a topic in the directory | topic | name without "Top 10", **one number** | posters, emphasis |
+
+**Source marks.** Same slot, same 28px box, different shape: a **person** is a
+round initial in `--accent` on an 16% accent tint; a **ranking** is a 7px-radius
+square with a four-bar glyph in `--text-secondary` on `--bg-recessed`. The shape
+says which before the words do.
+
+**The line under a list answers one question per section.** On your topics:
+relation to yours — *"You and Mischa agree on 5 of 10"* (person), *"6 of your 10
+are in it"* (ranking). On other topics: the list's own argument. **One grammar
+for overlap everywhere**: *"N of your 10 are in it"*, used for a ranking against
+your list and for a topic against your picks.
+
+**A count summarises what you cannot see.** Tiles and topic rows carry exactly
+one number — *"3 lists"*, *"1 list"*, or *"Be the first"*. In **What to make
+next** a zero is in `--accent-ink`, because there it is an invitation; in the
+**directory** every count is `--text-secondary`, because on 47 tiles at once the
+same accent phrase was wallpaper.
+
+**Grid floors are in `rem`, never `px`.** The directory's columns are
+`minmax(min(100%, 9.5rem), 1fr)`, so the grid drops to one column as text grows.
+A 150px floor held two columns at 32px root text and *"Documentaries"* — one word
+that cannot break — pushed the page 42px off the side of the phone. More text
+must mean fewer columns; that is what Dynamic Type asks of every grid.
+
+**A glyph's `line-height` is never 1.** The topic heading's `›` at
+`line-height: 1` clipped 4px of its own ink at 28px root text. 1.2.
+
+**Keyword names are written the way a person would write them.** Plain title
+case mangled three kinds of word that arrive lower-case from TMDB: acronyms
+(*Fbi Agent* → **FBI Agent**), roman numerals (*World War Ii* → **World War
+II**) and digit-letter tokens (*3d Animation* → **3D Animation**, the capital had
+landed on the digit). TMDB's search parentheticals are dropped (*Central
+Intelligence Agency (cia)* → **Central Intelligence Agency**). Asserted over all
+731 fillable keywords; the old function fails it on 13.
+
 ## The tab bar and the draft accessory (2026-11-20)
 
 Two destinations, `Browse` and `Yours`, as a fixed bar at the bottom. It is a

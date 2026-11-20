@@ -2466,7 +2466,7 @@ const DOMAIN_SPEECH = `(() => {
   // ── Discovery: other people's Top 10 lists, and the reveal gate ─────────
   await page.locator('[data-act="discover"]').click();
   await page.waitForTimeout(250);
-  const cardCount = await page.locator('.other-ten').count();
+  const cardCount = await page.locator('.lrow').count();
   check(cardCount >= 5, `other people have Top 10 lists to look at (${cardCount})`);
   check((await page.locator('h1').innerText()) === 'Other Top 10 Lists',
     'the screen is called Other Top 10 Lists');
@@ -2475,21 +2475,25 @@ const DOMAIN_SPEECH = `(() => {
   check(await page.locator('.prompt').count() === 0, 'and carries no blurb under the title');
 
   // ── The LIST NAME leads, the line under it is subordinate (round 5) ─────
-  const type = await page.evaluate(() => [...document.querySelectorAll('.other-ten')].map(c => {
-    const px = sel => parseFloat(getComputedStyle(c.querySelector(sel)).fontSize);
-    return { name: c.querySelector('.listname').innerText.trim(), nameSize: px('.listname'),
-             claim: c.querySelector('.claim').innerText.trim(), claimSize: px('.claim') };
+  const type = await page.evaluate(() => [...document.querySelectorAll('.lrow')].map(r => {
+    const g = r.closest('.tgroup'), name = g.querySelector('.thead .tname'), line = r.querySelector('.lline');
+    const px = el => parseFloat(getComputedStyle(el).fontSize);
+    return { name: name.innerText.trim(), nameSize: px(name), src: r.dataset.src,
+             who: r.querySelector('.lwho b').innerText.trim(),
+             claim: line.innerText.trim(), claimSize: px(line) };
   }));
   check(type.length === cardCount && type.every(t => t.nameSize > t.claimSize),
-    `the list name is the biggest type on every card (${type[0].nameSize}px name vs ` +
-    `${type[0].claimSize}px claim)`);
-  check(type.every(t => t.nameSize >= t.claimSize * 1.5),
-    'and dominant, not merely larger — at least half again the line under it');
+    `the topic name is the biggest type over every list (${type[0].nameSize}px name vs ` +
+    `${type[0].claimSize}px line)`);
+  check(type.every(t => t.nameSize >= t.claimSize * 1.25),
+    'and dominant, not merely larger — at least a quarter again the line under it');
   // Since the correction of 2026-08-15 the name IS the topic, so it appears
   // once. Two people on the same topic share a name and are told apart by the
   // line beneath — which is the point of Sam and Theo both being on Crime.
-  check(await page.locator('.other-ten .topic').count() === 0,
-    'the name is not repeated as a separate topic line above itself');
+  const topicHeads = await page.evaluate(() =>
+    [...document.querySelectorAll('.thead .tname')].map(e => e.textContent.trim()));
+  check(topicHeads.length === new Set(topicHeads).size,
+    `no topic heading appears twice — lists on one topic sit under one name (${topicHeads.length} headings)`);
 
   /* ── Every card makes an argument, not an introduction ──────────────────
      Mischa, 2026-11-17: "Who is Sam, why do I care about his top 10, why
@@ -2508,8 +2512,9 @@ const DOMAIN_SPEECH = `(() => {
   // Two people on the same topic must still be told apart, now that the line
   // under the name is the only thing distinguishing them.
   const sameTopic = type.filter(t => /Crime Movies of the 90s/.test(t.name));
-  check(sameTopic.length === 2 && sameTopic[0].claim !== sameTopic[1].claim,
-    `two takes on one topic read differently (${sameTopic.length} found)`);
+  check(sameTopic.length === 2 && sameTopic[0].claim !== sameTopic[1].claim
+        && sameTopic[0].who !== sameTopic[1].who,
+    `two lists on one topic read differently, under one heading (${sameTopic.length} found)`);
 
   // ── A NAME IS A RULE, TRUE OF ALL TEN ───────────────────────────────────
   // The correction Mischa made on 2026-08-15: a list called "Top 10 Crime
@@ -2632,10 +2637,10 @@ const DOMAIN_SPEECH = `(() => {
      including a byline with a word added to it, still counts as a stray. */
   const strays = await page.evaluate(() => {
     const shipped = new Set(window.SOURCES.map(s => `${s.label}\u0000${s.role}`));
-    return [...document.querySelectorAll('.other-ten')].reduce((n, c) => n +
-      [...c.querySelectorAll('p:not(.claim), .ln, .desc, .blurb')].filter(el => {
-        if (!el.classList.contains('byline')) return true;
-        const who = el.querySelector('.src'), role = el.querySelector('.role');
+    return [...document.querySelectorAll('.lrow')].reduce((n, c) => n +
+      [...c.querySelectorAll('p, .ln, .desc, .blurb, .lwho')].filter(el => {
+        if (!el.classList.contains('lwho')) return true;
+        const who = el.querySelector('b'), role = el.querySelector('.lrole');
         return !who || !role
           || !shipped.has(`${who.textContent.trim()}\u0000${role.textContent.trim()}`);
       }).length, 0);
@@ -2646,7 +2651,8 @@ const DOMAIN_SPEECH = `(() => {
      each ranking rule has its own sentence. "You and ..." takes a multi-word
      subject now ("you and the crowd"), which the old \S+ could not match. */
   const SHAPES = [
-    /^You and (\S+|the \S+) agree on (\d+ of 10|nothing at all)\.$/,
+    /^You and (?!the )\S+ agree on (\d+ of 10|nothing at all)\.$/, // a person, vs yours
+    /^(None of your 10 are|All 10 of yours are|1 of your 10 is|\d of your 10 are) in it\.$/, // a ranking, vs yours
     /^.+ puts .+ above .+\.$/,                       // a person, departing
     /^.+\u2019s number one is .+\.$/,                 // a person, agreeing
     /^More people have rated .+ than .+\.$/,         // Best known
@@ -2662,40 +2668,66 @@ const DOMAIN_SPEECH = `(() => {
   check(!/Argues about endings|practical effects|Cries at Pixar|Watches everything twice|Quotes films at you|Reads the credits/i.test(discoverText),
     'and the hand-written character blurbs are gone from the app entirely');
 
-  // ── One CTA per card: 44pt, inside the card, saying what it does ─────────
-  const ctas = await page.evaluate(() => [...document.querySelectorAll('.other-ten')].map(card => {
-    const b = card.querySelector('.cta');
-    const r = b && b.getBoundingClientRect(), c = card.getBoundingClientRect();
-    return { buttons: card.querySelectorAll('button').length,
-      label: b ? b.innerText.replace(/\s+/g, ' ').trim() : '',
-      h: r ? r.height : 0, w: r ? r.width : 0,
-      inside: !!r && r.left >= c.left - 1 && r.right <= c.right + 1
-                  && r.top >= c.top - 1 && r.bottom <= c.bottom + 1 };
+  /* ── The row IS the action (2026-11-20) ──────────────────────────────────
+     Each list used to carry a full-width "Read this Top 10" pill under its
+     posters — a second control saying what tapping the card already did, at
+     ~60px a card. The row is now one button, so these are the same checks as
+     before about the same thing: one action, big enough, saying what it is. */
+  const rows = await page.evaluate(() => [...document.querySelectorAll('.lrow')].map(r => {
+    const b = r.getBoundingClientRect();
+    return { tag: r.tagName, nested: r.querySelectorAll('button, a').length,
+      label: r.getAttribute('aria-label') || '', h: b.height, w: b.width,
+      topic: r.closest('.tgroup').querySelector('.thead .tname').textContent.trim() };
   }));
-  check(ctas.every(c => c.buttons === 1), 'each card offers exactly one action');
-  check(ctas.every(c => c.h >= 44 && c.w >= 44),
-    `every CTA meets the 44pt minimum (smallest ${Math.round(Math.min(...ctas.map(c => c.h)))}pt tall)`);
-  check(ctas.every(c => c.inside), 'and sits fully inside its card');
-  check(ctas.every(c => /^Read .+Top 10$/.test(c.label)),
-    `and says what it does ("${ctas[0].label}")`);
+  check(rows.every(r => r.tag === 'BUTTON' && r.nested === 0),
+    'each list is exactly one action — the row itself, with nothing nested inside it');
+  check(rows.every(r => r.h >= 44 && r.w >= 44),
+    `every row meets the 44pt minimum (smallest ${Math.round(Math.min(...rows.map(r => r.h)))}pt tall)`);
+  check(rows.every(r => r.label.includes(r.topic.replace(/^Top 10 /, ''))),
+    `and says what it opens, topic included ("${rows[0].label.slice(0, 60)}…")`);
+  check(await page.locator('.lrow .cta, .tgroup .cta').count() === 0,
+    'and no row carries a second "Read" button');
 
-  // A CTA that only just fits at the default size is a CTA that breaks at the
+  /* A PERSON AND A RANKING ARE DIFFERENT SHAPES. Mischa, 2026-11-18: every
+     seed list states what it is. It said so in words in the same slot as a
+     person's name; this asserts it is legible before reading. */
+  const marks = await page.evaluate(() => [...document.querySelectorAll('.lrow')].map(r => {
+    const m = r.querySelector('.src-mark'), cs = getComputedStyle(m);
+    const src = window.SOURCES.find(x => x.id === r.dataset.other);
+    return { kind: src.kind, mark: m.classList.contains('person') ? 'person' : 'rule',
+      round: parseFloat(cs.borderTopLeftRadius) >= m.getBoundingClientRect().width / 2 - 1,
+      initial: m.textContent.trim(), svg: !!m.querySelector('svg'),
+      line: r.querySelector('.lline').textContent.trim() };
+  }));
+  check(marks.every(m => m.mark === (m.kind === 'person' ? 'person' : 'rule')),
+    `every list's mark matches what made it (${marks.filter(m => m.kind === 'person').length} people, `
+    + `${marks.filter(m => m.kind !== 'person').length} rankings)`);
+  check(marks.every(m => m.kind === 'person' ? (m.round && !m.svg && m.initial.length === 1)
+                                             : (!m.round && m.svg && m.initial === '')),
+    'a person is a round initial, a ranking a square bar mark — never the other\'s shape');
+  /* No "a ranking never agrees" check HERE: at this point in the run you
+     have no list on any ranking's topic, so the sentence it would guard
+     cannot appear, and the check passed with the bug put back in. It lives in
+     "What to make next" instead, where you have made Crime of the 90s and the
+     sentence is live — and there it fails when the bug is restored. */
+
+  // A row that only just fits at the default size is a row that breaks at the
   // accessibility sizes this app must pass (AGENTS.md quality gate).
   for (const root of [14, 24]) {
     const dt = await page.evaluate(px => {
       document.documentElement.style.fontSize = px + 'px';
-      const out = [...document.querySelectorAll('.other-ten')].map(card => {
-        const c = card.getBoundingClientRect(), cta = card.querySelector('.cta').getBoundingClientRect();
-        const spill = [...card.querySelectorAll('.topic, .listname, .creator, .strip, .badgecell, .cta')]
+      const out = [...document.querySelectorAll('.lrow')].map(row => {
+        const c = row.getBoundingClientRect();
+        const spill = [...row.querySelectorAll('.lhead, .lline, .strip')]
           .some(e => { const b = e.getBoundingClientRect();
             return b.left < c.left - 1 || b.right > c.right + 1 || b.bottom > c.bottom + 1; });
-        return { spill, h: cta.height };
+        return { spill, h: c.height };
       });
       document.documentElement.style.fontSize = '';
       return out;
     }, root);
     check(dt.every(d => !d.spill && d.h >= 44),
-      `the card holds together at ${root}px root text (nothing spills, CTA still ` +
+      `every row holds together at ${root}px root text (nothing spills, row still ` +
       `${Math.round(Math.min(...dt.map(d => d.h)))}pt)`);
   }
 
@@ -2722,10 +2754,10 @@ const DOMAIN_SPEECH = `(() => {
   await noJargon('other people\'s Top 10 lists');
   await page.screenshot({ path: SHOTS + '/14-discover.png', fullPage: true });
 
-  await page.locator('.other-ten .cta').first().click();
+  await page.locator('.lrow').first().click();
   await page.waitForTimeout(250);
   check((await page.locator('h1').innerText()) === type[0].name,
-    'the card opens the list it named — the page leads with the same name');
+    'the row opens the list under that topic — the page leads with the same name');
   check(await page.locator('.tenrow').count() === 10,
     'their whole ten is readable, every row of it');
 
@@ -3226,8 +3258,11 @@ const DOMAIN_SPEECH = `(() => {
     S.seen = true; S.tipDone = true; S.done = []; S.scene = 'discover'; save(); render();
   });
   await page.waitForTimeout(300);
-  const chipName = await page.locator('.risingrow .pickchip').first().innerText();
-  await page.locator('.risingrow .pickchip').first().click();
+  /* Entered through the directory since 2026-11-20 — the "rising" chip row
+     it used to be entered through is retired with the Browse rework. The
+     topic page itself, and everything asserted about it here, is unchanged. */
+  const chipName = (await page.locator('.ttile .tname').first().innerText()).trim();
+  await page.locator('.ttile').first().click();
   await page.waitForTimeout(300);
   const tp = await page.evaluate(() => ({
     scene: window.S.scene,
@@ -3240,9 +3275,9 @@ const DOMAIN_SPEECH = `(() => {
     dock: document.querySelectorAll('.dock').length,
   }));
   check(tp.scene === 'topic' && tp.dock === 0,
-    `a rising chip opens the topic rather than starting it (${tp.scene})`);
+    `a topic tile opens the topic rather than starting it (${tp.scene})`);
   check(tp.heading.startsWith('Top 10 ') && tp.heading.includes(chipName),
-    `named in full ("${tp.heading}" from the chip "${chipName}")`);
+    `named in full ("${tp.heading}" from the tile "${chipName}")`);
   check(/\d+ .+ in the collection\./.test(tp.supply),
     `and it says how much there is to choose from ("${tp.supply.slice(0, 60)}…")`);
   check(tp.crowd === 10 && tp.ranks === '1,2,3,4,5,6,7,8,9,10',
@@ -3254,8 +3289,8 @@ const DOMAIN_SPEECH = `(() => {
   // Back goes where you came from, and the action still commits.
   await page.locator('[data-act="topicback"]').click();
   await page.waitForTimeout(250);
-  check(await page.locator('.other-ten').count() > 0, 'Back returns to where the topic was opened from');
-  await page.locator('.risingrow .pickchip').first().click();
+  check(await page.locator('.lrow').count() > 0, 'Back returns to where the topic was opened from');
+  await page.locator('.ttile').first().click();
   await page.waitForTimeout(250);
   await page.locator('.endbar .btn').click();
   await page.waitForTimeout(350);
@@ -3764,6 +3799,24 @@ const DOMAIN_SPEECH = `(() => {
      tags to pick, and NOTHING it offers is a list that cannot be filled -
      which is the only one of the three a user would not notice being broken,
      and the reason the screen exists. */
+  /* Every fillable keyword, named the way a person would write it. Plain
+     title case got three kinds of word wrong — acronyms ("Fbi Agent"), roman
+     numerals ("World War Ii") and digit-letter tokens ("3d Animation", the
+     capital landing on the digit) — and kept TMDB's search parentheticals
+     ("(cia)"). Found 2026-11-20 on the Browse rework's first screenshot,
+     where "Top 10 3d Animation Movies" was one of four suggestions. */
+  const kwNames = await page.evaluate(() => {
+    const counts = {};
+    for (const ks of Object.values(window.KEYWORDS || {})) for (const k of ks) counts[k] = (counts[k] || 0) + 1;
+    return Object.keys(counts).filter(k => counts[k] >= 10).map(k => keywordName(k));
+  });
+  const kwBad = kwNames.filter(n =>
+    /\b(Usa|Us|Uk|Fbi|Cia|Mi6|Lgbt|Tv|Dc|Nyc|Cgi|Ii|Iii|Iv)\b|[()]/.test(n)
+    || (n.match(/\b\d+[a-z]+\b/g) || []).some(w => !/^\d+(st|nd|rd|th)$/.test(w)));
+  check(kwNames.length > 500 && kwBad.length === 0,
+    `all ${kwNames.length} fillable keywords are named as a person would write them`
+    + (kwBad.length ? ` — ${kwBad.length} are not: ${kwBad.slice(0, 4).join(', ')}` : ''));
+
   console.log('\n── The picker ───────────────────────────────────');
 
   await page.evaluate(() => {
@@ -4168,28 +4221,25 @@ const DOMAIN_SPEECH = `(() => {
   await page.waitForTimeout(300);
 
   const nextPicks = await page.evaluate(() => {
-    const t = todaysPick(), w = thisWeeksPick(), r = risingNow(6);
+    const t = todaysPick(), w = thisWeeksPick();
     return {
       today: t && { title: t.topic.title, id: t.topic.id, supply: supply(t.topic), why: t.why },
       week: w && { title: w.topic.title, id: w.topic.id, supply: supply(w.topic),
         person: !!(w.topic.director || w.topic.actor) },
-      rising: r.map(x => ({ title: x.title, id: x.id, supply: supply(x) })),
       mine: (S.done || []).map(d => d.topicId),
       pool: topicPool().length,
     };
   });
-  check(!!nextPicks.today && !!nextPicks.week && nextPicks.rising.length >= 4,
-    `a pick for today, one for the week, and ${nextPicks.rising.length} rising (from a pool of ${nextPicks.pool})`);
-  check(nextPicks.today.supply >= 10 && nextPicks.week.supply >= 10 && nextPicks.rising.every(r => r.supply >= 10),
-    `every one of them is a list the collection can actually fill `
-    + `(smallest ${Math.min(nextPicks.today.supply, nextPicks.week.supply, ...nextPicks.rising.map(r => r.supply))})`);
+  check(!!nextPicks.today && !!nextPicks.week,
+    `a pick for today and one for the week (from a pool of ${nextPicks.pool})`);
+  check(nextPicks.today.supply >= 10 && nextPicks.week.supply >= 10,
+    `both are lists the collection can actually fill `
+    + `(smallest ${Math.min(nextPicks.today.supply, nextPicks.week.supply)})`);
   check(!nextPicks.mine.includes(nextPicks.today.id) && !nextPicks.mine.includes(nextPicks.week.id),
     'and neither suggests a topic you have already made');
   check(nextPicks.today.id !== nextPicks.week.id && !nextPicks.week.person,
     `today and this week are different, and the weekly one is broad rather than a person `
     + `("${nextPicks.today.title}" / "${nextPicks.week.title}")`);
-  check(new Set(nextPicks.rising.map(r => r.id)).size === nextPicks.rising.length,
-    'the rising row never offers the same topic twice');
   // The daily reason is read off YOUR lists, so it has to name a real count.
   check(/Because 10 of your picks were crime movies\./.test(nextPicks.today.why),
     `the reason is drawn from your own ten ("${nextPicks.today.why}")`);
@@ -4220,14 +4270,83 @@ const DOMAIN_SPEECH = `(() => {
   check(pickMoved.days >= 5, `seven days give ${pickMoved.days} different topics`);
   check(pickMoved.weeks >= 3, `four weeks give ${pickMoved.weeks} different topics`);
 
-  // And the card starts the list it is offering.
-  const pickOffered = await page.locator('.whatsnext .pick .pickname').first().innerText();
-  await page.locator('.whatsnext .pick .btn').first().click();
+  /* WHERE IT SITS (2026-11-20). The cadence above is Mischa's decision and
+     is unchanged. What changed is the place: Today, This week and a row of
+     genre chips were the top 62% of a page called "Other Top 10 Lists", in
+     three shapes with three kinds of reason. They are now one section AFTER
+     the lists, in the same row shape as every other topic. */
+  const order = await page.evaluate(() => {
+    const secs = [...document.querySelectorAll('.bsec')];
+    const ids = secs.map(x => x.getAttribute('aria-labelledby'));
+    const next = document.querySelector('[aria-labelledby="b-next"]');
+    return { ids,
+      rows: next ? [...next.querySelectorAll('.trow')].map(r => ({
+        eb: (r.querySelector('.teyebrow') || {}).textContent || '',
+        name: r.querySelector('.tname').textContent.trim(),
+        count: r.querySelector('.tcount').textContent.trim(),
+        why: (r.querySelector('.why') || {}).textContent || '',
+        crit: JSON.parse(r.dataset.topicpage) })) : [],
+      because: (next && next.querySelector('.because') || {}).textContent || '' };
+  });
+  /* THE STATE THE OLD SWEEP NEVER SAW. The jargon sweep only looked at
+     Browse with NO finished lists, where the relation sentence cannot exist —
+     which is how "You and the crowd agree on 10 of 10" reached a reader with
+     a green suite behind it. Here you have made Crime of the 90s, two lists
+     on it are on screen, and both relation sentences are live. */
+  await noJargon('Browse, with a list of your own');
+  const onMine = await page.evaluate(() =>
+    [...document.querySelectorAll('[aria-labelledby="b-yours"] .lrow')].map(r => ({
+      src: r.dataset.src, line: r.querySelector('.lline').textContent.trim() })));
+  const ruleLines = onMine.filter(l => l.src === 'rule'), personLines = onMine.filter(l => l.src === 'person');
+  check(ruleLines.length >= 1 && personLines.length >= 1,
+    `your own topic carries both a person and a ranking to compare against (${personLines.length} + ${ruleLines.length})`);
+  check(ruleLines.every(l => /^(None of your 10 are|All 10 of yours are|1 of your 10 is|\d of your 10 are) in it\.$/.test(l.line)),
+    `a ranking reports the overlap with yours ("${ruleLines[0] && ruleLines[0].line}")`);
+  check(personLines.every(l => /^You and (?!the )\S+ agree on (\d+ of 10|nothing at all)\.$/.test(l.line)),
+    `and a person agrees with you ("${personLines[0] && personLines[0].line}")`);
+  const firstList = order.ids.findIndex(i => i === 'b-yours' || i === 'b-other');
+  check(firstList === 0 && order.ids.indexOf('b-next') > firstList,
+    `the page opens on lists, and what to make comes after them (${order.ids.join(' \u2192 ')})`);
+  check(order.rows[0] && order.rows[0].eb === 'Today' && order.rows[0].name === nextPicks.today.title,
+    `Today is the first row there, the same topic as before ("${order.rows[0] && order.rows[0].name}")`);
+  check(order.rows[1] && order.rows[1].eb === 'This week' && order.rows[1].name === nextPicks.week.title,
+    'and This week the second');
+  check(order.rows[0].why === nextPicks.today.why, 'carrying its reason, word for word');
+
+  /* TOPICS LIKE THE ONE YOU MADE. The heading names the list, and every
+     topic under it has to earn its place from that list's own picks — the
+     same evidence Today uses — not from a name that merely sounds related. */
+  const like = order.rows.slice(2);
+  check(/^Because you made Top 10 Crime Movies of the 90s$/.test(order.because.trim()),
+    `the reason names the list it comes from ("${order.because.trim()}")`);
+  const likeCheck = await page.evaluate(rows => {
+    const d = S.done[S.done.length - 1];
+    const picks = d.ranked.map(id => byId.get(id));
+    const mine = new Set(S.done.map(x => x.topicId));
+    return rows.map(r => { const t = makeTopic(r.crit);
+      return { name: r.name, hit: picks.filter(f => inTopic(f, t)).length,
+        why: r.why, made: mine.has(t.id), fill: supply(t), count: r.count, lists: listsOnTopic(t.id) }; });
+  }, like);
+  check(likeCheck.length >= 3, `${likeCheck.length} topics like it (${likeCheck.map(x => x.name.replace(/^Top 10 /, '')).join(' / ')})`);
+  check(likeCheck.every(x => x.hit >= 3 && !x.made && x.fill >= 10),
+    `each holds at least three of your picks, is not yours, and can be filled (fewest ${Math.min(...likeCheck.map(x => x.hit))})`);
+  check(likeCheck.every(x => x.why === (x.hit === 10 ? 'All 10 of yours are in it.' : `${x.hit} of your 10 are in it.`)),
+    'and says exactly how many — the count on screen is the count in the data');
+  check(likeCheck.every(x => x.count === (x.lists === 0 ? 'Be the first' : x.lists === 1 ? '1 list' : `${x.lists} lists`)),
+    `the one number on each is the real number of lists on it ("${likeCheck[0].count}")`);
+
+  // And the offer still ends in building the topic it offered — through the
+  // topic page now, which is the browse gesture every topic on Browse makes.
+  await page.locator('[aria-labelledby="b-next"] .trow').first().click();
+  await page.waitForTimeout(300);
+  check(await page.evaluate(() => S.scene) === 'topic',
+    'tapping Today opens its topic, like every topic on this page');
+  await page.locator('.endbar .btn').click();
   await page.waitForTimeout(350);
   check(await page.evaluate(() => window.S.scene) === 'build',
-    'tapping Make this one goes to the build screen');
-  check(await page.evaluate(() => window.S.topic.title) === pickOffered.trim(),
-    `and it is building the topic that was offered ("${pickOffered.trim()}")`);
+    'and Make yours there goes to the build screen');
+  check(await page.evaluate(() => window.S.topic.title) === nextPicks.today.title,
+    `building the topic that was offered ("${nextPicks.today.title}")`);
   await page.evaluate(() => { S.scene = 'discover'; save(); render(); });
   await page.waitForTimeout(250);
 

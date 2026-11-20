@@ -117,9 +117,45 @@ const SCREENS = {
   discover: {
     what: 'other people\'s Top 10 lists',
     seed: (h) => {
-      eval(h.prep); const makeDone = eval(h.makeDone);
-      S.done = h.three.slice(0, 2).map(makeDone);
-      S.scene = 'discover'; save(); render();
+      eval(h.prep);
+      /* A believable personal list, not the ten most-rated: MAKE_DONE ranks
+         by vote count, which IS the "Best known" ranking, so every review
+         image read "All 10 of yours are in it" — a mirror, not a comparison.
+         A person's list shares some of the obvious picks and departs from the
+         rest; this takes a fixed spread of the top 24 to look like one. */
+      const personal = crit => {
+        const t = window.makeTopic(crit);
+        const pool = CAT.filter(f => window.inTopic(f, t))
+          .sort((a, b) => (b.vc || 0) - (a.vc || 0)).slice(0, 24);
+        const ten = [0, 3, 1, 6, 9, 4, 13, 17, 11, 21].map(i => pool[i]).filter(Boolean);
+        return { topicId: t.id, title: window.listName(ten, t), domain: t.domain,
+                 ranked: ten.map(f => f.id) };
+      };
+      S.done = h.three.slice(0, 2).map(personal);
+      S.tab = 'browse'; S.scene = 'discover'; save(); render();
+    },
+  },
+
+  'discover-top': {
+    what: 'Browse, first screen only — what a person sees before scrolling',
+    viewport: true,
+    seed: (h) => {
+      eval(h.prep);
+      /* A believable personal list, not the ten most-rated: MAKE_DONE ranks
+         by vote count, which IS the "Best known" ranking, so every review
+         image read "All 10 of yours are in it" — a mirror, not a comparison.
+         A person's list shares some of the obvious picks and departs from the
+         rest; this takes a fixed spread of the top 24 to look like one. */
+      const personal = crit => {
+        const t = window.makeTopic(crit);
+        const pool = CAT.filter(f => window.inTopic(f, t))
+          .sort((a, b) => (b.vc || 0) - (a.vc || 0)).slice(0, 24);
+        const ten = [0, 3, 1, 6, 9, 4, 13, 17, 11, 21].map(i => pool[i]).filter(Boolean);
+        return { topicId: t.id, title: window.listName(ten, t), domain: t.domain,
+                 ranked: ten.map(f => f.id) };
+      };
+      S.done = h.three.slice(0, 1).map(personal);
+      S.tab = 'browse'; S.scene = 'discover'; save(); render();
     },
   },
 
