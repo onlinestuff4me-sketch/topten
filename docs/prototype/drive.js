@@ -3644,7 +3644,8 @@ const DOMAIN_SPEECH = `(() => {
   }));
   check(left.scene !== 'build' && left.kept === 6,
     `taking it leaves the screen with all six picks intact (${left.kept})`);
-  check(left.draftbar === 1 && /6 of ten/.test(left.says),
+  // Digits, as everywhere a person reads a count (2026-11-21: it said "6 of ten").
+  check(left.draftbar === 1 && /^6 of 10 picked$/.test(left.says.trim()),
     `and the draft is in reach above the tab bar ("${left.name.trim()} — ${left.says.trim()}")`);
   await page.locator('[data-act="resumedraft"]').click();
   await page.waitForTimeout(280);
@@ -4010,6 +4011,9 @@ const DOMAIN_SPEECH = `(() => {
     counts: [...document.querySelectorAll('.sug-topic .why')]
       .map(e => Number((e.textContent.match(/\d+/) || [0])[0])),
     back: document.querySelectorAll('[data-act="pickfilmback"]').length,
+    backBtn: (() => { const b = document.querySelector('[data-act="pickfilmback"]');
+      return b ? { text: b.textContent.trim(), btn: b.classList.contains('btn'),
+        h: Math.round(b.getBoundingClientRect().height), border: getComputedStyle(b).borderTopWidth } : null; })(),
     // the type-ahead must be GONE: you asked what this film is in
     stillTyping: document.querySelectorAll('[data-pick]').length,
   }));
@@ -4021,6 +4025,12 @@ const DOMAIN_SPEECH = `(() => {
     `each with enough behind it to fill, with margin (worst ${Math.min(...onFilm.counts)})`);
   check(onFilm.back === 1 && onFilm.stillTyping === 0,
     'and a way back, with the tag type-ahead out of the way');
+  /* Mischa, 2026-11-21: "What does choose another do? Is that a button?"
+     It was a bare accent link reading "Choose another". It says what it does
+     now, and it looks like the thing it is. */
+  check(!!onFilm.backBtn && onFilm.backBtn.text === 'Pick a different film' && onFilm.backBtn.btn
+    && onFilm.backBtn.border !== '0px' && onFilm.backBtn.h >= 44,
+    `which is a real button that says what it does ("${onFilm.backBtn && onFilm.backBtn.text}", ${onFilm.backBtn && onFilm.backBtn.h}px)`);
 
   /* THE INVARIANT: every room offered actually contains the film. A rule that
      builds roots from shapes rather than from the film's own tags could pass
@@ -4235,7 +4245,7 @@ const DOMAIN_SPEECH = `(() => {
     const t = todaysPick(), w = thisWeeksPick();
     return {
       today: t && { title: t.topic.title, id: t.topic.id, supply: supply(t.topic), why: t.why },
-      week: w && { title: w.topic.title, id: w.topic.id, supply: supply(w.topic),
+      week: w && { title: w.topic.title, id: w.topic.id, supply: supply(w.topic), why: w.why,
         person: !!(w.topic.director || w.topic.actor) },
       mine: (S.done || []).map(d => d.topicId),
       pool: topicPool().length,
@@ -4290,7 +4300,26 @@ const DOMAIN_SPEECH = `(() => {
     const secs = [...document.querySelectorAll('.bsec')];
     const ids = secs.map(x => x.getAttribute('aria-labelledby'));
     const next = document.querySelector('[aria-labelledby="b-next"]');
-    return { ids,
+    const slot = document.querySelector('.today-slot');
+    const tRow = slot && slot.querySelector('.trow');
+    const firstSec = secs[0];
+    const firstList = document.querySelector('.yours, .lrow');
+    /* Every topic row on the page: where its count sits relative to its
+       name. The count used to sit at the right edge on short names and drop
+       under long ones, so it moved from row to row. */
+    const drift = [...document.querySelectorAll('.trow')].map(r => {
+      const n = r.querySelector('.tname').getBoundingClientRect();
+      const c = r.querySelector('.tcount').getBoundingClientRect();
+      return { name: r.querySelector('.tname').textContent.trim(), dx: Math.round(c.left - n.left),
+        below: c.top >= n.bottom - 1 };
+    });
+    return { ids, drift,
+      today: tRow && { eb: tRow.querySelector('.teyebrow').textContent.trim(),
+        name: tRow.querySelector('.tname').textContent.trim(),
+        why: (tRow.querySelector('.why') || {}).textContent || '',
+        h: Math.round(tRow.getBoundingClientRect().height),
+        beforeLists: !!firstSec && !!(slot.compareDocumentPosition(firstSec) & Node.DOCUMENT_POSITION_FOLLOWING) },
+      firstListTop: firstList ? Math.round(firstList.getBoundingClientRect().top + scrollY) : -1,
       rows: next ? [...next.querySelectorAll('.trow')].map(r => ({
         eb: (r.querySelector('.teyebrow') || {}).textContent || '',
         name: r.querySelector('.tname').textContent.trim(),
@@ -4318,16 +4347,36 @@ const DOMAIN_SPEECH = `(() => {
   const firstList = order.ids.findIndex(i => i === 'b-yours' || i === 'b-more');
   check(firstList === 0 && order.ids.indexOf('b-next') > firstList,
     `the page opens on lists, and what to make comes after them (${order.ids.join(' \u2192 ')})`);
-  check(order.rows[0] && order.rows[0].eb === 'Today' && order.rows[0].name === nextPicks.today.title,
-    `Today is the first row there, the same topic as before ("${order.rows[0] && order.rows[0].name}")`);
-  check(order.rows[1] && order.rows[1].eb === 'This week' && order.rows[1].name === nextPicks.week.title,
-    'and This week the second');
-  check(order.rows[0].why === nextPicks.today.why, 'carrying its reason, word for word');
+  /* TODAY IS BACK ON TOP, AS ONE SLIM ROW (2026-11-21, Mischa, from the
+     review: "Back on top, as one slim row"). The daily reason to open the app
+     was below every list after the 11-20 rework; it now sits above them, small
+     enough that your lists still start on the first screen. */
+  check(!!order.today && order.today.beforeLists && order.today.eb === 'Today'
+    && order.today.name === nextPicks.today.title,
+    `Today sits above the lists, the same topic as before ("${order.today && order.today.name}")`);
+  check(order.today.why === nextPicks.today.why, 'carrying its reason, word for word');
+  check(order.today.h <= 96, `as one slim row (${order.today.h}px tall)`);
+  check(order.firstListTop > 0 && order.firstListTop < 659,
+    `and your first list still starts on the first screen (${order.firstListTop}px down a 659px screen)`);
+  check(!order.rows.some(r => r.eb === 'Today'), 'and it is not offered twice on one page');
+  check(order.rows[0] && order.rows[0].eb === 'This week' && order.rows[0].name === nextPicks.week.title,
+    'This week leads What to make next');
+  /* Its reason (Mischa: "Animated 2010 doesn't have a context statement").
+     Read off your picks like Today's, or the size of the topic with none. */
+  check(!!nextPicks.week.why && order.rows[0].why === nextPicks.week.why
+    && /^(\d+ films you have ranked are in it|1 film you have ranked is in it|\d[\d,]*\+? to choose from)\.$/.test(nextPicks.week.why),
+    `and says why, like Today does ("${order.rows[0] && order.rows[0].why}")`);
+  /* "Be the first jumps around" (Mischa). The count is first on the line
+     under the name on EVERY topic row, short name or long. */
+  const drifted = order.drift.filter(d => d.dx !== 0 || !d.below);
+  check(order.drift.length >= 4 && drifted.length === 0,
+    `the count sits in the same place on all ${order.drift.length} topic rows`
+    + (drifted.length ? ` — not on ${drifted.length}, e.g. "${drifted[0].name}" (${drifted[0].dx}px over)` : ''));
 
   /* TOPICS LIKE THE ONE YOU MADE. The heading names the list, and every
      topic under it has to earn its place from that list's own picks — the
      same evidence Today uses — not from a name that merely sounds related. */
-  const like = order.rows.slice(2);
+  const like = order.rows.slice(1);
   check(/^Because you made Top 10 Crime Movies of the 90s$/.test(order.because.trim()),
     `the reason names the list it comes from ("${order.because.trim()}")`);
   const likeCheck = await page.evaluate(rows => {
@@ -4348,7 +4397,7 @@ const DOMAIN_SPEECH = `(() => {
 
   // And the offer still ends in building the topic it offered — through the
   // topic page now, which is the browse gesture every topic on Browse makes.
-  await page.locator('[aria-labelledby="b-next"] .trow').first().click();
+  await page.locator('.today-slot .trow').click();
   await page.waitForTimeout(300);
   check(await page.evaluate(() => S.scene) === 'topic',
     'tapping Today opens its topic, like every topic on this page');

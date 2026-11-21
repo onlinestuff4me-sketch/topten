@@ -267,9 +267,25 @@ daily, This week weekly, both deterministic and never something you have made.
 They are now the section *after* the lists (Req 20), in the same row shape as
 every other topic. Today also opens its topic page rather than going straight
 to build, which is the gesture every topic on that page makes; Make yours is
-one tap further. **Rising now is retired** — see Req 20. If Today needs to be
+one tap further. **Rising now is retired** — see Req 20. ~~If Today needs to be
 back on top as the daily hook, that is one compact row and a retention call
-that is Mischa's to make.
+that is Mischa's to make.~~
+
+*Amended 2026-11-21 (Mischa, review round 1: "Back on top, as one slim row").*
+**Today is back above the lists**, as a single row with its reason, and is
+no longer repeated in What to make next. Below the lists it was the cleanest
+page and the easiest thing to miss; the daily reason to open the app is the
+one thing on Browse that is about coming back, so it goes where it is seen
+first. Measured at iPhone 15 Pro width: the row is **92pt** tall (its reason
+wraps to a second line; one row with a one-line reason was the aim, and it
+does not fit beside the count at this width), and your first list starts
+**202pt** down a 659pt screen, so it stays on the first screen. **This week**
+now says why too, read off your picks the way Today is (*"3 films you have
+ranked are in it"*), or the topic's size when none are (*"140+ to choose
+from"*) — Mischa: *"Animated 2010 doesn't have a context statement."* And the
+count on every topic row sits first on the line under the name; it used to
+sit at the right edge on short names and drop under long ones (*"Be the first
+jumps around"*).
 
 Both picks are **deterministic within their period**: the same day gives the
 same topic on every render and on every device. A suggestion that moved when
@@ -906,6 +922,18 @@ disagree about what a phrase means.
   offers tags; no suggestion anywhere can fail to fill; "Make this list"
   opens the build screen on that root.
 
+*AI in list-making (decided 2026-11-21, Mischa, review round 1: "Only the
+narrow helper: loose wording in, a list subject out").* Mischa asked whether
+an AI assistant should help people make lists. **Foundation Models may turn
+loose wording the picker cannot read (*"movies that feel like a rainy
+Sunday"*) into a subject the app knows — and nothing else.** It never
+suggests what goes in your ten and never orders them. Reasoning: choosing and
+ranking ten things is the part that says something about the person; an
+assistant that suggests picks writes the list for them, and lists it helps
+with converge. The picker already reads whole phrases, so the helper only
+answers what it cannot. On device, so it costs nothing per use. Not taken: no
+AI help at all; an assistant that suggests picks.
+
 **17. Starting from a film (built 2026-11-18/19).** The third way into a
 root, and the one that asks least: naming a subject from nothing is work,
 naming a film you love is not. Search the field for a title or take one from
@@ -1010,6 +1038,19 @@ is the most obviously copyable feature in that app and would do this one the
 most damage: a Top 10 with four authors is nobody's. **Our version of inviting
 somebody into your list is the remix.** Written down because it looks like an
 easy win.
+
+*Non-goal: comments (decided 2026-11-21, Mischa, review round 1).* Mischa had
+asked whether comments would create dialogue. Chosen instead: **no comments,
+and the author is told when someone makes theirs from their list** —
+*"Sam made their Top 10 Westerns after reading yours."* Reasoning: on a list
+of somebody's favourites most comments are *"how is X not on here"*, which
+reads as an attack on taste, and comments need moderation, reporting and
+blocking from the first day. The remix is already the reply; what a comment
+gives an author is knowing their list landed, and the notice gives that with
+nothing to moderate. Options not taken: no notice at all; suggestion-only
+comments (one film you left out); full comments. **The notice needs the
+backend** (who read what, who made what after), so it is built with it — see
+the build order under Req 20.
 
 **20. Browse is organised by topic, and every section says why it is there
 (2026-11-20, Mischa — "The feed, cards, metadata, relevance signals and how we
@@ -1204,9 +1245,11 @@ Open question below.)
 
 ## Open Questions
 
-- **[Product]** Can you view the *full list* of someone's Ten before making
+- ~~**[Product]** Can you view the *full list* of someone's Ten before making
   yours, or tease only the top 3 + badge? Current call: full list visible,
-  only the badge gated (Req 12) — revisit if remix conversion underwhelms.
+  only the badge gated (Req 12) — revisit if remix conversion underwhelms.~~
+  *Answered 2026-11-18 (Mischa):* the reveal gate is gone — nothing is
+  withheld from a reader (AGENTS.md, the badges amendment).
 - **[Legal]** TMDB non-commercial licence is load-bearing for "no
   monetisation." P1 badge premium tier conflicts with it — resolve before
   any paid feature.
@@ -1216,6 +1259,25 @@ Open question below.)
 See `KICKOFF.md` for the milestone plan (M0–M6). P0 requirements 1–8 are the
 launchable core ("make, reveal, share"); 9–12 complete the social loop;
 13–14 are continuous gates, not phases.
+
+**Build order after the Browse rework (decided 2026-11-21, Mischa, review
+round 1: "The three actions, then the backend, then which picks landed").**
+
+1. **The three actions on a list** (Req 19): Make your own, Like (which saves,
+   with a Liked section on the Yours tab), Share.
+2. **The backend**: Top Ten's own Supabase project, accounts, publishing, and
+   lists from real people rather than the nine starter lists. Carries the
+   remix notice that replaces comments (Req 19). Needs one thing from Mischa:
+   a Supabase project of Top Ten's own (the free tier is enough to start).
+3. **Which picks landed** (Req 21, the item graph): *"in 214 other Top 10s ·
+   31 at number one"* on every film.
+
+*Reasoning, and what changed.* On 2026-11-20 Claude proposed the item graph
+first. It moves to last because its counts only mean something once real
+people publish; built on nine starter lists it would show numbers like
+*"in 2 other Top 10s"* that describe the seed, not the product. The actions
+are small and were asked for directly. Options not taken: the 11-20 order;
+backend first; pausing for review fixes first.
 
 ## The first screen is a wall of other people's lists, and it moves (2026-11-18, Mischa)
 

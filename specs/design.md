@@ -432,7 +432,7 @@ make".)*
 | `.yours` — your list | list | filled mark, **Yours**, the list's name, your six | a count |
 | `.lrow.vs` — another list, against yours | list | source mark, name + role, **one line**, **Not in yours** strip, **Biggest split** | its own top six, a second button |
 | `.lrow.card` — somebody else's list | list | source mark, name + role, the list's name, **one line**, six ranked posters | a second button |
-| `.trow` — a topic to make | topic | optional eyebrow (the reason), name, **one number**, optional sentence | posters |
+| `.trow` — a topic to make | topic | optional eyebrow, name, then **one number** · optional reason on one line under it | posters |
 | `.ttile` — a topic in the directory | topic | name without "Top 10", **one number** | posters, emphasis |
 
 **Source marks.** Same slot, same 28px box, different shape: a **person** is a
@@ -467,6 +467,17 @@ one number — *"3 lists"*, *"1 list"*, or *"Be the first"*. In **What to make
 next** a zero is in `--accent-ink`, because there it is an invitation; in the
 **directory** every count is `--text-secondary`, because on 47 tiles at once the
 same accent phrase was wallpaper.
+
+**The count never moves (2026-11-21, Mischa: "Be the first jumps around").** On
+a topic row the count is the first thing on the line under the name, followed
+by the reason after a middle dot: *"Be the first · Because 10 of your picks
+were crime movies."* It used to share the name's line, pushed to the right edge
+by `space-between`, and drop under the name whenever the name wrapped, so two
+adjacent rows put the same phrase in two places. Anything that varies in length
+(a name, a reason) goes after the thing that must stay put, never beside it.
+`drive.js` measures the count's left edge against the name's on every row.
+The separator is `--text-secondary`, not `--text-disabled`: a dot is text, and
+the contrast gate holds it to AA like any other (2.56:1 failed).
 
 **Grid floors are in `rem`, never `px`.** The directory's columns are
 `minmax(min(100%, 9.5rem), 1fr)`, so the grid drops to one column as text grows.

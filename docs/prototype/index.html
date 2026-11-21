@@ -574,15 +574,22 @@ section { margin-top: var(--s8); }
 .trow:active { border-color: var(--accent); }
 .teyebrow { font: 700 0.6875rem/1.2 var(--sans); letter-spacing: .14em; text-transform: uppercase;
   color: var(--accent-ink); }
-.trow-main { display: flex; align-items: baseline; justify-content: space-between;
-  flex-wrap: wrap; column-gap: var(--s3); row-gap: 2px; }
 .trow .tname { font-family: var(--serif); font-weight: 600; font-size: 1.0625rem; line-height: 1.25;
   min-width: 0; overflow-wrap: break-word; }
+/* The count and the reason share ONE line under the name, count first, always.
+   Until 2026-11-21 the count sat at the right edge when the name was short and
+   dropped under it when the name wrapped, so "Be the first" moved from row to
+   row (Mischa: "Be the first jumps around"). Now it never moves. */
+.trow .tmeta { font-size: 0.8125rem; line-height: 1.35; color: var(--text-secondary); }
+.trow .tmeta .sep { color: var(--text-secondary); }
+/* Today, back on top of Browse as one slim row (2026-11-21, Mischa). */
+.today-slot { margin: var(--s3) 0 var(--s2); }
+.today-slot .trow { margin: 0; padding-block: var(--s2); min-height: 0; border-color: var(--accent-muted); }
 .tcount { font-size: 0.8125rem; color: var(--text-secondary); white-space: nowrap; }
+.trow .tcount { font-size: inherit; }
 /* Nobody has made it yet — which is an invitation, and the condition for the
    "First Here" badge, so it is said in the accent rather than greyed out. */
 .tcount.first { color: var(--accent-ink); font-weight: 600; }
-.trow .why { font-size: 0.8125rem; line-height: 1.35; color: var(--text-secondary); }
 .because { font-size: 0.875rem; line-height: 1.35; color: var(--text-secondary); margin: var(--s4) 0 var(--s2); }
 .because b { color: var(--text-primary); font-weight: 600; }
 
@@ -1182,7 +1189,9 @@ footer.notes .build { color: var(--text-secondary); margin-top: var(--s2); }
 .filmhead .lvl { font-size: 0.6875rem; text-transform: uppercase; letter-spacing: 0.04em;
   font-weight: 700; color: var(--text-secondary); }
 .filmhead .pickname { margin-top: 2px; }
-.filmhead .link { margin-top: var(--s2); }
+/* A real button, not a link (2026-11-21, Mischa: "What does choose another
+   do? Is that a button?"). It says what it does and looks pressable. */
+.filmhead .filmswap { margin-top: var(--s2); min-height: 44px; padding: 0 var(--s4); font-size: 0.875rem; }
 .cardname { display: block; font-size: 0.8125rem; line-height: 1.2; margin-top: var(--s2);
   color: var(--text-secondary); }
 </style>
@@ -3808,7 +3817,17 @@ function thisWeeksPick(when = new Date()) {
   const pool = topicPool().filter(t =>
     !mine.has(t.id) && !t.director && !t.actor && (!today || t.id !== today.topic.id));
   const topic = seedPick('w' + weekNumber(when), pool);
-  return topic ? { topic } : null;
+  if (!topic) return null;
+  /* Its reason (2026-11-21, Mischa: "Animated 2010 doesn't have a context
+     statement"). Today said why and This week said nothing, one row under the
+     other. The reason is read off your picks the same way: how many of the
+     films you have already ranked are in it, or, with none, how much there is
+     to choose from. */
+  const picked = new Set((S.done || []).flatMap(d => d.ranked || []));
+  const hits = [...picked].map(id => byId.get(id)).filter(f => f && inTopic(f, topic)).length;
+  const why = hits === 0 ? `${roughly(supply(topic))} to choose from.`
+    : hits === 1 ? '1 film you have ranked is in it.' : `${hits} films you have ranked are in it.`;
+  return { topic, why };
 }
 
 /* ── Browse (2026-11-20, Mischa — "The feed, cards, metadata, relevance
@@ -3903,9 +3922,9 @@ function topicRow(topic, { eyebrow = '', why = '' } = {}) {
   const n = listsOnTopic(topic.id);
   return `<button class="trow" data-topicpage='${esc(JSON.stringify(critOf(topic)))}'>
     ${eyebrow ? `<span class="teyebrow">${esc(eyebrow)}</span>` : ''}
-    <span class="trow-main"><span class="tname">${esc(topic.title)}</span>
-      <span class="tcount${n ? '' : ' first'}">${countLine(n)}</span></span>
-    ${why ? `<span class="why">${esc(why)}</span>` : ''}
+    <span class="tname">${esc(topic.title)}</span>
+    <span class="tmeta"><span class="tcount${n ? '' : ' first'}">${countLine(n)}</span>${why
+      ? `<span class="sep" aria-hidden="true"> \u00b7 </span><span class="why">${esc(why)}</span>` : ''}</span>
   </button>`;
 }
 
@@ -4109,11 +4128,11 @@ function renderDiscover() {
     <div class="topbar"><h1 class="display-lg">Other Top 10 Lists</h1>${done.length
       ? `<button class="link" data-act="pick">Start a list</button>`
       : `<button class="link" data-act="backhome">Done</button>`}</div>
+    ${today ? `<div class="today-slot">${topicRow(today.topic, { eyebrow: 'Today', why: today.why })}</div>` : ''}
     ${section('b-yours', 'Your lists, compared', anchors.map(a => compareBlock(a.d, a.vs)).join(''))}
     ${section('b-more', anchors.length ? 'More lists' : 'Lists to read', more.map(cardRow).join(''))}
-    ${section('b-next', 'What to make next', (today || week || like.length) ? `
-      ${today ? topicRow(today.topic, { eyebrow: 'Today', why: today.why }) : ''}
-      ${week ? topicRow(week.topic, { eyebrow: 'This week' }) : ''}
+    ${section('b-next', 'What to make next', (week || like.length) ? `
+      ${week ? topicRow(week.topic, { eyebrow: 'This week', why: week.why }) : ''}
       ${like.length ? `<p class="because">Because you made <b>${esc(recent.title)}</b></p>
         ${like.map(x => topicRow(x.t, { why: overlapLine(x.hit) })).join('')}` : ''}` : '')}
     ${section('b-genre', 'By genre', domains.map(dm => `
@@ -4636,7 +4655,7 @@ function filmRoots(f) {
       <div>
         <div class="lvl">Lists it is in</div>
         <div class="pickname">${esc(f.t)}</div>
-        <button class="link" data-act="pickfilmback">Choose another</button>
+        <button class="btn ghost filmswap" data-act="pickfilmback">Pick a different film</button>
       </div>
     </section>
     ${roots.length ? roots.map(r => {
@@ -5089,7 +5108,7 @@ function renderTabs() {
     ${draft ? `<button class="draftbar" data-act="resumedraft">
       <span class="dot" aria-hidden="true"></span>
       <span class="what"><span class="nm">${esc(draft.title)}</span>
-        <span class="n">${draft.n} of ten picked</span></span>
+        <span class="n">${draft.n} of 10 picked</span></span>
       <span class="go">Resume</span></button>` : ''}
     <div class="tabs-in">${t('browse', 'Browse')}${t('yours', 'Yours')}</div>
   </div>`;
@@ -5266,7 +5285,7 @@ document.addEventListener('click', e => {
     case 'leavebuild':
       S.scene = S.tab === 'browse' ? 'discover' : 'you';
       save(); render();
-      if (draftNow()) announce(`Draft kept. ${(S.tray || []).length} of ten picked.`);
+      if (draftNow()) announce(`Draft kept. ${(S.tray || []).length} of 10 picked.`);
       break;
     case 'discover': S.scene = 'discover'; save(); render(); break;
     /* The Badge Case remembers where you came from, because it is reachable
