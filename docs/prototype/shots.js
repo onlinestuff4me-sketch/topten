@@ -405,7 +405,22 @@ async function capture(browser, name, { light, motion }) {
     /* `viewport: true` for a screen whose point is chrome fixed to the bottom
        of the window. A full-page shot of a fixed element photographs it at
        whatever scroll position it occupied, which puts the tab bar in the
-       MIDDLE of a tall image — technically correct and useless to review. */
+       MIDDLE of a tall image — technically correct and useless to review.
+
+       Every OTHER still has the same problem since the tab bar landed (M1,
+       2026-11-20): Browse, You and a list page all carry it, and all three
+       came out with the bar across a list row halfway down. So a full-page
+       still first grows the window to the whole document, which is a phone
+       that happens to be that tall: fixed chrome then sits at the bottom,
+       where a person sees it. `fullPage` stays on as a backstop in case the
+       taller window lets the layout grow. */
+    if (!S.viewport) {
+      const tall = await page.evaluate(() => Math.ceil(document.documentElement.scrollHeight));
+      if (tall > PHONE.height) {
+        await page.setViewportSize({ width: PHONE.width, height: tall });
+        await page.waitForTimeout(200);
+      }
+    }
     await page.screenshot({ path: out, type: 'jpeg', quality: 86,
       fullPage: !S.viewport });
     await ctx.close();
