@@ -589,16 +589,51 @@ A word that appears twice in a whole app is not vocabulary, it is a leak.
 
 | the thing | the word | never |
 |---|---|---|
-| ten ranked items, made by one person | **a Top 10**, or plainly **a list** | a Ten, a take, a version, an entry |
-| what a list is about — *Crime Movies of the 90s* | **a topic** | criteria, a shelf, a kind |
+| what a Top 10 is about — *Crime Dramas*, *Crime Movies of the 90s* | **a list**, named in plain words | a topic, a subject, criteria, a shelf, a kind |
+| ten ranked items, made by one person for a list | **a Top 10** — *your Top 10 Crime Dramas*, *Mischa's Top 10 Crime Dramas* | a list, a Ten, a take, a version, an entry |
 | movies / shows / books | **a category** | a domain |
-| everyone's lists on one topic, merged | **what everyone picked** | the crowd, the consensus, Borda |
-| somebody else's list on the same topic | **another list on this topic** | a take, a remix |
+| everyone's Top 10s for one list, merged | **what everyone picked** | the crowd, the consensus, Borda |
+| somebody else's Top 10 for the same list | **their Top 10**, *other people's Top 10s* | a take, a remix, another list |
 
-**"Top 10" and "list" are both allowed, and that is deliberate.** "Top 10" is
+**Two nouns, never interchangeable (2026-11-22, Mischa — supersedes the
+paragraph below).** Verbatim: *"I think everything should be either a list
+(crime dramas) or a top ten (your top ten crime dramas). You see lists
+suggested based on relevance to you, you can create your own top ten from
+them, get notified when other users react to your top ten with their own,
+you can be the first to make a top ten for a list."*
+
+- **A list never starts with "Top 10".** Its name is the subject in plain
+  words, so a list page, a Browse row, the film page's *Lists it is in* and
+  the picker all show *Crime Movies of the 90s*.
+- **A Top 10 always has an owner.** *Your Top 10 Crime Movies of the 90s*,
+  *Mischa's Top 10 …* A ranking made by a rule shows *Top 10 …* with the rule
+  in the byline, until the decision on how those are credited (round 2, item 2).
+- **Counts on a list count Top 10s**: *Be the first*, *1 Top 10*, *3 Top 10s*.
+- **Verbs:** *make a Top 10*, *make your Top 10* for a list, *be the first to
+  make a Top 10 for a list*. The toolbar action is **Make a Top 10**; Browse is
+  called **Browse**, like its tab (it was *Other Top 10 Lists*, which used both
+  nouns for one thing).
+- **"topic" is gone from copy.** No screen ever showed it; the badges did,
+  and Mischa could not tell what it named. It survives in code (`topicId`,
+  `makeTopic`) the way "Ten" does: our word, not the product's.
+
+*Why.* On 2026-11-20 the subject's name began "Top 10 ", so the subject, your
+ten and Mischa's ten all carried one name on one screen. Mischa's review of
+2026-11-21 sent back five items that trace to it ("still really confusing",
+"verbose and unclear", "what is best known", and a note asking for "some
+clearer way of talking about topics (which are called top 10 lists in the UI)
+and lists that users make"). Fixing words one at a time (2026-11-18, below)
+could not fix two things sharing one name.
+
+`drive.js`'s sweep holds it: *your lists*, *lists finished*, *start a list*,
+*make this list*, *Top 10 lists* and *topic* fail the build anywhere a reader
+can see them.
+
+~~**"Top 10" and "list" are both allowed, and that is deliberate.** "Top 10" is
 the object's name; "list" is the ordinary English noun for it. *Make your
 first list* and *Your Top 10s* are both correct, the way *book* and *novel*
-are. What is not allowed is a third word.
+are. What is not allowed is a third word.~~ *Superseded 2026-11-22, above:
+"list" now names the subject, so it cannot also be the plain word for a Top 10.*
 
 **"Ten" is ours, not the product's.** Already settled in `AGENTS.md`: product
 copy uses digits, our own writing uses the word. The achievement set shipped

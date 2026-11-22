@@ -64,6 +64,15 @@ tie on function, pick the one an ADA jury would respect.
   different things on two adjacent screens, and the criteria-naming rule (PRD
   Req 12) had already made "Top 10" the first two words of every list name.
 
+  **Amended 2026-11-22 (Mischa) — two nouns.** *"Everything should be either
+  a list (crime dramas) or a top ten (your top ten crime dramas)."* A **list**
+  is the subject, in plain words: *Crime Movies of the 90s*. A **Top 10** is
+  one person's ten for a list: *your Top 10 Crime Movies of the 90s*. So list
+  names no longer begin "Top 10" (that made the subject, your ten and
+  somebody else's ten one name on one screen), and the discovery screen is
+  **Browse**, like its tab. "Topic" is gone from copy. Full rule and reasoning
+  in `specs/design.md`, *One word per thing*.
+
   **"Ten" survives in our own writing** — this file, the specs, type names
   (`RankedTen`, `Ten.size`) — where it is a precise term for the object.
   Product copy uses digits; the code and the docs use the word.

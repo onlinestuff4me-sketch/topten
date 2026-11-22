@@ -44,7 +44,11 @@ const Share = (() => {
     if (!ids.length) return null;
     const mine = (q.get('mine') || '').split(',').map(Number).filter(Boolean);
     return {
-      title: q.get('t') || 'A Top 10',
+      /* Since 2026-11-22 the app names a LIST in plain words ("Crime Movies of
+         the 90s") and a Top 10 is somebody's ten for it, so a link carries the
+         list's name. A link shared before that carries "Top 10 Crime Movies of
+         the 90s"; both read the same here, where the byline says whose it is. */
+      title: q.get('t') ? `Top 10 ${q.get('t').replace(/^Top 10 /, '')}` : 'A Top 10',
       author: q.get('by') || 'someone',
       topicId: q.get('topic') || '',
       items: ids.map(id => byId.get(id) || { id, t: 'Unavailable', y: null }),

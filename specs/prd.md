@@ -799,6 +799,25 @@ The name is the rule; the fraction is why we are suggesting it. Keeping those
 two apart is the whole of the amendment, and the harness asserts a reason never
 contains the name it justifies.
 
+**Amended 2026-11-22 (Mischa) — the rule is the LIST's name; "Top 10" is the
+person's.** *"Everything should be either a list (crime dramas) or a top ten
+(your top ten crime dramas)."* The criteria rule above is unchanged; only the
+prefix moves. A list is named by its criteria in plain words (*Crime Movies of
+the 90s*, *Hitchcock Thrillers*); a Top 10 is a person's ten for it (*your Top
+10 Crime Movies of the 90s*, *Mischa's Top 10 Hitchcock Thrillers*). The
+examples above, written as *Top 10 …*, are the name a person's Top 10 carries,
+not the list's. Saved Top 10s and share links from before the change still
+read correctly: the app and the share page strip an old "Top 10 " prefix where
+they find one. See `specs/design.md`, *One word per thing*.
+
+**The product loop in Mischa's words (same message):** *you see lists
+suggested based on relevance to you; you can create your own Top 10 from them;
+you get notified when other users react to your Top 10 with their own; you can
+be the first to make a Top 10 for a list.* Browse's sections are named for it:
+**Today** (one list), **Your Top 10s, compared**, **More Top 10s**, **Lists
+for you**. The notification is the remix notice decided 2026-11-21 (Req 19)
+and arrives with the backend.
+
 **A criteria name is a promise the next screen has to keep, so an unfillable
 list is never offered.** *Top 10 Hitchcock Thrillers* is a perfectly good name
 for a list this collection cannot supply — it holds eight. Every offered

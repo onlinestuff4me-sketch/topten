@@ -543,8 +543,15 @@ const DOMAIN_SPEECH = `(() => {
      a day after the badge case stopped existing, and the splash's own build
      line advertised it — because removing a system removes its code and
      leaves its copy. Every phrase here names something the app no longer
-     does: a badge case, a badge to reveal, a thing to unlock. */
-  const JARGON = /\b(a Ten|the Ten|your Ten|Tens|takes? on (a|the|this|somebody|someone)|the crowd|shelf|shelves|badge case|reveal your badge|badges? opened|unlock(s|ed)? (this|the) (badge|list|topic))\b/i;
+     does: a badge case, a badge to reveal, a thing to unlock.
+
+     Amended 2026-11-22 (Mischa): "everything should be either a list (crime
+     dramas) or a top ten (your top ten crime dramas)." So "list" now means
+     the SUBJECT, and what a person makes is a Top 10. The third part of the
+     pattern is every phrase that used "list" for somebody's ten, plus
+     "topic", which the screens never showed and the badges did: your lists,
+     lists finished, start a list, make this list, Top 10 lists, a topic. */
+  const JARGON = /\b(a Ten|the Ten|your Ten|Tens|takes? on (a|the|this|somebody|someone)|the crowd|shelf|shelves|badge case|reveal your badge|badges? opened|unlock(s|ed)? (this|the) (badge|list|topic)|(your|my|first|own) lists?|lists? (finished|you made|from the community)|start a list|make (this|a|your) list|Top 10 lists?|topics?)\b/i;
   const noJargon = async where => {
     const found = await page.evaluate(re => {
       const rx = new RegExp(re, 'i');
@@ -874,7 +881,7 @@ const DOMAIN_SPEECH = `(() => {
      yet; PRD Req 1 carries it as a launch blocker. */
   const tagline = (await page.locator('.intro .pitch').innerText())
     .replace(/[\s\u00a0]+/g, ' ').trim();
-  check(tagline === '5,000+ lists from the community. Share yours.',
+  check(tagline === '5,000+ Top 10s from the community. Share yours.',
     `the tagline is the one Mischa wrote ("${tagline}")`);
   check(/Free\. No ads\. No subscription\. Ever\./.test(introText),
     'and the promise survives the redesign, as fine print under the CTA');
@@ -1116,8 +1123,8 @@ const DOMAIN_SPEECH = `(() => {
     return r.bottom <= window.innerHeight + 1 && r.top >= 0;
   });
   check(ctaVisible, 'the CTA is on screen without scrolling');
-  check((await page.locator('.intro [data-act="begin"]').innerText()).trim() === 'Make your first list',
-    'the CTA says "Make your first list"');
+  check((await page.locator('.intro [data-act="begin"]').innerText()).trim() === 'Make your first Top 10',
+    'the CTA says "Make your first Top 10"');
 
   await page.locator('[data-act="begin"]').click();
   await page.waitForTimeout(400);
@@ -2236,8 +2243,8 @@ const DOMAIN_SPEECH = `(() => {
     `the reveal lands on the ten itself (${landed.settled} of ${landed.rows} rows settled)`);
   check(landed.order === '1,2,3,4,5,6,7,8,9,10',
     `in rank order (${landed.order})`);
-  check(/^Top 10 /.test(landed.named.trim()),
-    `and names the list you just finished ("${landed.named.trim()}")`);
+  check(/^Your Top 10 /.test(landed.named.trim()),
+    `and names it as yours: your Top 10 for that list ("${landed.named.trim()}")`);
   check(landed.noBadge === 0,
     'with no composed badge anywhere on it — that system is retired');
   await page.screenshot({ path: SHOTS + '/5-reveal.png' });
@@ -2248,7 +2255,7 @@ const DOMAIN_SPEECH = `(() => {
   await page.waitForSelector('.sug-topic', { timeout: 5000 });
   const finishedText = await page.locator('body').innerText();
   check(/or a different kind of list/i.test(finishedText), 'finishing offers other kinds of list, not just more films');
-  check(/Top 10 Shows of All Time/i.test(finishedText), 'TV shows is offered as the next domain');
+  check(/Shows of All Time/i.test(finishedText), 'TV shows is offered as the next domain');
 
   // ── Sharing: the app produces the link its own web page reads ───────────
   // M5. The two directions live in one module (share.js) precisely so they
@@ -2261,7 +2268,9 @@ const DOMAIN_SPEECH = `(() => {
     const parsed = Share.fromLocation(new URL(url));
     return {
       url,
-      title: parsed.title === window.S.topic.title,
+      // The link carries the LIST's name; the page shows it as a Top 10, with
+      // whose it is in the byline (2026-11-22: a list vs somebody's Top 10).
+      title: parsed.title === 'Top 10 ' + window.S.topic.title,
       items: parsed.items.map(f => f.id).join() === window.S.ranked.join(),
       unlocked: parsed.unlocked === true,
       // The reader's own picks are the comparison, not the sender's.
@@ -2352,11 +2361,11 @@ const DOMAIN_SPEECH = `(() => {
   // is not on TMDB, so this block proves three things the other domains
   // cannot: that a domain can bring its own pictures, that the shelf is
   // really only books, and that none of the film vocabulary leaked in.
-  const booksOffer = page.locator('.sug-topic', { hasText: 'Top 10 Books of All Time' }).first();
+  const booksOffer = page.locator('.sug-topic', { hasText: 'Books of All Time' }).first();
   check(await booksOffer.count() === 1, 'books is offered as a real list to make, not a "coming next" row');
   await booksOffer.click();
   await page.waitForTimeout(300);
-  check(await page.locator('h1').innerText() === 'Top 10 Books of All Time',
+  check(await page.locator('h1').innerText() === 'Books of All Time',
     'and it lands on the Books build screen, under the name the list will carry');
   check(await page.locator('.rail .card').count() > 0, 'the books shelf is populated');
 
@@ -2468,8 +2477,8 @@ const DOMAIN_SPEECH = `(() => {
   await page.waitForTimeout(250);
   const cardCount = await page.locator('.lrow').count();
   check(cardCount >= 5, `other people have Top 10 lists to look at (${cardCount})`);
-  check((await page.locator('h1').innerText()) === 'Other Top 10 Lists',
-    'the screen is called Other Top 10 Lists');
+  check((await page.locator('h1').innerText()) === 'Browse',
+    'the screen is called Browse, like its tab');
   // Round 5: the blurb under the title described what the cards below it were
   // already showing, so it only pushed the first card down the screen.
   check(await page.locator('.prompt').count() === 0, 'and carries no blurb under the title');
@@ -2540,7 +2549,7 @@ const DOMAIN_SPEECH = `(() => {
   }));
   check(named.length === cardCount, 'every card on screen is a generated name');
   for (const l of named) {
-    check(/^Top 10 /.test(l.name), `"${l.name}" is named for its criteria, not for its contents`);
+    check(!!l.name && !/^Top 10 /.test(l.name), `"${l.name}" is a list, named in plain words for its criteria`);
     check(l.name === l.title, `and the name shown is the topic's own name, nothing derived`);
     check(l.n === 10 && l.hold === 10,
       `"${l.name}" is true of ${l.who}'s list ${l.hold} times out of ${l.n} — all ten, by construction`);
@@ -2610,9 +2619,9 @@ const DOMAIN_SPEECH = `(() => {
   }));
   check(!/\bNiro\b/.test(people.deNiro) || /De Niro/.test(people.deNiro),
     `a name particle stays with its name ("${people.deNiro}")`);
-  check(people.scott === 'Top 10 Ridley Scott Movies',
+  check(people.scott === 'Ridley Scott Movies',
     `an ambiguous surname stays whole ("${people.scott}") — Ridley and Tony are both on the shelf`);
-  check(people.hitchcock === 'Top 10 Hitchcock Movies',
+  check(people.hitchcock === 'Hitchcock Movies',
     `an unambiguous one shortens the way people say it ("${people.hitchcock}")`);
 
   // Every reason on the completion screen is a FRACTION of the user's own ten,
@@ -2620,7 +2629,7 @@ const DOMAIN_SPEECH = `(() => {
   // Mischa's correction, stated once as a test.
   const reasons = await page.evaluate(() => window.rabbitHole().map(t => ({ title: t.title, why: t.why })));
   check(reasons.length >= 3, `the completion screen offers ${reasons.length} criteria lists`);
-  check(reasons.every(r => /^Top 10 /.test(r.title)), 'each named for its criteria');
+  check(reasons.every(r => !!r.title && !/^Top 10 /.test(r.title)), 'each named for its criteria');
   const counted = reasons.filter(r => /\b(\d+|All 10) of your 10\b/.test(r.why));
   check(counted.length >= reasons.length - 1,
     `and each gives the count off your own ten as the reason ("${counted[0].why}")`);
@@ -2767,8 +2776,11 @@ const DOMAIN_SPEECH = `(() => {
 
   await page.locator('.lrow').first().click();
   await page.waitForTimeout(250);
-  check((await page.locator('h1').innerText()) === type[0].name,
-    'the row opens the list under that topic — the page leads with the same name');
+  // The row names the LIST; the page it opens is somebody's Top 10 for it,
+  // so its heading is "Mischa's Top 10 <list>" or, for a ranking, "Top 10 <list>".
+  const openedHead = (await page.locator('h1').innerText()).trim();
+  check(openedHead.endsWith('Top 10 ' + type[0].name),
+    `the row opens that Top 10, and the page leads with the same list ("${openedHead}")`);
   check(await page.locator('.tenrow').count() === 10,
     'their whole ten is readable, every row of it');
 
@@ -3287,15 +3299,16 @@ const DOMAIN_SPEECH = `(() => {
   }));
   check(tp.scene === 'topic' && tp.dock === 0,
     `a topic tile opens the topic rather than starting it (${tp.scene})`);
-  check(tp.heading.startsWith('Top 10 ') && tp.heading.includes(chipName),
-    `named in full ("${tp.heading}" from the tile "${chipName}")`);
+  // A list's page carries the list's own name, in plain words (2026-11-22).
+  check(tp.heading === chipName && !/^Top 10 /.test(tp.heading),
+    `named as the list it is ("${tp.heading}" from the tile "${chipName}")`);
   check(/\d+ .+ in the collection\./.test(tp.supply),
     `and it says how much there is to choose from ("${tp.supply.slice(0, 60)}…")`);
   check(tp.crowd === 10 && tp.ranks === '1,2,3,4,5,6,7,8,9,10',
     `the crowd's ten, ranked (${tp.crowd} rows)`);
   check(tp.crowdHead.includes('What everyone picked'),
     `presented as its own artifact, not as a preview (${tp.crowdHead.join(' · ')})`);
-  check(tp.cta === 'Make yours', `and the ever-present action says what it does ("${tp.cta}")`);
+  check(tp.cta === 'Make your Top 10', `and the ever-present action says what it does ("${tp.cta}")`);
 
   // Back goes where you came from, and the action still commits.
   await page.locator('[data-act="topicback"]').click();
@@ -3354,7 +3367,7 @@ const DOMAIN_SPEECH = `(() => {
      accessible name rather than on the button: the button is read in the
      context of a page titled with the topic, and the long version wrapped to
      two lines at large text sizes for no gain. */
-  check(cmp.cta === 'Open yours' && /^Open your Top 10 /.test(cmp.ctaName),
+  check(cmp.cta === 'Open your Top 10' && /^Open your Top 10 /.test(cmp.ctaName),
     `and the action becomes the way back to what you made `
     + `("${cmp.cta}", announced as "${cmp.ctaName}")`);
 
@@ -3439,9 +3452,9 @@ const DOMAIN_SPEECH = `(() => {
     `every glyph is painted, fill AND stroke (${you.painted} of ${you.paintedOf})`);
   check(you.noOldBadges === 0,
     'no per-list badge survives on this screen — that system is retired');
-  check(you.lists === 3 && you.listNames.every(n => /^Top 10 /.test(n)),
+  check(you.lists === 3 && you.listNames.every(n => !!n && !/^Top 10 /.test(n)),
     `your finished lists are listed by name (${you.listNames.length}: ${you.listNames.join(' / ')})`);
-  check(you.listNames[0] === 'Top 10 Drama Shows',
+  check(you.listNames[0] === 'Drama Shows',
     `newest first, so the one you just made is at the top ("${you.listNames[0]}")`);
   check(you.over <= 1, 'and the screen fits its column');
   await noBritishSpelling('the You screen');
@@ -3478,7 +3491,7 @@ const DOMAIN_SPEECH = `(() => {
     share: document.querySelectorAll('[data-sharemine]').length,
     noBadge: document.querySelectorAll('.badge-inline, .lockedbadge').length,
   }));
-  check(/^Top 10 /.test(mine.heading), `tapping one opens that list ("${mine.heading}")`);
+  check(/^Your Top 10 /.test(mine.heading), `tapping one opens your Top 10 ("${mine.heading}")`);
   check(mine.rows === 10 && mine.ranks === '1,2,3,4,5,6,7,8,9,10',
     `with the whole ten in order (${mine.rows} rows)`);
   check(mine.share === 1, 'and one way to send it to somebody');
@@ -3500,7 +3513,7 @@ const DOMAIN_SPEECH = `(() => {
   check(empty.marks === 10 && empty.earned === 0,
     `before the first list all ten are shown and none earned (${empty.earned} of ${empty.marks})`);
   check(empty.lists === 0, 'with no lists yet');
-  check(empty.cta === 'Make your first list', `and one way out ("${empty.cta}")`);
+  check(empty.cta === 'Make your first Top 10', `and one way out ("${empty.cta}")`);
 
   /* Drafts, per Req 11: "Own profile shows drafts." */
   await page.evaluate(() => {
@@ -3615,7 +3628,7 @@ const DOMAIN_SPEECH = `(() => {
     await page.locator(`[data-act="${act}"]`).click();
     await page.waitForTimeout(240);
     const start = page.locator('.topbar [data-act="pick"]');
-    check(await start.count() === 1, `${where} carries Start a list in its toolbar`);
+    check(await start.count() === 1, `${where} carries Make a Top 10 in its toolbar`);
     await start.click();
     await page.waitForTimeout(260);
     check(await page.evaluate(() => S.scene) === 'pick', `  and one tap opens it`);
@@ -3713,9 +3726,9 @@ const DOMAIN_SPEECH = `(() => {
   });
 
   const byTitle = Object.fromEntries(roots.names.map(n => [n.title, n]));
-  check(!!byTitle['Top 10 Crime Dramas'],
+  check(!!byTitle['Crime Dramas'],
     `two genres name one root in English (${roots.names.map(n => n.title.replace('Top 10 ', '')).join(' / ')})`);
-  check(!!byTitle['Top 10 Romantic Dramas'],
+  check(!!byTitle['Romantic Dramas'],
     'a genre that reads as a modifier stays out of the head slot — "Romantic Dramas", not "Drama Romances"');
   check(roots.everyMemberHasBoth,
     'every film in a two-genre root carries both genres — a set matches as a set');
@@ -3723,7 +3736,7 @@ const DOMAIN_SPEECH = `(() => {
     'and the root is narrower than either genre alone');
   check(roots.sameEitherWay,
     'the same tags in either order are the SAME root — two people typing different words join one crowd');
-  check(roots.singleStillWorks === 'Top 10 Westerns',
+  check(roots.singleStillWorks === 'Westerns',
     `a one-tag root is untouched ("${roots.singleStillWorks}")`);
   check(roots.studioShortened,
     'a studio goes by the name a person uses — Disney, not Walt Disney Pictures');
@@ -3732,8 +3745,8 @@ const DOMAIN_SPEECH = `(() => {
      Studio tags cover 21% of titles, so most three-tag phrases a person types
      will land short - this is the case the picker has to be designed for, not
      an edge case to engineer around. */
-  const disney = byTitle['Top 10 Disney Animated Movies'];
-  const disney2000s = byTitle['Top 10 Disney Animated Movies of the 2000s'];
+  const disney = byTitle['Disney Animated Movies'];
+  const disney2000s = byTitle['Disney Animated Movies of the 2000s'];
   check(disney && disney.supply >= 10,
     `"Top 10 Disney Animated Movies" is a real root (${disney && disney.supply} films)`);
   check(disney2000s && disney2000s.supply < 10,
@@ -3782,13 +3795,13 @@ const DOMAIN_SPEECH = `(() => {
 
   check(kw.loaded > 2000 && kw.distinct > 5000,
     `keywords.js is loaded beside the catalogue (${kw.loaded} titles, ${kw.distinct} distinct tags)`);
-  check(kw.heist.title === 'Top 10 Heist Movies' && kw.heist.n >= 10,
+  check(kw.heist.title === 'Heist Movies' && kw.heist.n >= 10,
     `a keyword is a root ("${kw.heist.title}", ${kw.heist.n} films)`);
-  check(kw.coming.title === 'Top 10 Coming of Age Movies',
+  check(kw.coming.title === 'Coming of Age Movies',
     `title-cased with the small words left small ("${kw.coming.title}")`);
-  check(kw.london.title === 'Top 10 London Movies',
+  check(kw.london.title === 'London Movies',
     `and a place loses its qualifier — the tag is "london, england" ("${kw.london.title}")`);
-  check(kw.crossed.title === 'Top 10 Heist Thrillers' && kw.crossed.n >= 10,
+  check(kw.crossed.title === 'Heist Thrillers' && kw.crossed.n >= 10,
     `keywords cross with genres ("${kw.crossed.title}", ${kw.crossed.n})`);
   check(kw.everyMemberHasIt,
     'every film in a keyword root really carries that keyword');
@@ -3844,7 +3857,7 @@ const DOMAIN_SPEECH = `(() => {
     'a finished list unlocks a way to start a custom one');
   await page.locator('[data-act="pick"]').click();
   await page.waitForTimeout(250);
-  check((await page.locator('.topbar h1').innerText()).trim() === 'Start a list',
+  check((await page.locator('.topbar h1').innerText()).trim() === 'Make a Top 10',
     'which opens the picker');
 
   const typed = async (text) => {
@@ -3865,7 +3878,7 @@ const DOMAIN_SPEECH = `(() => {
 
   // A SENTENCE becomes a named list.
   const phrase = await typed('crime dramas');
-  check(phrase.name === 'Top 10 Crime Dramas',
+  check(phrase.name === 'Crime Dramas',
     `a typed sentence becomes a named list ("${phrase.name}")`);
   check(/^187 movies/.test(phrase.supply),
     `carrying the number of titles behind it ("${phrase.supply}")`);
@@ -3873,19 +3886,19 @@ const DOMAIN_SPEECH = `(() => {
     `and the list below offers what to add next (${phrase.narrow.slice(0, 3).join(', ')})`);
 
   // Plurals and surnames — the two ways a sentence is written and a tag is not.
-  for (const [text, want] of [['zombie comedies', 'Top 10 Zombie Comedies'],
-                              ['heist thrillers', 'Top 10 Heist Thrillers'],
-                              ['hitchcock', 'Top 10 Hitchcock Movies'],
-                              ['90s sci-fi', 'Top 10 Sci-Fi Movies of the 90s']]) {
+  for (const [text, want] of [['zombie comedies', 'Zombie Comedies'],
+                              ['heist thrillers', 'Heist Thrillers'],
+                              ['hitchcock', 'Hitchcock Movies'],
+                              ['90s sci-fi', 'Sci-Fi Movies of the 90s']]) {
     const r = await typed(text);
     check(r.name === want, `"${text}" resolves to ${want} ("${r.name}")`);
   }
 
   // THE NEAR MISS, which is the common path and not an edge case.
   const miss = await typed('disney animated movies of the 2000s');
-  check(/would be 7 movies/.test(miss.short) && /needs ten/i.test(miss.short),
+  check(/has only 7 movies/.test(miss.short) && /needs ten/i.test(miss.short),
     `a sentence that cannot fill says so, with the number ("${miss.short}")`);
-  check(miss.name === 'Top 10 Disney Animated Movies',
+  check(miss.name === 'Disney Animated Movies',
     `and the nearest thing that CAN fill is offered instead ("${miss.name}")`);
   check(/2000s/.test(miss.lede),
     `saying what was given up to get there ("${miss.lede}")`);
@@ -3945,7 +3958,7 @@ const DOMAIN_SPEECH = `(() => {
   }));
   check(picked.chips === 1, 'picking a tag puts it on screen as a chip');
   check(picked.field === '', 'and clears the field, because those words are spent');
-  check(/^Top 10 /.test(picked.card || ''), `with the list it now names ("${picked.card}")`);
+  check(!!picked.card && !/^Top 10 /.test(picked.card), `with the list it now names ("${picked.card}")`);
 
   await page.locator('.chips.picked .chip').first().click();
   await page.waitForTimeout(250);
@@ -3963,8 +3976,8 @@ const DOMAIN_SPEECH = `(() => {
     tray: (window.S.tray || []).length,
     offerable: window.offerable(window.S.topic),
   }));
-  check(launched.scene === 'build' && launched.title === 'Top 10 Heist Thrillers',
-    `"Make this list" opens the build screen on that root ("${launched.title}")`);
+  check(launched.scene === 'build' && launched.title === 'Heist Thrillers',
+    `"Make your Top 10" opens the build screen on that root ("${launched.title}")`);
   check(launched.tray === 0, 'with an empty tray');
   check(launched.offerable, 'and a root that really has ten to give');
   await noBritishSpelling('the picker');
@@ -4020,7 +4033,7 @@ const DOMAIN_SPEECH = `(() => {
   check(/Godfather/.test(onFilm.head), `picking one leads with the film ("${onFilm.head}")`);
   check(onFilm.offers.length >= 5,
     `and the lists it is in (${onFilm.offers.length}: ${onFilm.offers.slice(0, 3).join(' / ')})`);
-  check(onFilm.offers.every(t => /^Top 10 /.test(t)), 'each one a named list');
+  check(onFilm.offers.every(t => !!t && !/^Top 10 /.test(t)), 'each one a list, named in plain words');
   check(onFilm.counts.every(n => n >= 15),
     `each with enough behind it to fill, with margin (worst ${Math.min(...onFilm.counts)})`);
   check(onFilm.back === 1 && onFilm.stillTyping === 0,
@@ -4377,7 +4390,7 @@ const DOMAIN_SPEECH = `(() => {
      topic under it has to earn its place from that list's own picks — the
      same evidence Today uses — not from a name that merely sounds related. */
   const like = order.rows.slice(1);
-  check(/^Because you made Top 10 Crime Movies of the 90s$/.test(order.because.trim()),
+  check(/^Because of your Top 10 Crime Movies of the 90s$/.test(order.because.trim()),
     `the reason names the list it comes from ("${order.because.trim()}")`);
   const likeCheck = await page.evaluate(rows => {
     const d = S.done[S.done.length - 1];
@@ -4392,7 +4405,7 @@ const DOMAIN_SPEECH = `(() => {
     `each holds at least three of your picks, is not yours, and can be filled (fewest ${Math.min(...likeCheck.map(x => x.hit))})`);
   check(likeCheck.every(x => x.why === (x.hit === 10 ? 'All 10 of yours are in it.' : `${x.hit} of your 10 are in it.`)),
     'and says exactly how many — the count on screen is the count in the data');
-  check(likeCheck.every(x => x.count === (x.lists === 0 ? 'Be the first' : x.lists === 1 ? '1 list' : `${x.lists} lists`)),
+  check(likeCheck.every(x => x.count === (x.lists === 0 ? 'Be the first' : x.lists === 1 ? '1 Top 10' : `${x.lists} Top 10s`)),
     `the one number on each is the real number of lists on it ("${likeCheck[0].count}")`);
 
   // And the offer still ends in building the topic it offered — through the
@@ -4476,16 +4489,16 @@ const DOMAIN_SPEECH = `(() => {
   check(thumbs.length > 20 && offSize.length === 0,
     `every poster on Browse is sized as a thumbnail by rule, your own list's included `
     + `(${thumbs.length}` + (offSize.length ? ` — ${offSize.length} are not, e.g. ${offSize[0].where}: ${offSize[0].w}` : '') + ')');
-  check(ylc.first === 'b-yours' && ylc.heading === 'Your lists, compared',
+  check(ylc.first === 'b-yours' && ylc.heading === 'Your Top 10s, compared',
     `the page opens on your lists, said plainly ("${ylc.heading}")`);
-  check(ylc.blocks.length === 3 && ylc.blocks.every(b => b.said === 'Yours'),
-    `each of your three lists is an anchor, labelled Yours (${ylc.blocks.map(b => b.name.replace(/^Top 10 /, '')).join(' / ')})`);
+  check(ylc.blocks.length === 3 && ylc.blocks.every(b => b.said === 'Your Top 10'),
+    `each of your three lists is an anchor, labelled Your Top 10 (${ylc.blocks.map(b => b.name.replace(/^Top 10 /, '')).join(' / ')})`);
   check(ylc.blocks.every(b => b.filled !== 'rgba(0, 0, 0, 0)'),
     'with a filled mark — a third shape, so yours is never read as one more list in the feed');
   check(ylc.blocks[ylc.blocks.length - 1].rows.length === 0
         && ylc.blocks.slice(0, -1).every(b => b.rows.length > 0),
     'lists somebody else has also made come first; the one nobody has comes last');
-  check(/^Nobody else has made this one yet\.$/.test(ylc.blocks[2].alone.trim()),
+  check(/^Nobody else has made a Top 10 for this list yet\.$/.test(ylc.blocks[2].alone.trim()),
     `and says so rather than showing an empty box ("${ylc.blocks[2].alone.trim()}")`);
 
   /* THE ARGUMENT, CHECKED AGAINST THE DATA. "Not in yours" must be exactly

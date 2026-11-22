@@ -1375,6 +1375,8 @@ function load() {
     const r = JSON.parse(localStorage.getItem(KEY));
     if (!r || !r.topic || !Array.isArray(r.tray)) return null;
     r.done = Array.isArray(r.done) ? r.done : [];
+    // Saved before 2026-11-22, a title began "Top 10 "; it is the list's name now.
+    r.done = r.done.map(d => d && d.title ? { ...d, title: plainList(d.title) } : d);
     // Normalise anything an older build may not have written. A saved draft
     // that predates a field must not be able to crash the app that reads it.
     const base = fresh(r.topic);
@@ -2263,7 +2265,7 @@ function notes() {
   return `<footer class="notes">
     <p>Structure prototype. Glass, haptics, and final motion are judged on
     device, not here. Judge the flow, the anatomy, and the words.</p>
-    <p class="build">build 0023 · tabs, Browse by topic, start from a title</p>
+    <p class="build">build 0024 · lists and Top 10s, Today on top</p>
   </footer>`;
 }
 
@@ -2918,8 +2920,8 @@ function renderIntro() {
     <div class="wallveil" aria-hidden="true"></div>
     <div class="wallcopy">
       <h1>What's your Top 10?</h1>
-      <p class="pitch">${roughly(CORPUS_CLAIM)} lists from the community. Share&nbsp;yours.</p>
-      <button class="btn" data-act="begin">Make your first list</button>
+      <p class="pitch">${roughly(CORPUS_CLAIM)} Top 10s from the community. Share&nbsp;yours.</p>
+      <button class="btn" data-act="begin">Make your first Top 10</button>
       <p class="promise">Free. No ads. No subscription. Ever.</p>
     </div>
   </div>`;
@@ -3201,9 +3203,23 @@ function nameParts(t) {
     tail: t.decade ? ` of the ${decadeName(t.decade)}` : bare ? ' of All Time' : '',
   };
 }
+/* A LIST IS NAMED IN PLAIN WORDS (2026-11-22, Mischa): "everything should be
+   either a list (crime dramas) or a top ten (your top ten crime dramas)."
+   Until then every topic's name began "Top 10 ", so the subject, your ten and
+   Mischa's ten all carried one name on one screen, and the app read as lists
+   inside lists. Now the list is "Crime Dramas" and a Top 10 always has an
+   owner: tenTitle() below. */
 function topicTitle(t) {
   const p = nameParts(t);
-  return `Top 10 ${[p.person && personName(p.person), p.adj, p.head].filter(Boolean).join(' ')}${p.tail}`;
+  return `${[p.person && personName(p.person), p.adj, p.head].filter(Boolean).join(' ')}${p.tail}`;
+}
+/* Somebody's ten for a list. `who` is a name, or nothing for your own. */
+// A function declaration, not a const: load() runs at startup, long before this
+// line, and a const here sat in its temporal dead zone there. load()'s catch
+// swallowed the ReferenceError and every saved draft came back empty.
+function plainList(name) { return String(name || '').replace(/^Top 10 /, ''); }
+function tenTitle(name, who) {
+  return `${who ? `${who}\u2019s` : 'Your'} Top 10 ${plainList(name)}`;
 }
 function topicPrompt(t) {
   const p = nameParts(t);
@@ -3873,7 +3889,9 @@ function thisWeeksPick(when = new Date()) {
 /* Every list on a topic, yours included — the one number on a topic tile. */
 const listsOnTopic = id => SOURCES.filter(s => s.topic.id === id).length
   + ((S.done || []).some(d => d.topicId === id) ? 1 : 0);
-const countLine = n => n === 0 ? 'Be the first' : n === 1 ? '1 list' : `${n} lists`;
+/* How many Top 10s a LIST has (2026-11-22: a list is the subject, a Top 10 is
+   somebody's ten for it, so the count is of Top 10s). */
+const countLine = n => n === 0 ? 'Be the first' : n === 1 ? '1 Top 10' : `${n} Top 10s`;
 
 /* The criteria a topic page is opened with — the topic's own facets, not the
    whole object, so the attribute stays small. */
@@ -4025,7 +4043,7 @@ function vsRow(t, d) {
   const shown = missing.slice(0, 5);
   const splitText = split
     ? `${shortTitle(split.f.t)} · you #${split.you} · ${src.label} #${split.them}` : '';
-  const label = `${person ? `${src.label}’s` : `${src.label}:`} ${src.topic.title}. ${line} `
+  const label = `${person ? tenTitle(src.topic.title, src.label) : `${src.label}: Top 10 ${src.topic.title}`}. ${line} `
     + (missing.length
       ? `Not in yours: ${missing.map(m => `${m.f.t}, their ${m.rank}`).join('; ')}.` : '')
     + (split ? ` Biggest split: ${split.f.t}, your ${split.you}, ${src.label}’s ${split.them}.` : '');
@@ -4049,7 +4067,7 @@ function yourAnchor(d) {
   const films = (d.ranked || []).map(id => byId.get(id)).filter(Boolean);
   return `<button class="yours" data-mine="${esc(d.topicId)}" aria-label="Your ${esc(d.title)}">
     <span class="lhead"><span class="src-mark you" aria-hidden="true"></span>
-      <span class="lwho"><b>Yours</b></span></span>
+      <span class="lwho"><b>Your Top 10</b></span></span>
     <span class="lname">${esc(d.title)}</span>
     <span class="strip" aria-hidden="true">${films.slice(0, 6).map((f, i) => mini(f, i + 1)).join('')}</span>
   </button>`;
@@ -4060,7 +4078,7 @@ function compareBlock(d, vs) {
   return `<section class="cmp">
     ${yourAnchor(d)}
     ${vs.length ? vs.map(t => vsRow(t, d)).join('')
-      : `<p class="alone">Nobody else has made this one yet.</p>`}
+      : `<p class="alone">Nobody else has made a Top 10 for this list yet.</p>`}
   </section>`;
 }
 
@@ -4069,8 +4087,8 @@ function compareBlock(d, vs) {
 function cardRow(t) {
   const src = t.src, person = src.kind === 'person', line = lineFor(t);
   const name = listName(t.ranked, src.topic);
-  const label = person ? `${src.label}’s ${name}. ${line}`
-                       : `${name}, ranked by ${src.label}: ${src.role}. ${line}`;
+  const label = person ? `${tenTitle(name, src.label)}. ${line}`
+                       : `Top 10 ${name}, ranked by ${src.label}: ${src.role}. ${line}`;
   return `<button class="lrow card" data-other="${esc(src.id)}" data-src="${person ? 'person' : 'rule'}"
       aria-label="${esc(label)}">
     <span class="lhead">${sourceMark(src)}
@@ -4125,15 +4143,15 @@ function renderDiscover() {
       <h2 class="section-h" id="${id}">${heading}</h2>${body}</section>` : '';
 
   app.innerHTML = `
-    <div class="topbar"><h1 class="display-lg">Other Top 10 Lists</h1>${done.length
-      ? `<button class="link" data-act="pick">Start a list</button>`
+    <div class="topbar"><h1 class="display-lg">Browse</h1>${done.length
+      ? `<button class="link" data-act="pick">Make a Top 10</button>`
       : `<button class="link" data-act="backhome">Done</button>`}</div>
     ${today ? `<div class="today-slot">${topicRow(today.topic, { eyebrow: 'Today', why: today.why })}</div>` : ''}
-    ${section('b-yours', 'Your lists, compared', anchors.map(a => compareBlock(a.d, a.vs)).join(''))}
-    ${section('b-more', anchors.length ? 'More lists' : 'Lists to read', more.map(cardRow).join(''))}
-    ${section('b-next', 'What to make next', (week || like.length) ? `
+    ${section('b-yours', 'Your Top 10s, compared', anchors.map(a => compareBlock(a.d, a.vs)).join(''))}
+    ${section('b-more', anchors.length ? 'More Top 10s' : 'Top 10s to read', more.map(cardRow).join(''))}
+    ${section('b-next', 'Lists for you', (week || like.length) ? `
       ${week ? topicRow(week.topic, { eyebrow: 'This week', why: week.why }) : ''}
-      ${like.length ? `<p class="because">Because you made <b>${esc(recent.title)}</b></p>
+      ${like.length ? `<p class="because">Because of your Top 10 <b>${esc(plainList(recent.title))}</b></p>
         ${like.map(x => topicRow(x.t, { why: overlapLine(x.hit) })).join('')}` : ''}` : '')}
     ${section('b-genre', 'By genre', domains.map(dm => `
       <h3 class="cat">${CATEGORY_NAME[dm] || dm}</h3>
@@ -4152,8 +4170,9 @@ function renderOther(id) {
   const mineIds = new Set((mine || {}).ranked || []);
   const shared = t.ranked.filter(f => mineIds.has(f.id));
   app.innerHTML = `
-    <div class="topbar"><h1 class="display-lg">${esc(listName(t.ranked, p.topic))}</h1><button class="link" data-act="discover">Back</button></div>
-    <p class="prompt">${p.kind === 'person' ? `A Top 10 by ${esc(p.label)}` : esc(p.label)} \u00b7 ${esc(p.role)}</p>
+    <div class="topbar"><h1 class="display-lg">${esc(p.kind === 'person'
+      ? tenTitle(listName(t.ranked, p.topic), p.label) : `Top 10 ${listName(t.ranked, p.topic)}`)}</h1><button class="link" data-act="discover">Back</button></div>
+    <p class="prompt">${p.kind === 'person' ? `${esc(p.label)} \u00b7 ${esc(p.role)}` : `${esc(p.label)} \u00b7 ${esc(p.role)}`}</p>
     ${mine ? `<p class="prompt"><b>You share ${shared.length} of 10.</b>${shared.length === 0 ? ` Not one ${domainMeta(p.topic).one} in common. Incredible.` : ''}</p>` : ''}
     <section><ol>${t.ranked.map((f, i) => {
       const yours = mine ? (mine.ranked || []).indexOf(f.id) : -1;
@@ -4222,10 +4241,9 @@ function renderTopicPage(crit) {
     </section>` : ''}
 
     ${theirs.length ? `<section>
-      <div class="section-head"><h2 class="section-h">Other lists on this topic</h2></div>
+      <div class="section-head"><h2 class="section-h">Other people\u2019s Top 10s</h2></div>
       ${theirs.map(s => `<button class="sug-topic" data-other="${esc(s.id)}">
-        <div class="lvl">${esc(s.role)}</div><div class="t">${esc(s.label)}</div>
-        <div class="why">${esc(listName(theirTen(s).ranked, s.topic))}</div>
+        <div class="lvl">${esc(s.role)}</div><div class="t">${esc(s.kind === 'person' ? `${s.label}\u2019s Top 10` : `${s.label} Top 10`)}</div>
       </button>`).join('')}
     </section>` : ''}
 
@@ -4236,8 +4254,8 @@ function renderTopicPage(crit) {
     <section class="endbar">
       ${mine
         ? `<button class="btn" data-mine="${esc(topic.id)}"
-            aria-label="Open your ${esc(topic.title)}">Open yours</button>`
-        : `<button class="btn" data-topic='${esc(JSON.stringify(topic))}'>Make yours</button>`}
+            aria-label="Open your Top 10 ${esc(plainList(topic.title))}">Open your Top 10</button>`
+        : `<button class="btn" data-topic='${esc(JSON.stringify(topic))}'>Make your Top 10</button>`}
     </section>
     ${notes()}`;
   fitOneLine($('.fitline'));
@@ -4301,11 +4319,11 @@ function renderYou() {
   app.innerHTML = `
     <div class="topbar"><h1 class="display-lg">You</h1>
       ${(S.done || []).length
-        ? `<button class="link" data-act="pick">Start a list</button>`
+        ? `<button class="link" data-act="pick">Make a Top 10</button>`
         : `<button class="link" data-act="youback">Done</button>`}</div>
     <p class="prompt">${done.length
-      ? `${countNoun(done.length, S.topic).replace(/[a-z]+$/, done.length === 1 ? 'list' : 'lists')} finished, ${have} of ${got.length} badges earned.`
-      : 'Nothing here yet. The first list takes about two minutes.'}</p>
+      ? `${done.length} ${done.length === 1 ? 'Top 10' : 'Top 10s'} finished, ${have} of ${got.length} badges earned.`
+      : 'Nothing here yet. Your first Top 10 takes about two minutes.'}</p>
 
     <section>
       <div class="section-head"><h2 class="section-h">Badges</h2></div>
@@ -4332,7 +4350,7 @@ function renderYou() {
           <span class="s">${(d.ranked || []).length} ranked</span>
         </button></li>`).join('')}</ul>
     </section>` : `<section class="case-empty">
-      <button class="btn" data-act="begin">Make your first list</button>
+      <button class="btn" data-act="begin">Make your first Top 10</button>
     </section>`}
 
     ${draft ? `<section>
@@ -4345,8 +4363,8 @@ function renderYou() {
 
     ${done.length ? `<section class="endbar">
       ${(S.done || []).length ? '' :
-        `<button class="btn" data-act="pick">Start a list about&hellip;</button>
-         <button class="btn ghost" data-act="discover">Other people&rsquo;s Top 10 lists</button>`}
+        `<button class="btn" data-act="pick">Make a Top 10 about&hellip;</button>
+         <button class="btn ghost" data-act="discover">Other people&rsquo;s Top 10s</button>`}
     </section>` : ''}
     ${notes()}`;
   dockEl.innerHTML = '';
@@ -4385,7 +4403,7 @@ function renderMine(topicId) {
   const theirs = SOURCES.filter(s => s.topic.id === topicId)
     .sort((a, b) => (b.kind === 'person') - (a.kind === 'person'));
   app.innerHTML = `
-    <div class="topbar"><h1 class="display-lg fitline">${esc(d.title)}</h1>
+    <div class="topbar"><h1 class="display-lg fitline">${esc(tenTitle(d.title))}</h1>
       <button class="link" data-act="you">Back</button></div>
     <section><ol>${films.map((f, i) => `<li><div class="tenrow ${i === 0 ? 'one' : ''}">
       <span class="num">${i + 1}</span><span class="thumb"><img src="${art(f)}" alt=""></span>
@@ -4533,7 +4551,7 @@ function renderPicker() {
   const chosen = pickTags();
   app.className = 'wrap';
   app.innerHTML = `
-    <div class="topbar"><h1 class="display-lg">Start a list</h1>
+    <div class="topbar"><h1 class="display-lg">Make a Top 10</h1>
       <button class="link" data-act="pickback">Done</button></div>
     <p class="prompt">Type what it is about &mdash; a genre, a decade, a director,
       or a whole phrase like <i>disney animated movies</i>.</p>
@@ -4542,7 +4560,7 @@ function renderPicker() {
         stroke-width="2" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-3.5-3.5"/></svg>
       <input id="pq" type="search" autocomplete="off" value="${esc(q)}"
         placeholder="Crime dramas, 90s sci-fi, heist thrillers&hellip;"
-        aria-label="What is your list about?">
+        aria-label="What is your Top 10 about?">
     </div>
     <div id="pickresults">${pickerResults()}</div>
     ${notes()}`;
@@ -4586,14 +4604,14 @@ function pickerResults() {
     if (n >= TEN) { offered = all; lede = 'From what you typed'; }
     else {
       const near = nearestFillable(all);
-      short = `${tagsTopic(all).title} would be <b>${n} ${countWord(n)}</b>. A Top 10 needs ten.`;
+      short = `${tagsTopic(all).title} has only <b>${n} ${countWord(n)}</b>. A Top 10 needs ten.`;
       if (near.tags.length && tagSupply(near.tags) >= TEN) {
         offered = near.tags;
         lede = `Without ${near.dropped.map(d => d.label).join(' or ')}`;
       }
     }
   } else if (chosen.length && tagSupply(chosen) >= TEN) {
-    offered = chosen; lede = 'Your list';
+    offered = chosen; lede = 'Your pick';
   }
 
   // Narrow what is on offer; or, with nothing on offer, match what was typed.
@@ -4680,7 +4698,7 @@ function pickCard(tags, n, lede) {
     <div class="lvl">${esc(lede)}</div>
     <div class="pickname">${esc(topic.title)}</div>
     <div class="picksupply">${n} ${countWord(n)} to choose from</div>
-    <button class="btn" data-pickgo='${esc(JSON.stringify(critFromTags(tags)))}'>Make this list</button>
+    <button class="btn" data-pickgo='${esc(JSON.stringify(critFromTags(tags)))}'>Make your Top 10</button>
   </section>`;
 }
 
@@ -4709,7 +4727,7 @@ function renderReveal() {
   v.className = 'vault';
   v.innerHTML = `<button class="skip" data-act="skip">Skip</button>
     <div class="stage">
-      <p class="revealed-name">${esc(listName(S.ranked, S.topic))}</p>
+      <p class="revealed-name">${esc(tenTitle(listName(S.ranked, S.topic)))}</p>
       <ol class="reveal-ten">${S.ranked.map((id, i) => {
         const f = byId.get(id);
         return `<li class="rrow"><span class="num">${i + 1}</span>
@@ -4725,7 +4743,7 @@ function renderReveal() {
     </div>`;
   document.body.appendChild(v);
   setBackgroundInert(true);
-  announce(`${listName(S.ranked, S.topic)} finished.`
+  announce(`${tenTitle(listName(S.ranked, S.topic))} finished.`
     + (won.length ? ` New badge: ${won.map(a => a.name).join(', ')}.` : ''));
   runReveal(v);
 }
@@ -4764,7 +4782,7 @@ function renderFinished() {
     .filter(Boolean);
   app.innerHTML = `
     <div class="finished-head">
-      <h1 class="display-lg">${esc(listName(S.ranked, S.topic))}</h1>
+      <h1 class="display-lg">${esc(tenTitle(listName(S.ranked, S.topic)))}</h1>
       ${won.length ? `<p class="insc">New badge: ${won.map(a => esc(a.name)).join(', ')}</p>` : ''}
     </div>
     <section><ol>${S.ranked.map((id, i) => { const f = byId.get(id); return `<li><div class="tenrow ${i === 0 ? 'one' : ''}">
@@ -4785,11 +4803,11 @@ function renderFinished() {
     ${(S.done || []).length >= 2 ? `<section>
       <div class="section-head"><h2 class="section-h">What everyone else picked</h2></div>
       <p class="prompt" style="margin:0 0 var(--s3)">That is ${(S.done || []).length} of your own. Now the interesting part — other people's, and where you disagree.</p>
-      <button class="btn" data-act="discover">See other people's Top 10 lists</button>
+      <button class="btn" data-act="discover">See other people's Top 10s</button>
     </section>` : ''}
     <section>
       <div class="section-head"><h2 class="section-h">Send it to someone</h2></div>
-      <p class="prompt" style="margin:0 0 var(--s3)">They can read the whole list without the app.
+      <p class="prompt" style="margin:0 0 var(--s3)">They can read your whole Top 10 without the app.
         The badge stays locked until they make their own.</p>
       <button class="btn" data-act="share">Share this Top 10</button>
     </section>
